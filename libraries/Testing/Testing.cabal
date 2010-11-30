@@ -1,0 +1,37 @@
+name:               Testing
+version:            1.0
+synopsis:           HaLVM testing framework built on orc
+description:
+    Provides an EDSL with Orc primitives customized to HaLVM
+category:           Web
+license:            BSD3
+license-file:       LICENSE
+author:             John Launchbury
+maintainer:         John Launchbury
+Copyright:          (c) 2008-2009, Galois, Inc.
+cabal-version:      >= 1.2.0
+build-type:         Simple
+
+
+Library
+  Extensions:       ScopedTypeVariables
+  Build-Depends:    base >= 4,
+                    QuickCheck >= 2,
+                    random,
+                    stm,
+                    process,
+                    regex-base,
+                    regex-posix,
+                    orc
+  Exposed-modules:  Testing.Interactions
+                    Testing.TestResults
+                    Testing.VM
+                    Testing.VM.Types
+                    Testing.QEMU
+                    Testing.QEMU.Types
+                    Testing.Site
+                    Testing.Site.Util
+                    Testing.Strings
+                    Testing
+  Hs-Source-Dirs:   src
+  Ghc-Options:      -Wall -O2 -threaded

@@ -1,0 +1,12 @@
+*** ghc-pristine/libraries/integer-gmp/integer-gmp.cabal	2010-06-09 11:10:21.000000000 -0700
+--- xen-ghc/libraries/integer-gmp/integer-gmp.cabal	2010-08-13 16:03:21.290130515 -0700
+***************
+*** 27,32 ****
+--- 27,33 ----
+      extensions: CPP, MagicHash, UnboxedTuples, NoImplicitPrelude,
+                  ForeignFunctionInterface, UnliftedFFITypes
+      c-sources: cbits/cbits.c
++                cbits/gmp-wrappers.cmm
+      -- We need to set the package name to integer-gmp
+      -- (without a version number) as it's magic.
+      ghc-options: -package-name integer-gmp

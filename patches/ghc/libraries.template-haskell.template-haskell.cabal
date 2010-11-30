@@ -1,0 +1,19 @@
+*** ghc-pristine/libraries/template-haskell/template-haskell.cabal	2010-06-09 11:10:21.000000000 -0700
+--- xen-ghc/libraries/template-haskell/template-haskell.cabal	2010-07-02 13:45:01.892528160 -0700
+***************
+*** 21,27 ****
+          Language.Haskell.TH.Quote
+          Language.Haskell.TH
+      extensions: MagicHash, PatternGuards, PolymorphicComponents,
+!                 DeriveDataTypeable, TypeSynonymInstances
+      -- We need to set the package name to template-haskell (without a
+      -- version number) as it's magic.
+      ghc-options: -package-name template-haskell
+--- 21,27 ----
+          Language.Haskell.TH.Quote
+          Language.Haskell.TH
+      extensions: MagicHash, PatternGuards, PolymorphicComponents,
+!                 DeriveDataTypeable, TypeSynonymInstances, CPP
+      -- We need to set the package name to template-haskell (without a
+      -- version number) as it's magic.
+      ghc-options: -package-name template-haskell

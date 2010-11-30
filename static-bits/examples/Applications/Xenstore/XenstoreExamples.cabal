@@ -1,0 +1,28 @@
+Name: XenstoreExamples
+Version: 1.0.0
+Synopsis: Examples of talking to the XenStore with a HaLVM
+Description:
+  This package includes two (only slightly different) examples of using
+  the XenStore shared data store from a Haskell Lightweight Virtual
+  Machine (HaLVM).
+License: BSD3
+Author: Andrew Tolmach <apt@galois.com>, 
+        Magnus Carlsson <magnus@galois.com>,
+        Adam Wick <awick@galois.com>
+Maintainer: Adam Wick <awick@galois.com>
+Copyright: 2008 Galois, Inc.
+Stability: Experimental
+Category: Examples
+Build-type: Simple
+Cabal-Version: >= 1.4
+
+Executable Xenstore
+  Main-Is: Xenstore.hs
+  GHC-Options:      -Wall
+  build-depends: base >= 3, HALVMCore >= 1, XenDevice >= 1
+
+Executable XenstoreC
+  Main-Is: XenstoreC.hs
+  GHC-Options:      -Wall
+  build-depends: base >= 3, HALVMCore >= 1, XenDevice >= 1
+

@@ -1,0 +1,19 @@
+Name: TimeTest
+Version: 1.0.0
+Synopsis: A simple test that prints out the time
+Description:
+    This example outputs the current date and time every second. It's mostly
+    useful as a test case.
+License: BSD3
+Author: Adam Wick <awick@galois.com>
+Maintainer: Adam Wick <awick@galois.com>
+Copyright: 2009 Galois, Inc.
+Stability: Experimental
+Category: Examples
+Build-Type: Simple
+Cabal-Version: >= 1.4
+
+Executable TimeTest
+    Main-Is: Main.hs
+    build-depends: base >= 4, time >= 1.1.4, HALVMCore, XenDevice, old-locale
+

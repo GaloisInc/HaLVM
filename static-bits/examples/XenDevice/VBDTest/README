@@ -1,0 +1,44 @@
+The VBDTest Example
+  BANNERSTART
+  - Copyright 2006-2008, Galois, Inc.
+  - This software is distributed under a standard, three-clause BSD license.
+  - Please see the file LICENSE, distributed with this software, for specific
+  - terms and conditions.
+  Author: Adam Wick <awick@galois.com>
+  BANNEREND
+======================================================
+
+Contents
+--------
+
+  1. Description
+  2. Building and Running
+
+1. Description
+--------------
+
+This is more of a test case than an example. At a high-level, it takes
+every disk given to it and performs several write/read tests on each. 
+These include synchronous writes and reads at different block sizes, as
+will as a few tests of the asynchronous write/read system. It takes quite
+awhile to run.
+
+2. Building and Running
+-----------------------
+
+ halvmc -package XenDevice VBDTest.hs --with-config --disk ...
+
+You should use at least one disk with this command. You then run it as per
+normal:
+
+ sudo xm create VBDTest_config -c
+
+If you're using linux virtual disks, you can create a disk as follows:
+
+  lvcreate -L 64M -n vbdtest vg00
+
+Which creates a 64 meg volume called vbdtest on the volume vg00. Then
+compile the example with
+
+  halvmc -package XenDevice VBDTest.hs --with-config --disk "phy:/dev/vg00/vbdtest,hda1,w"
+

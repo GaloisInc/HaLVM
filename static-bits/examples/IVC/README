@@ -1,0 +1,23 @@
+HALVM IVC Examples
+  BANNERSTART
+  - Copyright 2006-2008, Galois, Inc.
+  - This software is distributed under a standard, three-clause BSD license.
+  - Please see the file LICENSE, distributed with this software, for specific
+  - terms and conditions.
+  Author: Adam Wick <awick@galois.com>
+  BANNEREND
+======================================================
+
+These examples show how the basic IVC mechanisms can be used in writing
+HaLVM domains.
+
+  - SpeedTest: Uses the IVC mechanism described in Hypervisor.IVC, and then
+    performs tests to see what transfer speeds are reached along those 
+    channels.
+
+  - CopyTest: Shows how one can use the Xen concept of a "grant copy" between
+    two domains.
+
+  - TransferTest: Shows how one can use the Xen concept of a "grant 
+    transfer" (page flipping) between two domains.
+

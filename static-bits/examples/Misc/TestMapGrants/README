@@ -1,0 +1,36 @@
+The Multi-Grant Mapping Test
+  BANNERSTART
+  - Copyright 2006-2008, Galois, Inc.
+  - This software is distributed under a standard, three-clause BSD license.
+  - Please see the file LICENSE, distributed with this software, for specific
+  - terms and conditions.
+  Author: Adam Wick <awick@galois.com>
+  BANNEREND
+======================================================
+
+Contents
+--------
+
+  1. Description
+  2. Building and Running
+
+1. Description
+--------------
+
+IMPORTANT: You must run the 'make_halvm_dir.py' script before running this
+example!
+
+This is an example of using multiple grant references to share a contiguous
+block of >4K using grant references. The critical call is mapGrants.
+
+2. Building and Running
+-----------------------
+
+If you haven't already, make the /halvm Xenstore directory:
+
+  python ${HALVM_DIR}/bin/make_halvm_dir.py
+
+Build and run the test with:
+
+  make run
+

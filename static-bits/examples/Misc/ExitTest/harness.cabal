@@ -1,0 +1,22 @@
+name:               harness
+version:            1.0
+synopsis:           Standard HaLVM test harness
+description:
+    Starts up three VMs: a chat server and two chat clients, and orchestrates
+    a test run.
+category:           Web
+license:            BSD3
+license-file:       LICENSE
+author:             Andy Adams-Moran
+maintainer:         Andy Adams-Moran
+Copyright:          (c) 2008-2009, Galois, Inc.
+cabal-version:      >= 1.2.0
+build-type:         Simple
+
+Executable          harness
+  Build-Depends:    base,
+                    orc,
+                    Testing
+  Main-Is:          Harness.hs
+  Hs-Source-Dirs:   .
+  Ghc-Options:      -Wall -O2 -threaded

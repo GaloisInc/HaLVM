@@ -1,0 +1,19 @@
+*** a/time.cabal	2009-08-13 13:14:30.658628867 -0400
+--- b/time.cabal	2009-08-13 13:16:44.145364836 -0400
+***************
+*** 9,15 ****
+  synopsis:       A time library
+  description:    A time library
+  category:       System
+! build-type:  Custom
+  cabal-version:   >=1.6
+  x-follows-version-policy:
+  
+--- 9,15 ----
+  synopsis:       A time library
+  description:    A time library
+  category:       System
+! build-type:     Configure
+  cabal-version:   >=1.6
+  x-follows-version-policy:
+  

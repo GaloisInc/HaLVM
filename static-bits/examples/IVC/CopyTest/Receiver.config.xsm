@@ -1,0 +1,8 @@
+from os import getcwd
+
+name    = "Receiver"
+kernel  = getcwd() + "/dist/build/Receiver/Receiver"
+memory  = 8
+disk    = []
+vif     = []
+access_control = ["policy=,label=system_u:system_r:copytest_receiver_t"]

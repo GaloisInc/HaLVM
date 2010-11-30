@@ -1,0 +1,6 @@
+Using config file "./Null.config".
+Started domain Null
+Booting HaLVM ... done.
+MM: Increased memory reservation to 3 of 4 MB.
+Immediate exit by halvm_shutdown.
+Do_exit called!

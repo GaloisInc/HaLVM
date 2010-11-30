@@ -1,0 +1,52 @@
+# hdkernel - a linker for HALVM
+# Usage: to be invoked from ghc using "ghc -pgml ldkernel"
+#
+# BANNERSTART
+# - Copyright 2006-2008, Galois, Inc.
+# - This software is distributed under a standard, three-clause BSD license.
+# - Please see the file LICENSE, distributed with this software, for specific
+# - terms and conditions.
+# Author: Andrew Tolmach <apt@galois.com>
+# Contributor: Adam Wick <awick@galois.com>
+# BANNEREND
+#
+
+#echo "--------"
+#echo $*
+#echo "--------"
+
+# Collect object files and the name of the executable from the arguments
+# supplied by GHC. Ignore other arguments. 
+#objs=""
+#while [ $# != 0 ] ; do
+#  case "$1" in
+#    *.o) objs="$1 $objs" ;;
+#    -o) objs="$objs $1 $2"; shift;;
+#  esac
+#  shift
+#done
+
+ARGS=""
+LIBS=""
+LIBDIR=`echo $0 | sed 's/[^/]*$//g'`
+START_FILE="${LIBDIR}/start.o"
+LIBM_FILE="${LIBDIR}/libm.a"
+GMP_FILE="@LIBGMP@"
+LINKER_SCRIPT="-T ${LIBDIR}/kernel.lds"
+while [ $# != 0 ] ; do
+  case "$1" in
+    "-DDONT_WANT_WIN32_DLL_SUPPORT") dead=$1; shift;;
+    -u) dead=$1; shift; shift;;
+    -lm) dead=$1; shift;;
+    -ldl) dead=$1; shift;;
+    -lrt) dead=$1; shift;;
+    -l*) LIBS="$LIBS $1"; shift;;
+    -Wl,-r) ARGS="$ARGS -r"; LINKER_SCRIPT=""; START_FILE=""; shift;;
+    -Wl,-x) ARGS="$ARGS -x"; LINKER_SCRIPT=""; START_FILE=""; shift;;
+    *) ARGS="$ARGS $1"; shift;;
+  esac
+done
+
+LDCMD="ld ${LINKER_SCRIPT} -nostdlib ${START_FILE} $ARGS $LIBS $LIBS ${GMP_FILE} ${LIBM_FILE}"
+#echo $LDCMD
+$LDCMD

@@ -1,0 +1,21 @@
+HALVM Pseudo-Device Examples
+  BANNERSTART
+  - Copyright 2006-2008, Galois, Inc.
+  - This software is distributed under a standard, three-clause BSD license.
+  - Please see the file LICENSE, distributed with this software, for specific
+  - terms and conditions.
+  Author: Adam Wick <awick@galois.com>
+  BANNEREND
+======================================================
+
+These examples show how the HaLVM can be used to create "pseudo-devices",
+or potentially even real device back-ends, all using the standard Xen
+ring buffer protocol for devices. The example applications are:
+
+  - DoubleDevice: Defines a simple device in which a client domain sends
+    the pseudo-device a number, and the 'device' returns the number
+    doubled.
+
+  - ROT13Device: A slightly more complicated example, in which clients 
+    send the device a page of memory (via a grant reference), and the
+    device ROT13 encodes the data on the page.

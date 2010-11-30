@@ -1,0 +1,33 @@
+Name: SpeedTest
+Version: 1.0.0
+Synopsis: Determines the speed of transfers through the HaLVM's IVC mechanism.
+Description:
+  This example both shows how to use the general-purpose IVC channels 
+  in the HALVMCore library, but also serves as a benchmark of how fast
+  those channels can transfer data.
+License: BSD3
+Author: Adam Wick <awick@galois.com>
+Maintainer: Adam Wick <awick@galois.com>
+Copyright: 2008 Galois, Inc.
+Stability: Experimental
+Category: Examples
+Build-type: Simple
+Cabal-Version: >= 1.4
+
+Executable Start
+  Main-Is: ST_Start.hs
+  Ghc-Options:   -Wall
+  build-depends: base >= 3, HALVMCore >= 1, XenDevice >= 1, RendezvousLib >= 1, bytestring, communication
+  extensions: ScopedTypeVariables
+
+Executable Middle
+  Main-Is: ST_Middle.hs
+  Ghc-Options:   -Wall
+  build-depends: base >= 3, HALVMCore >= 1, XenDevice >= 1, RendezvousLib >= 1, bytestring, communication
+  extensions: ScopedTypeVariables
+
+Executable End
+  Main-Is: ST_End.hs
+  Ghc-Options:   -Wall
+  build-depends: base >= 3, HALVMCore >= 1, XenDevice >= 1, RendezvousLib >= 1, bytestring, time, communication
+  extensions: ScopedTypeVariables

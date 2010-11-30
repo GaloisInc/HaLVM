@@ -1,0 +1,27 @@
+Name: DoubleDevice
+Version: 1.0.0
+Synopsis: A virtual doubling device for the HaLVM.
+Description:
+  This example shows how to create virtual devices using the ring buffer
+  mechanism, as well as how to use the front end interface to ring buffers.
+License: BSD3
+Author: Adam Wick <awick@galois.com>
+Maintainer: Adam Wick <awick@galois.com>
+Copyright: 2008 Galois, Inc.
+Stability: Experimental
+Category: Examples
+Build-type: Simple
+Cabal-Version: >= 1.4
+
+Executable DoubleDevice
+  Main-Is: DoubleDevice.hs
+  build-depends: base >= 3, HALVMCore >= 1, XenDevice >= 1, RendezvousLib >= 1, communication >= 1
+  extensions: MultiParamTypeClasses
+  ghc-options: -O2
+
+Executable DoubleTest
+  Main-Is: DoubleTest.hs
+  build-depends: base >= 3, time >= 1.1.4, HALVMCore >= 1, XenDevice >= 1, RendezvousLib >= 1, communication >= 1
+  extensions: MultiParamTypeClasses
+  ghc-options: -O2
+

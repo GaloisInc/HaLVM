@@ -1,0 +1,31 @@
+# BANNERSTART
+# - Copyright 2006-2008, Galois, Inc.
+# - This software is distributed under a standard, three-clause BSD license.
+# - Please see the file LICENSE, distributed with this software, for specific
+# - terms and conditions.
+# Author: Adam Wick <awick@galois.com>
+# BANNEREND
+
+SRCFILES=src/core.c src/oneway.c src/twoway.c src/ringbuffer.c
+OBJFILES=$(SRCFILES:.c=.o)
+CFLAGS=@CPPFLAGS@ -g -O2 -Iinclude/ -Wall
+INSTALL_DIR?=../dist/lib/HaLVM/
+
+all: libIVC.a
+
+doc:
+	cp README ../dist/doc/README.libIVC
+
+install: libIVC.a include/libIVC.h
+	cp libIVC.a $(INSTALL_DIR)/
+	cp include/libIVC.h $(INSTALL_DIR)/include/
+
+clean:
+	rm -f libIVC.a $(OBJFILES)
+
+libIVC.a: $(OBJFILES)
+	ar cqs libIVC.a $(OBJFILES)
+
+src/oneway.o: include/libIVC.h
+src/twoway.o: include/libIVC.h
+src/ringbuffer.o: include/libIVC.h

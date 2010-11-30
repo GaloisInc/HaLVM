@@ -1,0 +1,27 @@
+#!/bin/sh
+
+HALVM_LIBDIR=@HALVM_LIBRARY_DIRECTORY@
+
+usage()
+{
+  echo "Usage: halvm-config [option]"
+  echo "Options:"
+  echo "  --libdir"
+  echo "  --ivclib"
+  echo "  --cflags"
+  echo "  --ghcflags"
+  exit 0
+}
+
+if test $# -ne 1; then
+  usage
+fi
+
+case $1 in
+  --libdir) echo ${HALVM_LIBDIR} ;;
+  --ivclib) echo ${HALVM_LIBDIR}/libIVC.a ;;
+  --cflags) echo -I${HALVM_LIBDIR}/include ;;
+  --ghcflags) echo -I${HALVM_LIBDIR} -optP-I${HALVM_LIBDIR};;
+  *) usage
+esac
+

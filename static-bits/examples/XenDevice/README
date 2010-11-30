@@ -1,0 +1,23 @@
+HALVM Xen Device Examples
+  BANNERSTART
+  - Copyright 2006-2008, Galois, Inc.
+  - This software is distributed under a standard, three-clause BSD license.
+  - Please see the file LICENSE, distributed with this software, for specific
+  - terms and conditions.
+  Author: Adam Wick <awick@galois.com>
+  BANNEREND
+======================================================
+
+These examples show how HaLVM programs can interact with Xen-virtualized
+devices.
+
+  - ARPSniffer: Uses the network card driver for Xen to implement a domain
+    that listens for ARP traffic and prints out information about it.
+
+  - EtherPing: Creates two domains, where one pings the other via the
+    network card interface.
+
+  - VBDTest: A simple block read/write tester for using Xen disk devices.
+
+  - Halfs: Two simple (but not well-written) examples of using the Halfs
+    file system on top of Xen disk devices.

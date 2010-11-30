@@ -1,0 +1,13 @@
+name:          log4h
+version:       0.1
+build-type:    Custom
+cabal-version: >= 1.2.0
+author:        nordin@galois.com
+stability:     experimental
+synopsis:      Logging framework for Haskell
+build-type:    Simple
+
+library
+  exposed-modules: Log4h
+  build-depends:   base, old-locale, old-time, HALVMCore
+

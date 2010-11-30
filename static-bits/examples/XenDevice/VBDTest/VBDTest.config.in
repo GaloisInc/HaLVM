@@ -1,0 +1,8 @@
+from os import getcwd
+
+name     = "VBDTest"
+kernel   = getcwd() + "/VBDTest"
+memory   = 32
+vif      = []
+on_crash = "destroy"
+context  = "system_u:system_r:domU_t"

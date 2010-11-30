@@ -1,0 +1,18 @@
+*** ghc-6.10.1/driver/mangler/ghc-asm.lprl	2008-11-03 10:13:13.000000000 -0800
+--- xen-ghc/driver/mangler/ghc-asm.lprl	2009-01-13 09:50:49.000000000 -0800
+***************
+*** 73,78 ****
+--- 73,85 ----
+      }
+  }
+  
++ if ( $TargetPlatform =~ /^i386-.*-xen/ ) {
++     $TargetPlatform = "i386-unknown-linux";
++ }
++ if ( $TargetPlatform =~ /^x86_64-.*-xen/ ) {
++     $TargetPlatform = "x86_64-unknown-linux";
++ }
++ 
+  &mangle_asm($ifile,$ofile);
+  
+  exit(0);

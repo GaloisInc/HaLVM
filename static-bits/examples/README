@@ -1,0 +1,45 @@
+HALVM Example Applications
+  BANNERSTART
+  - Copyright 2006-2008, Galois, Inc.
+  - This software is distributed under a standard, three-clause BSD license.
+  - Please see the file LICENSE, distributed with this software, for specific
+  - terms and conditions.
+  Author: Adam Wick <awick@galois.com>
+  BANNEREND
+======================================================
+
+Inside this directory you will find Galois's current line-up of example 
+applications, demos, and test suites. Our hope is that you can use these
+programs to gain insight into the breadth of potential applications, as
+well as how different parts of the HALVM API are used.
+
+The example programs are roughly categorized by type:
+
+  - Applications: Contains small "whole program" examples of applications.
+    Many of these examples contain code for multiple domains, which are then
+    run together to provide some result. In the other cases, the examples
+    provide some application interface to users.
+
+  - IVC: These examples show how HaLVM domains can transfer information 
+    between each other, using a variety of routines.
+
+  - PseudoDevice: These examples show how the HaLVM can be used to create
+    'psuedo-device drivers', or even, in the large, how they can be used to
+    create back end drivers for real devices.
+
+  - RealDevice: These examples show how one can use the built-in HaLVM 
+    support for devices on the physical machine.
+
+  - XenDevice: These examples show how one can use the built-in HaLVM 
+    support for Xen-virtualized devices.
+
+  - libIVC: These examples make use of the HaLVM/C IVC interface to 
+    have Linux and HaLVMs speak to each other.
+
+  - Misc: Examples that don't fit elsewhere.
+
+==============
+
+JL: temporarily added XenDevice/VBDTest/.skip because the test takes a long time
+
+

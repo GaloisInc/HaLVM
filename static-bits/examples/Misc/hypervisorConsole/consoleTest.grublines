@@ -1,0 +1,2 @@
+kernel /boot/xen.gz com1=auto,8n1 console=com1
+module /boot/consoleTest

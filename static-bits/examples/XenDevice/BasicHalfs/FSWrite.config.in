@@ -1,0 +1,7 @@
+from os import getcwd
+
+name    = "FSWrite"
+kernel  = getcwd() + "/dist/build/FSWrite/FSWrite"
+memory  = 16
+vif     = []
+context = "system_u:system_r:domU_t"

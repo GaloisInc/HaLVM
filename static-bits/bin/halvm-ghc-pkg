@@ -1,0 +1,20 @@
+#!/bin/sh
+# BANNERSTART
+# - Copyright 2006-2008, Galois, Inc.
+# - This software is distributed under a standard, three-clause BSD license.
+# - Please see the file LICENSE, distributed with this software, for specific
+# - terms and conditions.
+# Author: Adam Wick <awick@galois.com>
+# BANNEREND
+BINDIR=`echo $0 | sed 's/[^/]*$//g'`
+LIBDIR_REL="${BINDIR}../lib/HaLVM-HALVM_VER"
+
+CURDIR=`pwd`
+cd ${LIBDIR_REL}
+LIBDIR=`pwd`
+cd ${CURDIR}
+
+GHCPKGBIN="${LIBDIR}/ghc-pkg.bin"
+GLOBFILEOPT="--global-conf ${LIBDIR}/package.conf.d"
+
+${GHCPKGBIN} ${GLOBFILEOPT} ${1+"$@"}

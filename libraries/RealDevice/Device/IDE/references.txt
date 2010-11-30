@@ -1,0 +1,9 @@
+Intel 31244 PCI-X to Serial ATA Controller
+http://www.intel.com/design/storage/manuals/273603.htm
+
+ATA/ATAPI-6 Specification
+http://www.t10.org/t13/project/d1410r3-ATA-ATAPI-6.pdf
+
+PCI IDE Controller Specification 1.0
+http://suif.stanford.edu/~csapuntz/specs/pciide.ps
+

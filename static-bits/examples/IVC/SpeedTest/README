@@ -1,0 +1,50 @@
+The Great IVC Speed Test
+  BANNERSTART
+  - Copyright 2006-2008, Galois, Inc.
+  - This software is distributed under a standard, three-clause BSD license.
+  - Please see the file LICENSE, distributed with this software, for specific
+  - terms and conditions.
+  Author: Adam Wick <awick@galois.com>
+  BANNEREND
+======================================================
+
+Contents
+--------
+
+  1. Description
+  2. Building and Running
+
+1. Description
+--------------
+
+IMPORTANT: You must run the 'make_halvm_dir.py' script before running this
+example!
+
+This example is our internal IVC speed test. Basically, one domain (Start)
+starts up, sets up a channel rendezvous, and (once the channel has been 
+established) just spews data down the channel as fast as it can. The other
+domain (End) reads in the data in variously-sized chunks and reports on 
+the transfer speed.
+
+2. Building and Running
+-----------------------
+
+If you haven't already, make the /halvm Xenstore directory:
+
+  python ${HALVM_DIR}/bin/make_halvm_dir.py
+
+Build and start both Start and End by:
+
+  make run
+
+Varints with more VMs involved are:
+
+  make run3
+
+and
+
+  make run6
+
+To destroy the virtual machines, press Ctrl-], and then
+
+  make stop

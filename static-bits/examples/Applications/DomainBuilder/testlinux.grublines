@@ -1,0 +1,4 @@
+kernel /boot/xen.gz noreboot com1=auto,8n1 console=com1 multimodules
+module /boot/testlinux
+module /boot/vmlinuz-2.6.18.8-xen0 root=/dev/ram0 udev ro console=ttyS0,9600n8 vga=normal
+module /boot/ramdisk.cpio.gz

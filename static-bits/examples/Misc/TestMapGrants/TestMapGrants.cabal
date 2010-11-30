@@ -1,0 +1,24 @@
+Name: TestMapGrants
+Version: 1.0.0
+Synopsis: Examples of performing Xen grant transfers.
+Description:
+  This example shows how two domains can map > 4096 byte buffers.
+License: BSD3
+Author: Adam Wick <awick@galois.com>
+Maintainer: Adam Wick <awick@galois.com>
+Copyright: 2009 Galois, Inc.
+Stability: Experimental
+Category: Examples
+Build-type: Simple
+Cabal-Version: >= 1.4
+
+Executable Sender
+  Main-Is: Sender.hs
+  build-depends: base >= 3, HALVMCore >= 1, XenDevice >= 1, RendezvousLib >= 1
+  extensions: ScopedTypeVariables
+
+Executable Receiver
+  Main-Is: Receiver.hs
+  build-depends: base >= 3, HALVMCore >= 1, XenDevice >= 1, RendezvousLib >= 1
+  extensions: ScopedTypeVariables
+

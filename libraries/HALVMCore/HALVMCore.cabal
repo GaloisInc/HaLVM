@@ -1,0 +1,43 @@
+name:           HALVMCore
+version:        1.0.0
+license:        BSD3
+author:         Adam Wick <awick@galois.com>, Andrew Tolmach <apt@galois.com>
+maintainer:     Adam Wick <awick@galois.com>
+description:    Basic libraries for using Xen functionality from the HaLVM.
+                This module is pretty much required for all HaLVM programs,
+                and includes the necessary basic types, data structures, and
+                functions for dealing with Xen. It also provides a basic 
+                IVC services and debugging console.
+synopsis:       Basic library for accessing Xen from the HaLVM.
+category:       HaLVM, System
+stability:      experimental
+build-type:     Configure
+cabal-version:  >= 1.2
+tested-with:    GHC ==6.8.0
+
+library
+  build-depends:    base >=4, bytestring >=0.9, syb, mtl, BoundedChan
+  exposed-modules:  Data.Word10,
+                    Data.Word20,
+                    Util.WaitSet,
+                    Hypervisor.Basics,
+                    Hypervisor.Port,
+                    Hypervisor.EventWaitSet,
+                    Hypervisor.BufferChan,
+                    Hypervisor.Debug,
+                    Hypervisor.Memory,
+                    Hypervisor.IOPorts,
+                    Hypervisor.Kernel,
+                    Hypervisor.Privileged,
+                    Hypervisor.StartInfo,
+                    Hypervisor.Virqs
+  extensions:       CPP, MultiParamTypeClasses, FunctionalDependencies,
+                    FlexibleInstances, GeneralizedNewtypeDeriving, 
+                    Rank2Types, FlexibleContexts, UndecidableInstances,
+                    OverlappingInstances, Generics, ForeignFunctionInterface
+  hs-source-dirs:   .
+  ghc-options:      -O2 -Wall
+  include-dirs:     cbits/include
+  c-sources:        cbits/io.c,
+                    cbits/start_info.c,
+                    cbits/privileged.c

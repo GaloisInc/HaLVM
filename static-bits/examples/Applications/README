@@ -1,0 +1,31 @@
+HALVM Example Applications
+  BANNERSTART
+  - Copyright 2006-2008, Galois, Inc.
+  - This software is distributed under a standard, three-clause BSD license.
+  - Please see the file LICENSE, distributed with this software, for specific
+  - terms and conditions.
+  Author: Adam Wick <awick@galois.com>
+  BANNEREND
+======================================================
+
+This directory contains examples that can be considered "whole program"
+examples. That is, they contain self-contained functionality towards some
+purpose, as opposed to some primary functionality with a few testing
+routines.
+
+These examples include:
+
+  - ChatDemo: This example shows how one can build a multi-user chat server
+    (with clients) using HaLVM instances.
+
+  - DomainBuilder: This example shows how one domain can be used to build
+    other domains using the supplied HaLVM libraries.
+
+  - Filter: This example shows how one can set up a set of domains to
+    perform some combined activity. In this case, it sets up three domains,
+    A, B, and C, in which A takes in input and sends it to B, B filters the
+    data and sends it to C, and C prints it out.
+
+  - Xenstore: This example application constructs an interactive console
+    in which users can query the values of Xenstore keys.
+

@@ -1,0 +1,48 @@
+The ROT13Device Example
+  BANNERSTART
+  - Copyright 2006-2008, Galois, Inc.
+  - This software is distributed under a standard, three-clause BSD license.
+  - Please see the file LICENSE, distributed with this software, for specific
+  - terms and conditions.
+  Author: Adam Wick <awick@galois.com>
+  BANNEREND
+======================================================
+
+Contents
+--------
+
+  1. Description
+  2. Building and Running
+
+1. Description
+--------------
+
+IMPORTANT: You must run the 'make_halvm_dir.py' script before running this
+example!
+
+This example is in the same vein of the DoubleDevice, with two changes:
+
+  (1) This example does very little error checking, as it is intended
+      to be used as an on-the-fly implementation demo.
+
+  (2) It uses a slightly more complicated response function.
+
+2. Building and Running
+-----------------------
+
+Use the following two commands:
+
+If you haven't already, make the /halvm Xenstore directory:
+
+  python ${HALVM_DIR}/bin/make_halvm_dir.py
+
+You can then build the device as follows (in two terminals):
+
+  make runBackend
+  make runTest
+
+Type some text to the frontend and finish with a period on its own line.
+
+If you are not building this in the $HALVM/examples/ROT13Device directory,
+you should include the --ghc-includes $HALVM/examples/ROT13Device command
+line flag.

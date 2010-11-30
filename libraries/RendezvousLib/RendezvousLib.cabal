@@ -1,0 +1,26 @@
+name:           RendezvousLib
+version:        1.0.0
+license:        BSD3
+author:         Magnus Carlsson <magnus@galois.com>
+maintainer:     Adam Wick <awick@galois.com>
+description:    A library for connecting HaLVMs together through IVC 
+                connections. This is a convenience library, and builds on
+                the XenStore support in XenDevice and the IVC channels 
+                in HALVMCore. We strongly recommend you use this; doing the
+                work yourself is a pain and won't gain you much.
+synopsis:       Simple library for performing multi-domain rendezvous.
+category:       HaLVM, System
+stability:      experimental
+build-type:     Simple
+cabal-version:  >= 1.2
+tested-with:    GHC ==6.8.0
+
+library
+  build-depends:    base >=3, bytestring >=0.9, HALVMCore >=1.0.0,
+                    XenDevice >=1.0.0, communication >= 1.0.0
+  exposed-modules:  RendezvousLib.PeerToPeer,
+                    RendezvousLib.ClientServer
+  extensions:       MultiParamTypeClasses, FunctionalDependencies,
+                    FlexibleInstances
+  hs-source-dirs:   .
+  ghc-options:      -O2 -Wall

@@ -1,0 +1,20 @@
+name: Cabal
+version: CABAL_VERSION
+license: BSD3
+copyright:
+maintainer:
+stability:
+homepage:
+package-url:
+description:
+category:
+author:
+exposed: True
+exposed-modules:
+import-dirs:
+library-dirs:
+hs-libraries:
+extra-libraries:
+include-dirs:
+includes:
+depends:

@@ -1,0 +1,42 @@
+name:           XenDevice
+version:        1.0.0
+license:        BSD3
+author:         Adam Wick <awick@galois.com>, Magnus Carlsson <magnus@galois.com>
+maintainer:     Adam Wick <awick@galois.com>
+description:    This package provides access to the Xen paravirtualized 
+                devices; virtual disks, virtual network cards, the virtual
+                console, and the Xenbus\/Xenstore. In the future, it will also
+                work with virtualized TPMs. For those interested in creating
+                their own devices, the XenDevice library exports a module
+                for implementing drivers over the standard Xen ring buffer
+                protocol, as well.
+synopsis:       Integration with Xen-virtualized devices.
+category:       HaLVM, System
+stability:      experimental
+build-type:     Configure
+cabal-version:  >= 1.2
+tested-with:    GHC ==6.8.0
+
+library
+  build-depends:    base >=3, bytestring >= 0.9, HALVMCore >=1.0.0,
+                    mtl >=1.1, array >=0.1, containers >=0.1,
+                    BoundedChan, communication >= 1.0.0
+  exposed-modules:  XenDevice.Console,
+                    XenDevice.ConsoleAux,
+                    XenDevice.ConsoleBackend,
+                    XenDevice.ConsoleInterface,
+                    XenDevice.HypervisorConsole,
+                    XenDevice.Codecs,
+                    XenDevice.Xenbus,
+                    XenDevice.XenbusInterface,
+                    XenDevice.XenRingState,
+                    XenDevice.NIC,
+                    XenDevice.Disk,
+                    XenDevice.PCI
+  extensions:       CPP, MultiParamTypeClasses, FunctionalDependencies,
+                    UndecidableInstances, OverlappingInstances,
+                    ForeignFunctionInterface, ScopedTypeVariables, BangPatterns
+  ghc-options:      -O2 -Wall
+  include-dirs:     cbits/include
+  c-sources:        cbits/console.c,
+                    cbits/xenbus.c

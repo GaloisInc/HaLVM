@@ -1,0 +1,41 @@
+name:           RealDevice
+version:        1.0.0
+license:        BSD3
+author:         Iavor Diatchki <diatchki@galois.com>
+maintainer:     Iavor Diatchki <diatchki@galois.com>
+description:    This library provides access to "real" devices on the 
+                underlying hardware.
+synopsis:       Integration with real devices.
+category:       HaLVM, System
+stability:      experimental
+build-type:     Simple
+cabal-version:  >= 1.2
+tested-with:    GHC ==6.8.0
+
+library
+  build-depends:    base >=3, HALVMCore >=1.0.0, array >=0.1, mtl >=1.1, bytestring, stm
+  exposed-modules:  Device.PCI.ConfigSpace,
+                    Device.PCI.Device,
+                    Device.PCI.Probe,
+                    Device.PCI.BaseAddr,
+                    Device.Network.NE2000.Main,
+                    Device.Network.NE2000.Monad,
+                    Device.Network.API.Packet,
+                    Device.Network.API.PacketParsing,
+                    Device.Network.API.Ethernet,
+                    Device.Network.API.Interface,
+                    Device.Network.API.Utils,
+                    Device.IDE.API,
+                    Device.IDE.Block,
+                    Device.IDE.DMA,
+                    Device.IDE.Debug,
+                    Device.IDE.Info,
+                    Device.Bits,
+                    Device.Utils,
+                    Device.Screen,
+                    Device.Screen.ColorAttribute,
+                    Device.Keyboard
+  hs-source-dirs:   .
+  ghc-options:      -O2 -Wall
+  extensions:       FlexibleInstances, TypeSynonymInstances, CPP, 
+                    ScopedTypeVariables, ForeignFunctionInterface

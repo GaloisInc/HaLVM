@@ -1,0 +1,53 @@
+*** pure/ghc-6.10.4/rts/Apply.cmm	2009-07-14 10:10:52.000000000 -0700
+--- xen-ghc/rts/Apply.cmm	2009-09-21 16:06:50.000000000 -0700
+***************
+*** 135,146 ****
+--- 135,148 ----
+        if (type == ARG_GEN_BIG) {
+  	  jump StgFunInfoExtra_slow_apply(info);
+        }
++ #if (defined(xen_HOST_OS) && defined(ALLOW_INTERPRETER)) || !defined(xen_HOST_OS)
+        if (type == ARG_BCO) {
+  	  Sp_adj(-2);
+  	  Sp(1) = R1;
+  	  Sp(0) = stg_apply_interp_info;
+  	  jump stg_yield_to_interpreter;
+        }
++ #endif
+        jump W_[stg_ap_stack_entries + 
+  		WDS(TO_W_(StgFunInfoExtra_fun_type(info)))];
+  #endif
+***************
+*** 212,223 ****
+--- 214,227 ----
+        if (type == ARG_GEN_BIG) {
+  	  jump StgFunInfoExtra_slow_apply(info);
+        }
++ #if (defined(xen_HOST_OS) && defined(ALLOW_INTERPRETER)) || !defined(xen_HOST_OS)
+        if (type == ARG_BCO) {
+  	  Sp_adj(-2);
+  	  Sp(1) = R1;
+  	  Sp(0) = stg_apply_interp_info;
+  	  jump stg_yield_to_interpreter;
+        }
++ #endif
+        jump W_[stg_ap_stack_entries + 
+  		WDS(TO_W_(StgFunInfoExtra_fun_type(info)))];
+  #endif
+***************
+*** 282,293 ****
+--- 286,299 ----
+        if (type == ARG_GEN_BIG) {
+  	  jump StgFunInfoExtra_slow_apply(info);
+        }
++ #if (defined(xen_HOST_OS) && defined(ALLOW_INTERPRETER)) || !defined(xen_HOST_OS)
+        if (type == ARG_BCO) {
+  	  Sp_adj(-2);
+  	  Sp(1) = R1;
+  	  Sp(0) = stg_apply_interp_info;
+  	  jump stg_yield_to_interpreter;
+        }
++ #endif
+        jump W_[stg_ap_stack_entries + 
+  		WDS(TO_W_(StgFunInfoExtra_fun_type(info)))];
+  #endif

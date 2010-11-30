@@ -1,0 +1,23 @@
+name:           BitFiddler
+version:        1.0.0
+license:        BSD3
+author:         Adam Wick <awick@galois.com>
+maintainer:     Adam Wick <awick@galois.com>
+description:    Tools and data types for dealing with bit-compacted data
+                data structures and network\/host byte-order conversion.
+synopsis:       Low-level bit structures and byte ordering.
+category:       Data, Data Structures, Network
+stability:      experimental
+build-type:     Simple
+cabal-version:  >= 1.2
+tested-with:    GHC ==6.8.0
+
+library
+  build-depends:    base >=3, bytestring >= 0.9, template-haskell >= 2.2,
+                    cereal >= 0.3.0.0
+  exposed-modules:  Data.ByteOrder,
+                    BitFiddler.CompactStruct
+  extensions:       CPP, TemplateHaskell
+  hs-source-dirs:   .
+  ghc-options:      -O2 -Wall
+

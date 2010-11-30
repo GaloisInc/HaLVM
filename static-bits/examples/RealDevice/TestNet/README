@@ -1,0 +1,13 @@
+BANNERSTART
+- Copyright 2006-2008, Galois, Inc.
+- This software is distributed under a standard, three-clause BSD license.
+- Please see the file LICENSE, distributed with this software, for specific
+- terms and conditions.
+Author: Iavor Diatchki <diatchki@galois.com>
+BANNEREND
+
+This tests that we can detect QEMU's NE2000 card.
+At the moment we do not do anything but print the card's MAC address.
+
+Ctrl-a x to terminate the emulator.
+
