@@ -7,5 +7,6 @@
 // BANNEREND
 #ifndef XEN_STDINT_H
 #define XEN_STDINT_H
+#include "types.h"
 
 #endif
