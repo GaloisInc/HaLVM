@@ -27,23 +27,10 @@ HALVM_EXTRA_HEADERS =
 define rts-header
 # $1 - header path, relative to $(TOPDIR)/xen-ghc/rts
 $(call halvm-rts-header-path,$1): $(call rts-header-path,$1)
+	[ ! -d $$(dir $$@) ] && $(MKDIR) -p $$(dir $$@)
 	$(CP) $$< $$@
-ifneq "$(dir $1)" "./"
-$(call halvm-rts-header-path,$1): $(call halvm-rts-header-path,$(dir $1))
-endif
-
 HALVM_EXTRA_HEADERS += $(call halvm-rts-header-path,$1)
 endef
-
-define halvm-rts-header-dir
-# $1 - the directory relative to $(HALVM_LIBDIR)/include/rts to create
-$(call halvm-rts-header-path,$1):
-	$(MKDIR) -p $$@
-endef
-
-$(eval $(call halvm-rts-header-dir,sm))
-$(eval $(call rts-header,sm/GC.h))
-
 
 
 ################################################################################
@@ -317,6 +304,8 @@ $(HALVM_GHC_ASM): $(DIST_DIR_TREE) $(HALVM_UNLIT)
 # builtin-rts
 ################################################################################
 
+$(eval $(call rts-header,sm/GC.h))
+
 RTS_CFILES=Adjustor.c Arena.c Capability.c ClosureFlags.c Disassembler.c       \
            FrontPanel.c Globals.c Hash.c HsFFI.c Inlines.c Interpreter.c       \
            LdvProfile.c Papi.c Printer.c ProfHeap.c Profiling.c                \
@@ -350,7 +339,7 @@ RTS_CMMFILES= PrimOps.cmm StgStartup.cmm Exception.cmm Updates.cmm \
 RTS_OFILES =$(addprefix $(TOPDIR)/xen-ghc/rts/,$(RTS_CFILES:.c=.o))
 RTS_OFILES+=$(addprefix $(TOPDIR)/xen-ghc/rts/,$(RTS_CMMFILES:.cmm=.o))
 
-%.o: %.c
+%.o: %.c $(call halvm-rts-header-path,sm/GC.h)
 	$(QUIET_CC)$(PLATFORM_GHC) $(RTS_FLAGS) -c -o $@ $<
 
 %.o: %.cmm
