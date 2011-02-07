@@ -139,6 +139,7 @@ all: $(HALVM_BINDIR_REQS) $(INTEGER_REQS) $(HALVM_LIBDIR_REQS) \
 .PHONY: clean
 clean:
 	$(RM) -rf dist
+	$(MAKE) -C $(TOPDIR)/libIVC clean
 	$(FIND) xen-ghc/rts -name '*.o' -delete
 
 $(DIST_DIR_TREE):
