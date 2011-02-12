@@ -310,8 +310,8 @@ int internal_read(struct channel_core *chan, void *buffer, int size)
     if(cons + read_amt > buflen) {
       int first  = buflen - cons;
       int second = read_amt - first;
-      memcpy(buffer,        start_cpy, first);
-      memcpy(buffer+second, chan->mem, second);
+      memcpy(buffer,       start_cpy, first);
+      memcpy(buffer+first, chan->mem, second);
       mb();
       chan->block->bytes_consumed = second;
     } else {
