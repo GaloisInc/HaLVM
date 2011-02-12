@@ -221,8 +221,10 @@ CABAL_INST_LINK     = $(call build_hackage_link,cabal-install,$(CI_VER))
 CABAL_INST_TARBALL  = $(call build_hackage_tarball,cabal-install,$(CI_VER))
 ifeq (@ARCHITECTURE@,x86_64)
 CABAL_ORIG_SIG      = e4d9e6cfffe2de416a529213f6ec0f28
+GHC_PRIM_OPTIONS    = --ghc-options=-fvia-c
 else
 CABAL_ORIG_SIG      = 0fa5fba8bc5459391e6ec30b2b2ff632
+GHC_PRIM_OPTIONS    =
 endif
 FGL_VER             = 5.4.2.2
 FGL_LINK            = $(call build_hackage_link,fgl,$(FGL_VER))

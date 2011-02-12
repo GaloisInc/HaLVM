@@ -389,7 +389,7 @@ $(call package-name,ghc-prim,0.2.0.0) :                              \
           $(TOPDIR)/xen-ghc/libraries/ghc-prim/GHC/PrimopWrappers.hs \
           $(HALVM_CABAL)
 	( cd $(TOPDIR)/xen-ghc/libraries/ghc-prim                      && \
-	  $(HALVM_CABAL) install                                       && \
+	  $(HALVM_CABAL) install $(GHC_PRIM_OPTIONS)                   && \
 	  $(HALVM_GHC_PKG) describe ghc-prim > inplace-pkg-config      && \
 	  $(SED) -i 's/GHC.Unit/GHC.Unit GHC.Prim/' inplace-pkg-config && \
 	  $(HALVM_GHC_PKG) update --force inplace-pkg-config              \
