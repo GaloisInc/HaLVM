@@ -201,6 +201,7 @@ int bind_memory_and_port(char *name, unsigned long *otherDom,
   }
 
   chan->ring_size = (grefs_len * 4096) - sizeof(ivc_shared_page);
+  chan->port      = port;
   chan->block     = (ivc_shared_page*)(chan->mem + chan->ring_size);
 
   return 1;
@@ -233,27 +234,9 @@ int resize_channel_core(struct channel_core *chan, unsigned int new, char **mem)
 
 int pull_next_size(struct channel_core *chan)
 {
-  unsigned long  rsize    = chan->ring_size;
-  unsigned long  size     = 0;
-  unsigned char *psize    = (unsigned char *)&size;
-  unsigned char *buffer   = (void*)((unsigned long)chan->mem);
-  unsigned int   consumed = chan->block->bytes_consumed;
-
-  // Spin while there isn't enough data to pull a size.
-  while((chan->block->bytes_consumed + 4) > chan->block->bytes_produced) {}
-
-  // OK, now pull off the data.
-  psize[0] = buffer[(consumed + 0) % rsize];
-  psize[1] = buffer[(consumed + 1) % rsize];
-  psize[2] = buffer[(consumed + 2) % rsize];
-  psize[3] = buffer[(consumed + 3) % rsize];
-
+  unsigned long size = 0;
+  internal_read(chan, (void *)&size, 4);
   return ntohl(size);
-}
-
-void skip_over_size(struct channel_core *chan)
-{
-  chan->block->bytes_consumed += 4;
 }
 
 #define RING_DATA_SIZE(x) x->ring_size
@@ -287,24 +270,25 @@ int internal_read(struct channel_core *chan, void *buffer, int size)
 
   while(size > 0) {
     int readable_space = 0, read_amt = 0;
-    void *start_cpy, *end_cpy, *end_page;
+    void *start_cpy;
 
     *(unsigned long*)buffer = 0;
     // Wait for available data.
-    do {
+    while(1) {
       prod           = chan->block->bytes_produced;
       cons           = chan->block->bytes_consumed;
       readable_space = chan_free_read_space(buflen, prod, cons);
-    } while(prod == cons);
+
+      if(readable_space > 0) {
+        break;
+      }
+    }
 
     // determine how much space can be read
-    readable_space = prod - cons;
-    read_amt       = (readable_space > size) ? size : readable_space;
+    read_amt = (readable_space > size) ? size : readable_space;
 
     // Copy the data to the buffer
     start_cpy = (void*)((unsigned long)chan->mem + cons);
-    end_cpy = start_cpy + read_amt;
-    end_page = (void*)((unsigned long)chan->mem + buflen);
 
     rmb();
     if(cons + read_amt > buflen) {
@@ -324,6 +308,9 @@ int internal_read(struct channel_core *chan, void *buffer, int size)
     size   -= read_amt;
     buffer += read_amt;
     res    += read_amt;
+
+    // notify that we are trying to read something
+    xc_evtchn_notify(xce, *(chan->port));
   }
 
   return res;
@@ -342,11 +329,17 @@ int internal_write(struct channel_core *chan, void *buffer, int size)
     int write_amt = 0;
 
     // Wait for space to write.
-    do {
+    while(1) {
       prod       = chan->block->bytes_produced;
       cons       = chan->block->bytes_consumed;
       free_space = chan_free_write_space(buflen, prod, cons);
-    } while(free_space == 0);
+
+      // break if there is something to read
+      if(free_space > 0) {
+        break;
+      }
+
+    }
     write_amt = (free_space > size) ? size : free_space;
 
     // Copy the data to the buffer
@@ -374,6 +367,9 @@ int internal_write(struct channel_core *chan, void *buffer, int size)
     size   -= write_amt;
     buffer += write_amt;
     res    += write_amt;
+
+    // notify that we would like to read something
+    xc_evtchn_notify(xce, *(chan->port));
   }
 
   return res;

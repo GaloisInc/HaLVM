@@ -59,10 +59,7 @@ int read_inchan(in_chan *chan, void *buffer, int size)
   if(len > size)
     return 0;
 
-  skip_over_size(&chan->core);
-  len = internal_read(&chan->core, buffer, len);
-  xc_evtchn_notify(xce, chan->port);
-  return len;
+  return internal_read(&chan->core, buffer, len);
 }
 
 int read_unknown_inchan(in_chan *chan, void **out_buffer)
@@ -70,10 +67,7 @@ int read_unknown_inchan(in_chan *chan, void **out_buffer)
   unsigned long len = pull_next_size(&chan->core);
 
   *out_buffer = malloc(len);
-  skip_over_size(&chan->core);
-  len = internal_read(&chan->core, *out_buffer, len);
-  xc_evtchn_notify(xce, chan->port);
-  return len;
+  return internal_read(&chan->core, *out_buffer, len);
 }
 
 int write_outchan(out_chan *chan, void *buffer, int size)
@@ -87,7 +81,6 @@ int write_outchan(out_chan *chan, void *buffer, int size)
   if(internal_write(&chan->core, &write_size, 4) != 4)
     return 0;
  
-  size = internal_write(&chan->core, buffer, size);
-  xc_evtchn_notify(xce, chan->port);
-  return size;
+
+  return internal_write(&chan->core, buffer, size);
 }
