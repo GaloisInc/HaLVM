@@ -312,7 +312,7 @@ int internal_read(struct channel_core *chan, void *buffer, int size)
     res    += read_amt;
 
     // notify that we are trying to read something
-    xc_evtchn_notify(xce, chan->port);
+    xc_evtchn_notify(chan->xce, chan->port);
   }
 
   return res;
@@ -337,7 +337,7 @@ int internal_write(struct channel_core *chan, void *buffer, int size)
       free_space = chan_free_write_space(buflen, prod, cons);
 
     } while((free_space <= 0) &&
-            (xc_evtchn_pending(xce) != chan->port));
+            (xc_evtchn_pending(chan->xce) != chan->port));
 
     // determine how much free space we have for writing
     write_amt = (free_space > size) ? size : free_space;
@@ -369,7 +369,7 @@ int internal_write(struct channel_core *chan, void *buffer, int size)
     res    += write_amt;
 
     // notify that we would like to read something
-    xc_evtchn_notify(xce, chan->port);
+    xc_evtchn_notify(chan->xce, chan->port);
   }
 
   return res;
