@@ -15,15 +15,13 @@
 
 struct unidir_chan {
   struct channel_core core;
-  evtchn_port_t port;
   unsigned long otherDom;
 };
 
 static struct unidir_chan *new_chan(char *name)
 {
   struct unidir_chan *res = malloc(sizeof(struct unidir_chan));
-  int test = bind_memory_and_port(name, &res->otherDom, 
-                                  &res->port, &res->core);
+  int test = bind_memory_and_port(name, &res->otherDom, &res->core);
   if(!test) {
     free(res);
     return NULL;
