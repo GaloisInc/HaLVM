@@ -265,6 +265,20 @@ static inline unsigned long chan_free_read_space(unsigned long ring_size,
   return (ring_size - chan_free_write_space(ring_size, prod, cons) - 1);
 }
 
+static inline unsigned int wait_chan(struct channel_core *chan)
+{
+  int port;
+  
+  port = xc_evtchn_pending(chan->xce);
+  if(port >= 0) {
+    xc_evtchn_unmask(chan->xce, port);
+  }
+
+  printf("xc_evtchn_pending = %d\n", port);
+
+  return port == chan->port;
+}
+
 int internal_read(struct channel_core *chan, void *buffer, int size)
 {
   int res = 0;
@@ -278,13 +292,20 @@ int internal_read(struct channel_core *chan, void *buffer, int size)
 
     *(unsigned long*)buffer = 0;
     // Wait for available data.
-    do {
+    while(1) {
       prod           = chan->block->bytes_produced;
       cons           = chan->block->bytes_consumed;
       readable_space = chan_free_read_space(buflen, prod, cons);
 
-    } while ((readable_space <= 0) &&
-             (xc_evtchn_pending(chan->xce) != chan->port));
+      printf("readable_space = %d\n", readable_space);
+
+      if(readable_space > 0) {
+        break;
+      }
+
+      wait_chan(chan);
+    }
+
 
     // determine how much space can be read
     read_amt = (readable_space > size) ? size : readable_space;
@@ -331,13 +352,17 @@ int internal_write(struct channel_core *chan, void *buffer, int size)
     int write_amt = 0;
 
     // Wait for space to write.
-    do {
+    while(1) {
       prod       = chan->block->bytes_produced;
       cons       = chan->block->bytes_consumed;
       free_space = chan_free_write_space(buflen, prod, cons);
 
-    } while((free_space <= 0) &&
-            (xc_evtchn_pending(chan->xce) != chan->port));
+      if(free_space > 0) {
+        break;
+      }
+
+      wait_chan(chan);
+    }
 
     // determine how much free space we have for writing
     write_amt = (free_space > size) ? size : free_space;
