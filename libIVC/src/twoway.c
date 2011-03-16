@@ -18,7 +18,6 @@
 struct bidir_chan {
   struct channel_core wcore;
   struct channel_core rcore;
-  evtchn_port_t port; 
   unsigned long otherDom;
 };
 
@@ -29,8 +28,7 @@ inout_chan *connect_two_way(char *name)
   int initSize = 0;
   int size = 0;
 
-  int test = bind_memory_and_port(name, &res->otherDom,
-                                  &res->port, &res->rcore);
+  int test = bind_memory_and_port(name, &res->otherDom, &res->rcore);
 
   if(!test) {
     free(res);
@@ -70,10 +68,7 @@ int read_chan(inout_chan *chan, void *buffer, int size)
     return 0;
   }
 
-  skip_over_size(&chan->rcore);
-  len = internal_read(&chan->rcore, buffer, len);
-  xc_evtchn_notify(xce, chan->port);
-  return len;
+  return internal_read(&chan->rcore, buffer, len);
 }
 
 int read_unknown_chan(inout_chan *chan, void **out_buffer)
@@ -81,10 +76,7 @@ int read_unknown_chan(inout_chan *chan, void **out_buffer)
   unsigned long len = pull_next_size(&chan->rcore);
 
   *out_buffer = malloc(len);
-  skip_over_size(&chan->rcore);
-  len = internal_read(&chan->rcore, *out_buffer, len);
-  xc_evtchn_notify(xce, chan->port);
-  return len;
+  return internal_read(&chan->rcore, *out_buffer, len);
 }
 
 int write_chan(inout_chan *chan, void *buffer, int size)
@@ -98,7 +90,5 @@ int write_chan(inout_chan *chan, void *buffer, int size)
   if(internal_write(&chan->wcore, &write_size, 4) != 4)
     return 0;
 
-  size = internal_write(&chan->wcore, buffer, size);
-  xc_evtchn_notify(xce, chan->port);
-  return size;
+  return internal_write(&chan->wcore, buffer, size);
 }
