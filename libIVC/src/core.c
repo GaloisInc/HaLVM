@@ -274,8 +274,6 @@ static inline unsigned int wait_chan(struct channel_core *chan)
     xc_evtchn_unmask(chan->xce, port);
   }
 
-  printf("xc_evtchn_pending = %d\n", port);
-
   return port == chan->port;
 }
 
@@ -296,8 +294,6 @@ int internal_read(struct channel_core *chan, void *buffer, int size)
       prod           = chan->block->bytes_produced;
       cons           = chan->block->bytes_consumed;
       readable_space = chan_free_read_space(buflen, prod, cons);
-
-      printf("readable_space = %d\n", readable_space);
 
       if(readable_space > 0) {
         break;
