@@ -45,7 +45,6 @@ module XenDevice.PCI(
 import Control.Applicative((<$>))
 --import Control.Arrow(right)
 import Control.Concurrent
-import Control.Concurrent.MVar
 import Control.Exception
 import Control.Monad
 import Data.Bits
@@ -65,8 +64,6 @@ import Hypervisor.Memory
 import Hypervisor.Port
 import XenDevice.Xenbus
 import XenDevice.XenRingState
-
-import Numeric
 
 #include <xen/io/pciif.h>
 
@@ -234,10 +231,10 @@ initializePCIDevice _nodeName = do
       ret <- xsSetWatch (backend ++ "/state") $ onConnect backend pageMV port
       case ret of
         XBOk _ -> do
-          xsWrite (nodeName ++ "/pci-op-ref")    refStr
-          xsWrite (nodeName ++ "/event-channel") portStr
-          xsWrite (nodeName ++ "/magic")         (#const_str XEN_PCI_MAGIC)
-          xsWrite (nodeName ++ "/state")         (show xenRingInitialised)
+          _ <- xsWrite (nodeName ++ "/pci-op-ref")    refStr
+          _ <- xsWrite (nodeName ++ "/event-channel") portStr
+          _ <- xsWrite (nodeName ++ "/magic")         (#const_str XEN_PCI_MAGIC)
+          _ <- xsWrite (nodeName ++ "/state")         (show xenRingInitialised)
           return ()
         _      -> do
           hDEBUG $ "VPCI: Could not set backend watch."
@@ -255,7 +252,7 @@ initializePCIDevice _nodeName = do
               | read _s == xenRingClosing          -> return ()
               | read _s == xenRingClosed           -> return ()
               | read _s == xenRingConnected        -> do
-        xsUnsetWatch watch
+        _ <- xsUnsetWatch watch
         _rootsStr <- xsRead (backend ++ "/root_num")
         case _rootsStr of
           XBOk rootsStr -> do
@@ -275,7 +272,7 @@ initializePCIDevice _nodeName = do
                 _            ->
                   hDEBUG $ "VPCI: Couldn't read root info for device " ++
                            show rootNum
-            xsWrite (nodeName ++ "/state") (show xenRingConnected)
+            _ <- xsWrite (nodeName ++ "/state") (show xenRingConnected)
             return ()
           _             ->
             hDEBUG $ "VPCI: Unable to read roots!"
@@ -387,14 +384,14 @@ readBusRaw dev offset size = do
 
 doPCIOp :: Ptr a -> Port -> PCIOp -> IO (Maybe PCIOp)
 doPCIOp ptr port op = do
-  unsetPortHandler port -- they really are out to get me
+  _ <- unsetPortHandler port -- they really are out to get me
   mvar <- newEmptyMVar
   setPortHandler port $ do
     stillActive <- checkFrontActiveBit ptr
     unless stillActive $ do
       putMVar mvar =<< peekByteOff ptr (#offset struct xen_pci_sharedinfo,op)
       clearFrontActiveBit ptr
-      unsetPortHandler port
+      _ <- unsetPortHandler port
       return ()
   pokeByteOff ptr (#offset struct xen_pci_sharedinfo,op) op
   systemWMB
@@ -404,7 +401,7 @@ doPCIOp ptr port op = do
   case mres of
     Just _   -> return mres
     Nothing  -> do
-      unsetPortHandler port
+      _ <- unsetPortHandler port
       tryTakeMVar mvar
 
 

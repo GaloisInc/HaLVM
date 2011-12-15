@@ -85,11 +85,11 @@ BASE_PACKAGES       = $(call package-name,ghc-prim,0.2.0.0)           \
                       $(call package-name,mtl,1.1.0.2)                \
                       $(call package-name,haskell98,1.0.1.1)
 HALVM_PACKAGES      = $(call package-name,BoundedChan,1.0.0.0)        \
-                      $(call package-name,HALVMCore,1.0.0)            \
+                      $(call package-name,HALVMCore,1.1.0)            \
                       $(call package-name,BitFiddler,1.0.0)           \
-                      $(call package-name,communication,1.0.0)        \
-                      $(call package-name,XenDevice,1.0.0)            \
-                      $(call package-name,RendezvousLib,1.0.0)        \
+                      $(call package-name,communication,1.1.0)        \
+                      $(call package-name,XenDevice,1.1.0)            \
+                      $(call package-name,RendezvousLib,1.1.0)        \
                       $(call package-name,RealDevice,1.0.0)           \
                       $(call package-name,log4h,0.1)
 HALVM_SHAREDIR_REQS =
@@ -703,18 +703,19 @@ $(call package-name,BitFiddler,1.0.0):            \
     $(call package-name,cereal,0.3.0.0)
 
 # communication
-$(eval $(call build-halvm-rule,communication,1.0.0))
-$(call package-name,communication,1.0.0):   \
+$(eval $(call build-halvm-rule,communication,1.1.0))
+$(call package-name,communication,1.1.0):   \
     $(call package-name,base,4.2.0.2)       \
     $(call package-name,bytestring,0.9.1.7) \
     $(call package-name,containers,0.3.0.0) \
     $(call package-name,syb,0.1.0.2)        \
     $(call package-name,cereal,0.3.0.0)     \
-    $(call package-name,HALVMCore,1.0.0)
+    $(call package-name,HALVMCore,1.1.0)    \
+    $(call package-name,XenDevice,1.1.0)
 
 # HALVMCore
-$(eval $(call build-halvm-rule,HALVMCore,1.0.0))
-$(call package-name,HALVMCore,1.0.0):       \
+$(eval $(call build-halvm-rule,HALVMCore,1.1.0))
+$(call package-name,HALVMCore,1.1.0):       \
     $(call package-name,base,4.2.0.2)       \
     $(call package-name,bytestring,0.9.1.7) \
     $(call package-name,syb,0.1.0.2)        \
@@ -727,7 +728,7 @@ $(call package-name,log4h,0.1):             \
     $(call package-name,base,4.2.0.2)       \
     $(call package-name,old-locale,1.0.0.2) \
     $(call package-name,old-time,1.0.0.5)   \
-    $(call package-name,HALVMCore,1.0.0)
+    $(call package-name,HALVMCore,1.1.0)
 
 # RealDevice
 $(eval $(call build-halvm-rule,RealDevice,1.0.0))
@@ -737,22 +738,21 @@ $(call package-name,RealDevice,1.0.0):      \
     $(call package-name,mtl,1.1.0.2)        \
     $(call package-name,bytestring,0.9.1.7) \
     $(call package-name,stm,2.1.2.2)        \
-    $(call package-name,HALVMCore,1.0.0)
+    $(call package-name,HALVMCore,1.1.0)
 
 # RendezvousLib
-$(eval $(call build-halvm-rule,RendezvousLib,1.0.0))
-$(call package-name,RendezvousLib,1.0.0):    \
+$(eval $(call build-halvm-rule,RendezvousLib,1.1.0))
+$(call package-name,RendezvousLib,1.1.0):    \
     $(call package-name,base,4.2.0.2)        \
     $(call package-name,bytestring,0.9.1.7)  \
-    $(call package-name,communication,1.0.0) \
-    $(call package-name,HALVMCore,1.0.0)     \
-    $(call package-name,XenDevice,1.0.0)
+    $(call package-name,communication,1.1.0) \
+    $(call package-name,HALVMCore,1.1.0)     \
+    $(call package-name,XenDevice,1.1.0)
 
 # XenDevice
-$(eval $(call build-halvm-rule,XenDevice,1.0.0))
-$(call package-name,XenDevice,1.0.0):        \
-    $(call package-name,HALVMCore,1.0.0)     \
-    $(call package-name,communication,1.0.0) \
+$(eval $(call build-halvm-rule,XenDevice,1.1.0))
+$(call package-name,XenDevice,1.1.0):        \
+    $(call package-name,HALVMCore,1.1.0)     \
     $(call package-name,base,4.2.0.2)        \
     $(call package-name,containers,0.3.0.0)  \
     $(call package-name,array,0.3.0.1)       \

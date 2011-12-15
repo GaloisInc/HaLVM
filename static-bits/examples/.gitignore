@@ -2,3 +2,5 @@ results
 results.dmesg
 test_report
 bin
+mk/rules.mk
+mk/tests.mk

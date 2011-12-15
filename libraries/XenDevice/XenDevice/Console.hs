@@ -23,7 +23,6 @@ module XenDevice.Console(
 import Control.Concurrent(threadDelay)
 import Control.Concurrent.BoundedChan
 import Control.Concurrent.MVar
-import Control.Monad
 import Foreign.C.String
 import Foreign.Marshal.Array
 import Foreign.Ptr

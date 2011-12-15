@@ -43,7 +43,6 @@ import Data.Bits
 import qualified Data.ByteString.Internal as BSI
 import Data.ByteString.Lazy(ByteString)
 import qualified Data.ByteString.Lazy as BS
-import qualified Data.ByteString.Lazy.Internal as BSLI
 import Data.Int
 import Data.IORef
 import Data.List
@@ -52,7 +51,8 @@ import Data.Word
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import Foreign.Storable
-import GHC.IOBase(unsafePerformIO)
+import Foreign.C.Types (CSize)
+import GHC.IO(unsafePerformIO)
 import Hypervisor.Basics
 import Hypervisor.Debug
 import Hypervisor.Kernel
@@ -242,11 +242,11 @@ probeNIC dev resMV rxBufSize = withRingBuffers finishProbe
                               (onPossibleConnect txrb rxrb)
             case ret of
               XBOk _ -> do
-                xsWrite (potNodeName dev ++ "/tx-ring-ref") (show txGRef)
-                xsWrite (potNodeName dev ++ "/rx-ring-ref") (show rxGRef)
-                xsWrite (potNodeName dev ++ "/event-channel") port
-                xsWrite (potNodeName dev ++ "/request-rx-copy") "1"
-                xsWrite (potNodeName dev ++ "/state") (show xenRingConnected)
+                _ <- xsWrite (potNodeName dev++"/tx-ring-ref") (show txGRef)
+                _ <- xsWrite (potNodeName dev++"/rx-ring-ref") (show rxGRef)
+                _ <- xsWrite (potNodeName dev++"/event-channel") port
+                _ <- xsWrite (potNodeName dev++"/request-rx-copy") "1"
+                _ <- xsWrite (potNodeName dev++"/state") (show xenRingConnected)
                 return ()
               _ -> do
                 frbShutdown txrb
@@ -263,8 +263,8 @@ probeNIC dev resMV rxBufSize = withRingBuffers finishProbe
                       | read _s == xenRingInitialisingWait -> return ()
                       | read _s == xenRingInitialised -> return ()
                       | read _s == xenRingConnected -> do
-                xsUnsetWatch watch
-                xsWrite (potNodeName dev ++ "/state") (show xenRingConnected)
+                _ <- xsUnsetWatch watch
+                _ <- xsWrite (potNodeName dev++"/state") (show xenRingConnected)
                 hDEBUG $ "VIF: Connected to device " ++ show (potName dev)++"\n"
                 droppingReceiverIOR <- newIORef droppingReceiver
                 nextIdIO <- newIORef 0
@@ -279,7 +279,7 @@ probeNIC dev resMV rxBufSize = withRingBuffers finishProbe
                 rxBuffer <- xTry $ allocRxBuffers (initBackendDom nic) rxBufSize
                 case rxBuffer of
                   Right rxBuf -> do
-                    forkIO $ startReceiving nic rxBuf
+                    _ <- forkIO $ startReceiving nic rxBuf
                     putMVar resMV $ Just nic
                   Left e -> do
                     hDEBUG $ "VIF: Couldn't allocate rx buffers for " ++
@@ -424,7 +424,7 @@ transmitPacket nic packet = do
     (Right p, Right r) -> do
       grantAccess r (initBackendDom nic) p False
       ident <- atomicModifyIORef (initNextTxIdIO nic) (\ x -> (x + 1, x))
-      pokeBS p packet
+      _ <- pokeBS p packet
       let size = fromIntegral $ BS.length packet
       let req  = TxRequest r 0 [] ident size
       resp <- frbRequest (initTxRB nic) req
@@ -522,7 +522,7 @@ instance FrontRingBufferable TxRequest TxResponse Word16 where
                           then (#const NETTXF_more_data)
                           else 0
         (flags::Word16) = csumFlag .|. dataValFlag .|. moreDataFlag
-    (#poke netif_tx_request_t, gref) ptr grefNum
+    (#poke netif_tx_request_t, gref) ptr (fromIntegral grefNum :: Word32)
     (#poke netif_tx_request_t, offset) ptr $ txrqOffset val
     (#poke netif_tx_request_t, flags) ptr flags
     (#poke netif_tx_request_t, id) ptr $ txrqId val
@@ -573,8 +573,8 @@ instance FrontRingBufferable Word16 RxResponse Word16 where
                         rxrsFlags = outFlags, rxrsStatus = status }
 
   pokeRequest ptr val = do
-    (#poke netif_rx_request_t, id) ptr val
-    (#poke netif_rx_request_t, gref) ptr ((fromIntegral val)::Word32)
+    (#poke netif_rx_request_t, id) ptr (val :: Word16)
+    (#poke netif_rx_request_t, gref) ptr (fromIntegral val::(#type grant_ref_t))
 
 -- ---------------------------------------------------------------------------
 --
@@ -593,7 +593,7 @@ runCallbacks ref val =
     readIORef ref >>= mapM_ (\ f -> f val)
 
 foreign import ccall unsafe "strings.h bzero"
-  bzero :: Ptr a -> Word32 -> IO ()
+  bzero :: Ptr a -> CSize -> IO ()
 
 foreign import ccall unsafe "string.h memcpy"
-  memcpy :: Ptr a -> Ptr a -> Word32 -> IO ()
+  memcpy :: Ptr a -> Ptr a -> CSize -> IO ()

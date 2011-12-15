@@ -13,7 +13,6 @@ import Device.IDE.Info
 import Device.IDE.DMA
 
 import Control.Concurrent(takeMVar)
-import Data.Word
 import Foreign.Ptr(Ptr)
 import Foreign.Storable(peek,poke)
 import Foreign.Marshal.Array(advancePtr)

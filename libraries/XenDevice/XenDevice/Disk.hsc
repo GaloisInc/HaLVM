@@ -34,7 +34,7 @@ import Data.Int
 import Data.IORef
 import Data.List
 import Data.Word
-import GHC.IOBase(unsafePerformIO)
+import GHC.IO(unsafePerformIO)
 import Foreign.Ptr
 import Foreign.Storable
 import Hypervisor.Basics
@@ -316,10 +316,11 @@ probeDisk dev resMV = do
                            (onPossibleConnect dev frb resMV)
       case ret of
         XBOk _ -> do
-          XB.xsWrite ((pDiskNodeName dev)++"/ring-ref") (show grefNum)
-          XB.xsWrite ((pDiskNodeName dev)++"/event-channel") 
-                     (drop 1 $ dropWhile (/= ' ') $ show port)
-          XB.xsWrite ((pDiskNodeName dev)++"/state") (show xenRingInitialised)
+          _ <- XB.xsWrite ((pDiskNodeName dev)++"/ring-ref") (show grefNum)
+          _ <- XB.xsWrite ((pDiskNodeName dev)++"/event-channel") 
+                          (drop 1 $ dropWhile (/= ' ') $ show port)
+          _ <- XB.xsWrite ((pDiskNodeName dev)++"/state")
+		          (show xenRingInitialised)
           return ()
         XBError _ -> do
           hDEBUG $ "VBD: Failed to set conn watch for disk "++
@@ -345,7 +346,8 @@ onPossibleConnect dev frb resMV watch path = do
         Just (sectors, sectorSize, info, _) -> do
           let (cdrom, removable, readonly) = parseInfo info
           _ <- XB.xsUnsetWatch watch
-          XB.xsWrite ((pDiskNodeName dev) ++ "/state") (show xenRingConnected)
+          _ <- XB.xsWrite ((pDiskNodeName dev) ++ "/state")
+		          (show xenRingConnected)
           hDEBUG $ "VBD: Connected to disk " ++ (pDiskName dev) ++ "\n"
           let newDisk = Disk { 
                           iDiskName = pDiskName dev

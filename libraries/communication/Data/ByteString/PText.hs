@@ -93,14 +93,14 @@ pread' f = allButString `extR` stringCase
     byteStringCase :: ReadP BS.ByteString
     byteStringCase =
       do l <- read `fmap` munch1 (/=' ')
-         char ' '
+         _ <- char ' '
          readS_to_P ((:[]) . BS.splitAt l)
 
     -- A specific case for strict bytestrings
     sByteStringCase :: ReadP SBS.ByteString
     sByteStringCase =
       do l <- read `fmap` munch1 (/=' ')
-         char ' '
+         _ <- char ' '
          readS_to_P $ \ s -> let (h,t) = BS.splitAt l s in [(h,t)]
     -- A specific case for characters
     charCase :: ReadP Char
@@ -114,12 +114,12 @@ pread' f = allButString `extR` stringCase
 
     -- The generic default for gread
     allButString =
-      do char '('
+      do _ <- char '('
 	 str  <- parseConstr		-- Get a lexeme for the constructor
-         char ' '
+         _ <- char ' '
          con  <- str2con str		-- Convert it to a Constr (may fail)
          x    <- fromConstrM f con      -- Read the children
-         char ')'
+         _ <- char ')'
          return x
 
     -- Turn string into constructor driven by the requested result type,

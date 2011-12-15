@@ -7,7 +7,6 @@
 -- BANNEREND
 import Common
 import Control.Concurrent
-import Control.Exception
 import Hypervisor.Basics
 import Hypervisor.Debug
 import Communication.IVC
@@ -30,7 +29,7 @@ start args = do
   page <- makePageData
   writer "SND: Copying page.\n"
   mfn <- vptrToMFN page
-  res <- performFrameCopy (Right mfn) domidSelf 0 (Left ref) dom 0 4096
+  _   <- performFrameCopy (Right mfn) domidSelf 0 (Left ref) dom 0 4096
   writer "SND: Page copied.\n"
   writer "SND: Done.\n"
   threadDelay 10000

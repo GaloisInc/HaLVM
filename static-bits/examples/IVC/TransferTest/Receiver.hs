@@ -25,7 +25,7 @@ start args = do
   writer "RCV: Creating reference & granting access.\n"
   let dom = peer c
   Right ref <- xTry $ allocRef
-  xTry $ grantForeignTransferRef ref dom
+  _ <- xTry $ grantForeignTransferRef ref dom
   writer $ "RCV: Writing reference (" ++ (show ref) ++ ").\n"
   put c ref
   writer "RCV: Finishing foreign transfer.\n"

@@ -22,7 +22,6 @@ module Device.Screen(
 import Prelude hiding (putStrLn,putStr)
 
 import Control.Concurrent
-import Control.Concurrent.MVar
 import Control.Concurrent.STM
 import Data.Bits
 import Data.ByteString.Internal(memcpy)
@@ -62,7 +61,7 @@ initRealScreen = do
             , real_scr   = True
             , dirtyTV    = dTV
             }
-  forkIO $ screen_linker_thread scr
+  _ <- forkIO $ screen_linker_thread scr
   scroll_screen scr
   -- enable the cursor
   out8 0x3d4 0x09 

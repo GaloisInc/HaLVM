@@ -73,7 +73,7 @@ module Text.ReadP
  where
 
 import Prelude hiding (ReadS)
-import Control.Monad( MonadPlus(..), sequence, liftM2 )
+import Control.Monad( MonadPlus(..), liftM2 )
 import Data.HeadTail(HeadTail(..))
 
 --import GHC.List ( replicate )
@@ -251,7 +251,7 @@ string :: (Eq c, HeadTail s c) => [c] -> ReadP s c [c]
 string this = do s <- look; scan this (headTail s)
  where
   scan []     _                      = do return this
-  scan (x:xs) (Just (y,ys)) | x == y = do get; scan xs (headTail ys)
+  scan (x:xs) (Just (y,ys)) | x == y = do _ <- get; scan xs (headTail ys)
   scan _      _                      = do pfail
 
 munch :: (Eq c, HeadTail s c) => (c -> Bool) -> ReadP s c [c]
@@ -260,7 +260,7 @@ munch p =
   do s <- look
      scan (headTail s)
  where
-  scan (Just (c,cs)) | p c = do get; s <- scan (headTail cs); return (c:s)
+  scan (Just (c,cs)) | p c = do _ <- get; s <- scan (headTail cs); return (c:s)
   scan _                   = do return []
 
 munch1 :: (Eq c, HeadTail s c) => (c -> Bool) -> ReadP s c [c]
@@ -281,7 +281,7 @@ skipSpaces =
   do s <- look
      skip (headTail s)
  where
-  skip (Just (c,s)) | isSpace c = do get; skip (headTail s)
+  skip (Just (c,s)) | isSpace c = do _ <- get; skip (headTail s)
   skip _                        = do return ()
 
 count :: Int -> ReadP s c a -> ReadP s c [a]
@@ -292,9 +292,9 @@ count n p = sequence (replicate n p)
 between :: ReadP s c open -> ReadP s c close -> ReadP s c a -> ReadP s c a
 -- ^ @between open close p@ parses @open@, followed by @p@ and finally
 --   @close@. Only the value of @p@ is returned.
-between open close p = do open
+between open close p = do _ <- open
                           x <- p
-                          close
+                          _ <- close
                           return x
 
 option :: HeadTail s c => a -> ReadP s c a -> ReadP s c a
@@ -335,12 +335,12 @@ sepBy1 p sep = liftM2 (:) p (many (sep >> p))
 endBy :: HeadTail s c => ReadP s c a -> ReadP s c sep -> ReadP s c [a]
 -- ^ @endBy p sep@ parses zero or more occurrences of @p@, separated and ended
 --   by @sep@.
-endBy p sep = many (do x <- p ; sep ; return x)
+endBy p sep = many (do x <- p ; _ <- sep ; return x)
 
 endBy1 :: HeadTail s c => ReadP s c a -> ReadP s c sep -> ReadP s c [a]
 -- ^ @endBy p sep@ parses one or more occurrences of @p@, separated and ended
 --   by @sep@.
-endBy1 p sep = many1 (do x <- p ; sep ; return x)
+endBy1 p sep = many1 (do x <- p ; _ <- sep ; return x)
 
 chainr :: HeadTail s c => 
           ReadP s c a -> ReadP s c (a -> a -> a) -> a -> ReadP s c a

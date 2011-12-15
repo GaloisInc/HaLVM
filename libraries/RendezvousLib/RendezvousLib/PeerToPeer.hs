@@ -50,14 +50,14 @@ offerPToPConnection key builder =
          XBOk _ ->
              do let base_dir = "/halvm/" ++ key
                 myId <- myDomId
-                xsRm base_dir
-                xsWrite (base_dir ++ "/starterDomId") (show myId)
+                XBOk _ <- xsRm base_dir
+                XBOk _ <- xsWrite (base_dir ++ "/starterDomId") (show myId)
                 -- TODO: check that noone else writes starterDomId
                 oIdStr <- forceRead $ base_dir ++ "/accepterDomId"
                 oGRefStr <- forceRead $ base_dir ++ "/grant-refs"
                 oEChanStr <- forceRead $ base_dir ++ "/event-channel"
                 res <- builder (read oIdStr) (read oGRefStr) (read oEChanStr)
-                xsRm base_dir
+                XBOk _ <- xsRm base_dir
                 return $ Just res
          _ ->
              return Nothing
@@ -82,9 +82,12 @@ acceptPToPConnection key builder =
                 case components of
                   Just (grefs, echan, res) ->
                       do myId <- myDomId
-                         xsWrite (base_dir ++ "accepterDomId") (show myId)
-                         xsWrite (base_dir ++ "grant-refs") (show grefs)
-                         xsWrite (base_dir ++ "event-channel") (show echan)
+                         XBOk _ <- xsWrite (base_dir++"accepterDomId") 
+				           (show myId)
+                         XBOk _ <- xsWrite (base_dir ++ "grant-refs")
+				           (show grefs)
+                         XBOk _ <- xsWrite (base_dir ++ "event-channel")
+					   (show echan)
                          return $ Just $ res
                   _ -> return Nothing
          _ -> return Nothing

@@ -29,8 +29,7 @@ start args = do
   put c ref
   writer "RCV: Waiting for completed transfer.\n"
   num <- waitForTransfer page 1
-  writer $ "RCV: Page successfully copied after " ++ (show num) ++
-                      " tries.\n"
+  writer $ "RCV: Page successfully copied after " ++ (show num) ++ " tries.\n"
  where 
    waitForTransfer :: VPtr a -> Integer -> IO Integer
    waitForTransfer page n = do

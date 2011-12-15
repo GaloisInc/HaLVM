@@ -91,10 +91,10 @@ encodeMessage msgType reqId txId body =
          len = (#size struct xsd_sockmsg)+body_len
      p <- mallocForeignPtrArray len
      withForeignPtr p $ \msg ->
-      do (#poke struct xsd_sockmsg,type) msg msgType
-         (#poke struct xsd_sockmsg,req_id) msg reqId
-         (#poke struct xsd_sockmsg,tx_id) msg txId
-         (#poke struct xsd_sockmsg,len) msg body_len
+      do (#poke struct xsd_sockmsg,type)   msg (fromIntegral msgType  :: Word32)
+         (#poke struct xsd_sockmsg,req_id) msg (fromIntegral reqId    :: Word32)
+         (#poke struct xsd_sockmsg,tx_id)  msg (fromIntegral txId     :: Word32)
+         (#poke struct xsd_sockmsg,len)    msg (fromIntegral body_len :: Word32)
          pokeArray (msg `plusPtr` (#size struct xsd_sockmsg)) body
      return (len,p)
    
@@ -111,13 +111,13 @@ readMessageInternal :: (Int -> IO (ForeignArray CChar)) -> IO XBMessage
 readMessageInternal read' =
      do (_,fheader) <- read' (#size struct xsd_sockmsg)
         withForeignPtr fheader $ \header -> do
-          msgType <- (#peek struct xsd_sockmsg,type) header
-          reqId <- (#peek struct xsd_sockmsg,req_id) header
-          txId <- (#peek struct xsd_sockmsg,tx_id) header
-          body_len <- (#peek struct xsd_sockmsg,len) header
+          msgType  <- (#peek struct xsd_sockmsg,type)   header :: IO Word32
+          reqId    <- (#peek struct xsd_sockmsg,req_id) header :: IO Word32
+          txId     <- (#peek struct xsd_sockmsg,tx_id)  header :: IO Word32
+          body_len <- (#peek struct xsd_sockmsg,len)    header :: IO Word32
           -- writeDebugConsole ("readXenbus:" ++ (show msgType) ++ " " ++ (show reqId) ++ " " ++ (show txId) ++ " " ++ (show body_len) ++ "\n")
-          body <- read' body_len
-          return (msgType,reqId,txId,body)
+          body <- read' (fromIntegral body_len)
+          return (fromIntegral msgType, fromIntegral reqId, fromIntegral txId, body)
 
 -- |Decode a body containing multiple null-terminated strings.
 decodeMultiBody :: Decoder e [String]

@@ -22,7 +22,6 @@ import Control.Concurrent(MVar,newEmptyMVar,putMVar)
 import Foreign.Ptr
 import Data.Array.IO
 import Data.Array.Unboxed
-import Data.Word
 
 
 -- Resources for a device running in compatability mode.
@@ -121,11 +120,11 @@ get_devices :: Dev a -> IO [Device]
 get_devices dev = do (prim,second) <- get_resources dev
                      m1 <- check prim 0
                      m2 <- check prim 1
-                     install_chan_handler prim
+                     _  <- install_chan_handler prim
 
                      m3 <- check second 0
                      m4 <- check second 1
-                     install_chan_handler second
+                     _  <- install_chan_handler second
 
                      return (concat [m1,m2,m3,m4])
   where check r n =
@@ -276,7 +275,7 @@ pio :: (s -> IO s) -> Resources -> s -> IO (Word32, Maybe Error)
 pio io r buffer = interrupts r False >> loop (100::Int) 0 buffer
   where loop wait _ _ | wait <= 0 = ioError (userError "pio_send: time out")
         loop wait bytes buf = seq bytes $
-          do get_alt_status r
+          do _ <- get_alt_status r
              s <- get_status r
              case () of
                _ | s `testBit` 0  -> do err <- get_error r
@@ -325,7 +324,7 @@ get_error r =
 identify_device :: Resources -> IO (UArray Word8 Word16)
 identify_device r = do arr <- newArray (0,255) 0
                        set_command r 0xEC -- IDENTIFY_DEVICE
-                       pio (get_data arr) r 0
+                       _ <- pio (get_data arr) r 0
                        -- this is safe because we won't update the array.
                        unsafeFreeze arr
 
@@ -349,7 +348,7 @@ dma cmd d sector count buffs =
 install_chan_handler :: Resources -> Xen Bool
 install_chan_handler r =
   set_interrupt (fromIntegral (interrupt r)) False $
-    do get_alt_status r
+    do _ <- get_alt_status r
        s <- get_status r
        res <- if s `testBit` 0 then Just `fmap` get_error r
                                else return Nothing

@@ -62,7 +62,7 @@ startServerListener key handler =
          XBOk _ ->
              do let path = "/halvm/" ++ key 
                 myId <- myDomId
-                xsRm path
+                XBOk _ <- xsRm path
                 XBOk _ <- xsMkDir path
                 XBOk _ <- xsWrite (path ++ "/server-id") (show myId)
                 XBOk _ <- xsMkDir (path ++ "/clients")
@@ -118,12 +118,12 @@ rendezvousWithServer key info builder =
                                       (show numId)
                          (grantschans,res) <- builder serverId
                          let (grants,chans) = unzip grantschans
-                         xsMkDir prefix
-                         xsWrite (prefix ++ "/domain-id") (show myId)
-                         xsWrite (prefix ++ "/info") (show info)
+                         XBOk _ <- xsMkDir prefix
+                         XBOk _ <- xsWrite (prefix++"/domain-id") (show myId)
+                         XBOk _ <- xsWrite (prefix++"/info") (show info)
                          writeMult 0 (prefix ++ "/grant-refs") grants
                          writeMult 0 (prefix ++ "/event-channel") chans
-                         xsWrite (prefix ++ "/state") "Sort_of_goodish"
+                         XBOk _ <- xsWrite (prefix++"/state") "Sort_of_goodish"
                          return $ Just res
                   _ ->
                       return Nothing
@@ -132,7 +132,7 @@ rendezvousWithServer key info builder =
     where writeMult :: (Show a) => Int -> String -> [a] -> IO ()
           writeMult _ _ [] = return ()
           writeMult num prefix (first:rest) =
-              do xsWrite (prefix ++ (show num)) (show first)
+              do XBOk _ <- xsWrite (prefix ++ (show num)) (show first)
                  writeMult (num + 1) prefix rest
 
 rendezvousWithServer2 :: String -> [(String, String)] ->

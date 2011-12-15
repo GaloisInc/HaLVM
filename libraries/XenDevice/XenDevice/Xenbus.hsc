@@ -32,7 +32,7 @@ import Data.Word
 import Data.IORef
 import Control.Monad
 import Control.Concurrent
-import GHC.IOBase(unsafePerformIO)
+import GHC.IO(unsafePerformIO)
 import Hypervisor.BufferChan
 import Hypervisor.Kernel
 
@@ -314,7 +314,7 @@ getStoreEvtChn = get_store_evtchn
 
 forkIO_ :: IO () -> IO ()
 forkIO_ body =
-    do forkIO body
+    do _ <- forkIO body
        return ()
 
 foreign import ccall unsafe "xenbus.h get_store_evtchn" get_store_evtchn :: IO Port

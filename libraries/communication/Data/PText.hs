@@ -70,7 +70,7 @@ pread' f = allButString `extR` stringCase
       do
  		-- Drop "  (  "
          skipSpaces			-- Discard leading space
-         char '('			-- Parse '('
+         _ <- char '('			-- Parse '('
          skipSpaces			-- Discard following space
 
 		-- Do the real work
@@ -80,7 +80,7 @@ pread' f = allButString `extR` stringCase
 
 		-- Drop "  )  "
          skipSpaces			-- Discard leading space
-         char ')'			-- Parse ')'
+         _ <- char ')'			-- Parse ')'
          skipSpaces			-- Discard following space
 
          return x
