@@ -75,17 +75,16 @@ import Text.ReadP(readP_to_S)
 import Foreign.Ptr
 import Foreign.Storable
 import Hypervisor.Basics
-import Hypervisor.Debug
 import Hypervisor.Memory
 import Hypervisor.Port
-import Hypervisor.Privileged(myDomId)
-import System.Exit
 import Util.WaitSet
+import XenDevice.Xenbus(myDomId)
 
 import qualified Data.ByteString          as BS
-import qualified Data.ByteString.Char8    as SBS
 import qualified Data.ByteString.Internal as BSI
 import qualified Data.ByteString.Unsafe   as USBS
+
+import Hypervisor.Debug
 
 newtype PageCount = PageCount Word32
   deriving (Eq, Num, Ord, Show, Bounded, Enum, Real, Integral)

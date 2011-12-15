@@ -1,21 +1,23 @@
 name:           communication
-version:        1.0.0
+version:        1.1.0
 license:        BSD3
 author:         Galois, Inc.
 maintainer:     Galois, Inc.
 category:       HaLVM, System
 stability:      experimental
-build-type:     Simple
+build-type:     Configure
 cabal-version:  >= 1.2
 
 library
-  build-depends:        HALVMCore == 1.0.0, base == 4.*, cereal >= 0.3.0.0,
-                        bytestring == 0.9.*, containers == 0.3.*, syb == 0.1.*
+  build-depends:        HALVMCore == 1.1.0, base == 4.*, cereal >= 0.3.0.0,
+                        bytestring == 0.9.*, containers == 0.3.*, syb == 0.1.*,
+                        XenDevice == 1.1.0
   exposed-modules:      Communication.IVC
-                        Communication.RingBuffer
   other-modules:        Data.HeadTail
                         Data.PText
                         Data.ByteString.PText
                         Data.Generics.MoreAliases
                         Text.ReadP
   ghc-options:          -O2 -Wall
+  c-sources:		cbits/spinlocks.c
+  cpp-options:		-Icbits/

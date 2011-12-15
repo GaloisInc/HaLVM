@@ -1,5 +1,5 @@
 name:           XenDevice
-version:        1.0.0
+version:        1.1.0
 license:        BSD3
 author:         Adam Wick <awick@galois.com>, Magnus Carlsson <magnus@galois.com>
 maintainer:     Adam Wick <awick@galois.com>
@@ -18,10 +18,11 @@ cabal-version:  >= 1.2
 tested-with:    GHC ==6.8.0
 
 library
-  build-depends:    base >=3, bytestring >= 0.9, HALVMCore >=1.0.0,
+  build-depends:    base >=3, bytestring >= 0.9, HALVMCore >=1.1.0,
                     mtl >=1.1, array >=0.1, containers >=0.1,
-                    BoundedChan, communication >= 1.0.0
-  exposed-modules:  XenDevice.Console,
+                    BoundedChan
+  exposed-modules:  Communication.RingBuffer,
+                    XenDevice.Console,
                     XenDevice.ConsoleAux,
                     XenDevice.ConsoleBackend,
                     XenDevice.ConsoleInterface,

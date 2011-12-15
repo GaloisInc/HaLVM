@@ -8,11 +8,11 @@
 --
 
 import Hypervisor.Kernel
-import Hypervisor.Privileged
 import XenDevice.Console
+import XenDevice.Xenbus
 
 main :: IO ()
-main = halvm_kernel_daemon [dConsole] $ const $ do
+main = halvm_kernel_daemon [dConsole,dXenbus] $ const $ do
   writeConsole "Getting ID ...\n"
   me <- myDomId 
   writeConsole $ "Got ID = " ++ show me ++ ".\n"

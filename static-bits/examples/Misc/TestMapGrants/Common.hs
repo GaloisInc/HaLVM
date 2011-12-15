@@ -10,7 +10,7 @@ module Common where
 import Data.Word
 import Foreign.Storable
 import Hypervisor.Basics
-import Hypervisor.IVC
+import Communication.IVC
 import Hypervisor.Memory
 import RendezvousLib.PeerToPeer(P2PConnection(..))
 

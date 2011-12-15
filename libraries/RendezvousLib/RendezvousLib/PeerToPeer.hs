@@ -22,7 +22,6 @@ import Control.Concurrent
 import Hypervisor.Basics
 import Hypervisor.Debug
 import Hypervisor.Port
-import Hypervisor.Privileged(myDomId)
 
 import Communication.IVC(InChannelEx, OutChannelEx, InOutChannelEx, Channel(..),
                          mkInChannelName, mkOutChannelName, mkInOutChannelName,

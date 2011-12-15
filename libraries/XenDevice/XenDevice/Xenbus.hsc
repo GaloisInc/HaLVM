@@ -14,7 +14,8 @@ module XenDevice.Xenbus(dXenbus, dXenbus',
                         xsRm,
                         WatchId,
                         xsSetWatch, xsUnsetWatch, xsIntroduce, xsRelease,
-                        getStoreMfn, getStoreEvtChn, xsSetPermissions)
+                        getStoreMfn, getStoreEvtChn, xsSetPermissions,
+			myDomId)
     where
 
 import XenDevice.XenbusInterface(Interface(..), interface, IdxPtr, canWrite, canRead, xbWrite, xbRead)
@@ -75,6 +76,18 @@ driver i = DeviceDriver { devName = "XenDeviceInternalXenbus"
                         , initialize = i
                         , shutdown = return ()
                         }
+
+-- |Return the current domain's DomId by looking it up in the Xenstore.
+myDomId :: IO DomId
+myDomId = do
+  res <- xsRead "domid"
+  case res of
+    XBError _    -> xThrow ENOSYS
+    XBOk    res' ->
+      case reads res' of
+	[(domid, "")] -> return (DomId domid)
+	_	      -> xThrow EPROTO
+	
 
 -- |The XenStore equivalent of the "ls" command. Returns the relative path of
 -- every key in the directory upon success.

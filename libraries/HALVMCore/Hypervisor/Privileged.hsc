@@ -19,10 +19,13 @@
 -- Xen internals, and they change pretty often. Use at your own risk, etc.,
 -- etc..
 --
+
+{-# LANGUAGE RecordWildCards #-}
+
 module Hypervisor.Privileged(
          createDomain, destroyDomain
        , pauseDomain, unpauseDomain
-       , domainInfo, myDomId
+       , domainInfo, evilBadMyDomId
        , domainRegisterContext, setDomainRegisterContext
        , setDomainCPUAffinity, hypercallInit, setDomainHandle
        , setDomainMaxVCPUs
@@ -835,9 +838,11 @@ domainInfo :: DomId -> Xen DomainInfo
 domainInfo dom = runDomCtlOp (#const DOMINFO_OP) dom datum
  where datum = DomInfoData dom
 
--- |Returns the current domain's id.
-myDomId :: IO DomId
-myDomId = do
+-- |Returns the current domain's id, but does it in a pretty reprehensible way.
+-- You should probably use the related, non-evil function in the XenDevice
+-- library.
+evilBadMyDomId :: IO DomId
+evilBadMyDomId = do
   di <- get_my_domid
   if di < 0
      then fail "Couldn't get own DomId. Something is really, really wrong."

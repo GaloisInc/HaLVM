@@ -11,7 +11,7 @@ import Data.Word
 import Foreign.Ptr
 import Foreign.Storable
 import Hypervisor.Debug
-import Hypervisor.IVC
+import Communication.IVC
 import Hypervisor.Kernel
 import Hypervisor.Memory
 import XenDevice.Xenbus
@@ -22,13 +22,10 @@ start _ = do
   c <- accept
   writeDebugConsole "SND: Waiting for reference.\n"
   refs <- get c
-  stuff <- mapGrants (peer c) refs True
-  case stuff of
-    Left err -> writeDebugConsole $ "SND: Failed to map: " ++ show err ++ "\n"
-    Right (ptr, _) -> do
-      fillBuffer ptr (4096 * length refs)
-      writeDebugConsole "SND: Successfully re-filled buffer.\n"
-      threadDelay $ 3 * 60 * 1000 * 1000
+  (ptr, _) <- mapGrants (peer c) refs True
+  fillBuffer ptr (4096 * length refs)
+  writeDebugConsole "SND: Successfully re-filled buffer.\n"
+  threadDelay $ 3 * 60 * 1000 * 1000
 
 fillBuffer ptr 0 = return ()
 fillBuffer ptr x = do

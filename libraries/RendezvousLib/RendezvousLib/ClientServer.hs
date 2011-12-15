@@ -26,7 +26,6 @@ import Communication.IVC(makeChannelTo,Channel(pageReference,port),MakeChannelTo
                         ,acceptChannel, InChannelEx, OutChannelEx, AcceptChannel
                         ,InOutChannelEx, mkInChannelName, mkOutChannelName
                         ,mkInOutChannelName, PageReference(..))
-import Hypervisor.Privileged(myDomId)
 import XenDevice.Xenbus
 import Communication.RingBuffer(FrontRingBuffer, FrontRingBufferable
                                ,BackRingBuffer,  BackRingBufferable

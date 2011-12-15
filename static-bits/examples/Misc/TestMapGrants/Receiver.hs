@@ -13,7 +13,7 @@ import Foreign.Marshal.Alloc
 import Foreign.Ptr
 import Foreign.Storable
 import Hypervisor.Debug
-import Hypervisor.IVC
+import Communication.IVC
 import Hypervisor.Kernel
 import Hypervisor.Memory
 import XenDevice.Xenbus
@@ -24,7 +24,7 @@ main = halvm_kernel [dXenbus] start
 start _ = do
   c <- offer
   let dom = peer c
-  refs <- rights `fmap` (forM [0..9] $ const allocRef)
+  refs <- forM [0..9] $ const allocRef
   writeDebugConsole $ "RCV: Generated " ++ show (length refs) ++ " refs.\n"
   badptr <- mallocBytes $ 4096 + (4096 * length refs)
   let ptr = alignPtr badptr 4096
