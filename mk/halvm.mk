@@ -8,7 +8,6 @@
 
 include mk/common.mk
 
-
 ################################################################################
 # Handy Name-related Macros
 ################################################################################
@@ -27,10 +26,23 @@ HALVM_EXTRA_HEADERS =
 define rts-header
 # $1 - header path, relative to $(TOPDIR)/xen-ghc/rts
 $(call halvm-rts-header-path,$1): $(call rts-header-path,$1)
-	[ ! -d $$(dir $$@) ] && $(MKDIR) -p $$(dir $$@)
 	$(CP) $$< $$@
+ifneq "$(dir $1)" "./"
+$(call halvm-rts-header-path,$1): $(call halvm-rts-header-path,$(dir $1))
+endif
+
 HALVM_EXTRA_HEADERS += $(call halvm-rts-header-path,$1)
 endef
+
+define halvm-rts-header-dir
+# $1 - the directory relative to $(HALVM_LIBDIR)/include/rts to create
+$(call halvm-rts-header-path,$1):
+	$(MKDIR) -p $$@
+endef
+
+$(eval $(call halvm-rts-header-dir,sm))
+$(eval $(call rts-header,sm/GC.h))
+
 
 
 ################################################################################
@@ -98,9 +110,9 @@ DIST_DIR_TREE=$(TOPDIR)/dist/README
 HALVM_INCLUDE_DIR=$(HALVM_LIBDIR)/include/ghcconfig.h
 
 # Useful flags
-RTS_FLAGS=-optc-nostdinc -optc-Dxen_HOST_OS -optc-DRtsWay=\"rts_v\" -optc-Wall -optc-Wextra -optc-Wstrict-prototypes -optc-Wmissing-prototypes -optc-Wmissing-declarations -optc-Winline -optc-Waggregate-return -optc-Wpointer-arith -optc-Wmissing-noreturn -optc-Wnested-externs -optc-Wredundant-decls -optc-I$(TOPDIR)/xen-ghc/rts -optc-I$(HALVM_LIBDIR)/include -optc-DCOMPILING_RTS -optc-fno-strict-aliasing -optc-fno-common -optc-I$(HALVM_LIBDIR)/include/ffi -optc-fomit-frame-pointer -O -package-name rts -static -dcmm-lint -optc-O2 -optc-DProjectVersion=\"$(GHC_VER)\" -optc-DHostPlatform=\"$(ARCH)-unknown-xen\" -optc-DHostArch=\"$(ARCH)\" -optc-DHostOS=\"xen\" -optc-DHostVendor=\"unknown\" -optc-DBuildPlatform=\"$(ARCH)-unknown-linux\" -optc-DBuildArch=\"$(ARCH)\" -optc-DBuildOS=\"linux\" -optc-DBuildVendor=\"unknown\" -optc-DTargetPlatform=\"$(ARCH)-unknown-xen\" -optc-DTargetArch=\"$(ARCH)\" -optc-DTargetOS=\"xen\" -optc-DTargetVendor=\"unknown\" -optc-DGhcUnregisterised=\"NO\" -optc-DGhcEnableTablesNextToCode=\"YES\" -I$(TOPDIR)/xen-ghc/rts/xen/include -I$(TOPDIR)/xen-ghc/rts/xen/include/sys -I$(TOPDIR)/xen-ghc/includes/rts $(GHC_ARCH_OPT)
+RTS_FLAGS=-optc-fno-delete-null-pointer-checks -optc-mno-red-zone -optc-nostdinc -optc-Dxen_HOST_OS -optc-DRtsWay=\"rts_v\" -optc-Wall -optc-Wextra -optc-Wstrict-prototypes -optc-Wmissing-prototypes -optc-Wmissing-declarations -optc-Winline -optc-Waggregate-return -optc-Wpointer-arith -optc-Wmissing-noreturn -optc-Wnested-externs -optc-Wredundant-decls -optc-I$(TOPDIR)/xen-ghc/rts -optc-I$(HALVM_LIBDIR)/include -optc-DCOMPILING_RTS -optc-fno-strict-aliasing -optc-fno-common -optc-I$(HALVM_LIBDIR)/include/ffi -optc-fomit-frame-pointer -O -package-name rts -static -dcmm-lint -optc-O2 -optc-DProjectVersion=\"$(GHC_VER)\" -optc-DHostPlatform=\"$(ARCH)-unknown-xen\" -optc-DHostArch=\"$(ARCH)\" -optc-DHostOS=\"xen\" -optc-DHostVendor=\"unknown\" -optc-DBuildPlatform=\"$(ARCH)-unknown-linux\" -optc-DBuildArch=\"$(ARCH)\" -optc-DBuildOS=\"linux\" -optc-DBuildVendor=\"unknown\" -optc-DTargetPlatform=\"$(ARCH)-unknown-xen\" -optc-DTargetArch=\"$(ARCH)\" -optc-DTargetOS=\"xen\" -optc-DTargetVendor=\"unknown\" -optc-DGhcUnregisterised=\"NO\" -optc-DGhcEnableTablesNextToCode=\"YES\" -I$(TOPDIR)/xen-ghc/rts/xen/include -I$(TOPDIR)/xen-ghc/rts/xen/include/sys -I$(TOPDIR)/xen-ghc/includes/rts $(GHC_ARCH_OPT) $(GHC_ARCH_FLAGS)
 
-CONF_FLAGS=-Dxen_HOST_OS -I$(TOPDIR)/xen-ghc/includes -I$(HALVM_LIBDIR)/include -DTOP=$(TOPDIR)/dist -DINSTALLING -DLIB_DIR=$(HALVM_LIBDIR) -DPAPI_LIB_DIR= -DINCLUDE_DIR=$(HALVM_LIBDIR)/include -DPAPI_INCLUDE_DIR=
+CONF_FLAGS=-Dxen_HOST_OS -I$(TOPDIR)/xen-ghc/includes -I$(HALVM_LIBDIR)/include -DTOP=$(TOPDIR)/dist -DINSTALLING -DLIB_DIR=$(HALVM_LIBDIR) -DPAPI_LIB_DIR= -DINCLUDE_DIR=$(HALVM_LIBDIR)/include -DPAPI_INCLUDE_DIR= $(ARCH_OPT) $(ARCH_FLAGS)
 
 define version_copy_exec
 $(SED) -e 's!HALVM_VER!$(HaLVM_VERSION)!g'           \
@@ -227,7 +239,7 @@ $(HALVM_GHC_BIN): $(DIST_DIR_TREE) $(HALVM_LIBDIR)/extra-gcc-opts            \
                   $(TOPDIR)/xen-ghc/compiler/main/Config.hs                  \
                   $(ALL_HS_INCLS)
 	$(MKDIR) -p xen-ghc/compiler/stage2
-	$(CP) static-bits/lib/ghc_boot_platform.h $(TOPDIR)/xen-ghc/compiler/
+	$(CP) static-bits/lib/ghc_boot_platform.$(ARCH).h $(TOPDIR)/xen-ghc/compiler/ghc_boot_platform.h
 	( cd xen-ghc/compiler && $(PLATFORM_CABAL) install -fncg -fstage2 -fghci -fbase4 --with-hsc2hs=$(PLATFORM_HSC2HS) --extra-include-dirs=$(TOPDIR)/xen-ghc/compiler/stage2 --ghc-option=-DSTAGE=2)
 	$(PLATFORM_GHC) -o $@ -package ghc-6.12.3 -XCPP --make -hidir=$(TOPDIR)/xen-ghc/compiler/dist/build -odir=$(TOPDIR)/xen-ghc/compiler/dist/build $(TOPDIR)/xen-ghc/ghc/Main.hs
 
@@ -305,8 +317,6 @@ $(HALVM_GHC_ASM): $(DIST_DIR_TREE) $(HALVM_UNLIT)
 # builtin-rts
 ################################################################################
 
-$(eval $(call rts-header,sm/GC.h))
-
 RTS_CFILES=Adjustor.c Arena.c Capability.c ClosureFlags.c Disassembler.c       \
            FrontPanel.c Globals.c Hash.c HsFFI.c Inlines.c Interpreter.c       \
            LdvProfile.c Papi.c Printer.c ProfHeap.c Profiling.c                \
@@ -340,7 +350,7 @@ RTS_CMMFILES= PrimOps.cmm StgStartup.cmm Exception.cmm Updates.cmm \
 RTS_OFILES =$(addprefix $(TOPDIR)/xen-ghc/rts/,$(RTS_CFILES:.c=.o))
 RTS_OFILES+=$(addprefix $(TOPDIR)/xen-ghc/rts/,$(RTS_CMMFILES:.cmm=.o))
 
-%.o: %.c $(call halvm-rts-header-path,sm/GC.h)
+%.o: %.c
 	$(QUIET_CC)$(PLATFORM_GHC) $(RTS_FLAGS) -c -o $@ $<
 
 %.o: %.cmm
@@ -390,7 +400,7 @@ $(call package-name,ghc-prim,0.2.0.0) :                              \
           $(TOPDIR)/xen-ghc/libraries/ghc-prim/GHC/PrimopWrappers.hs \
           $(HALVM_CABAL)
 	( cd $(TOPDIR)/xen-ghc/libraries/ghc-prim                      && \
-	  $(HALVM_CABAL) install $(GHC_PRIM_OPTIONS)                   && \
+	  $(HALVM_CABAL) install                                       && \
 	  $(HALVM_GHC_PKG) describe ghc-prim > inplace-pkg-config      && \
 	  $(SED) -i 's/GHC.Unit/GHC.Unit GHC.Prim/' inplace-pkg-config && \
 	  $(HALVM_GHC_PKG) update --force inplace-pkg-config              \
@@ -398,11 +408,11 @@ $(call package-name,ghc-prim,0.2.0.0) :                              \
 
 $(TOPDIR)/xen-ghc/compiler/stage2/ghc_boot_platform.h:
 	$(MKDIR) $(TOPDIR)/xen-ghc/compiler/stage2
-	$(CP) $(TOPDIR)/static-bits/lib/ghc_boot_platform.h $@
+	$(CP) $(TOPDIR)/static-bits/lib/ghc_boot_platform.$(ARCH).h $@
 
 $(TOPDIR)/xen-ghc/compiler/stage1/ghc_boot_platform.h:
 	$(MKDIR) $(TOPDIR)/xen-ghc/compiler/stage1
-	$(CP) $(TOPDIR)/static-bits/lib/ghc_boot_platform.h $@
+	$(CP) $(TOPDIR)/static-bits/lib/ghc_boot_platform.$(ARCH).h $@
 
 ################################################################################
 # STG Application

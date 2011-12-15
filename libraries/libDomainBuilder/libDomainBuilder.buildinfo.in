@@ -1,4 +1,4 @@
 GHC-Options:      @ARCH_OPTION@
-cc-Options:       @ARCH_OPTION@
+cc-Options:       @ARCH_OPTION@ @ARCH_FLAGS@
 include-dirs:     @XEN_INCLUDE_DIRECTORY@
 

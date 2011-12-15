@@ -10,6 +10,7 @@
 #include "GetTime.h"
 #include "Ticker.h"
 #include "time.h"
+#include "limits.h"
 
 // Below to remove warnings.
 lnat getourtimeofday(void);
@@ -76,7 +77,7 @@ lnat getourtimeofday(void)
   work += (u64)tv.tv_usec / (interval * 1000);
   //assert(last_time <= work);
   last_time = work;
-  work &= 0x7FFFFFFF;
+  work &= LONG_MAX;
 
   return (lnat)work;
 }

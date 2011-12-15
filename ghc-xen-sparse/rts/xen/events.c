@@ -305,7 +305,7 @@ void init_events(void)
 
 void do_hypervisor_callback(struct pt_regs *regs)
 {
-    u32 	       l1, l2;
+    unsigned long l1, l2;
     unsigned int   l1i, l2i, port;
     int            cpu = 0;
     shared_info_t *s = HYPERVISOR_shared_info;
@@ -324,8 +324,8 @@ void do_hypervisor_callback(struct pt_regs *regs)
             l2i = __ffs(l2);
             l2 &= ~(1 << l2i);
 
-            port = (l1i << 5) + l2i;
-  	        do_event(port, regs);
+            port = (l1i * (sizeof(unsigned long) * 8)) + l2i;
+            do_event(port, regs);
         }
     }
 }
@@ -360,6 +360,27 @@ int pause(void)
   return -1;
 }
 
+#if defined(__x86_64__)
+u32 irq_get_status(u32 irq)
+{
+  struct physdev_irq_status_query op;
+
+  bzero(&op, sizeof(struct physdev_irq_status_query));
+  op.irq = irq;
+  assert(!HYPERVISOR_physdev_op(PHYSDEVOP_irq_status_query, &op));
+  return op.flags;
+}
+
+void irq_send_eoi(u32 irq)
+{
+  struct physdev_eoi op;
+
+  bzero(&op, sizeof(struct physdev_eoi));
+  op.irq = irq;
+  assert(!HYPERVISOR_physdev_op(PHYSDEVOP_eoi, &op));
+}
+
+#else
 u32 irq_get_status(u32 irq)
 {
   struct physdev_op op;
@@ -388,3 +409,4 @@ void irq_send_eoi(u32 irq)
 
   assert(!HYPERVISOR_physdev_op_compat(&op));
 }
+#endif

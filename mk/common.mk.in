@@ -79,14 +79,16 @@ NO_STACK_PROTECTOR_OPT = @NO_STACK_PROTECTOR_OPT@
 SANITY_CHECKER_OPT     = @SANITY_CHECKER_OPT@
 BYTECODE_INTERP_OPT    = @BYTECODE_INTERP_OPT@
 ARCH_OPT               = @ARCH_OPTION@
-GHC_ARCH_OPT           = -optc@ARCH_OPTION@
+ARCH_FLAGS	       = @ARCH_FLAGS@
+GHC_ARCH_OPT	       = -optc$(ARCH_OPT)
+GHC_ARCH_FLAGS         = $(foreach opt,$(ARCH_FLAGS),-optc$(opt))
 NO_UNIT_AT_A_TIME_OPT  = @NO_UNIT_AT_A_TIME_OPT@
 ARCH                   = @ARCHITECTURE@
 XEN_INCLUDE_DIR        = @XEN_INCLUDE_DIRECTORY@
 CFLAGS                 = -Wall -Wno-unused-variable
 CFLAGS                += -O2 -fno-builtin
 CFLAGS                += -I$(XEN_INCLUDE_DIR)
-CFLAGS                += $(ARCH_OPT) $(NO_STACK_PROTECTOR_OPT)
+CFLAGS                += $(ARCH_OPT) $(ARCH_FLAGS) $(NO_STACK_PROTECTOR_OPT)
 CFLAGS                += $(NO_UNIT_AT_A_TIME_OPT)
 
 #
@@ -219,12 +221,10 @@ HTTP_TARGET         = $(call build_hackage_target,HTTP,$(HTTP_VERSION))
 CI_VER              = 0.8.2
 CABAL_INST_LINK     = $(call build_hackage_link,cabal-install,$(CI_VER))
 CABAL_INST_TARBALL  = $(call build_hackage_tarball,cabal-install,$(CI_VER))
-ifeq (@ARCHITECTURE@,x86_64)
+ifeq ($(ARCH),x86_64)
 CABAL_ORIG_SIG      = e4d9e6cfffe2de416a529213f6ec0f28
-GHC_PRIM_OPTIONS    = --ghc-options=-fvia-c
 else
 CABAL_ORIG_SIG      = 0fa5fba8bc5459391e6ec30b2b2ff632
-GHC_PRIM_OPTIONS    =
 endif
 FGL_VER             = 5.4.2.2
 FGL_LINK            = $(call build_hackage_link,fgl,$(FGL_VER))

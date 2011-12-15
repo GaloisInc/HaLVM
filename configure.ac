@@ -241,12 +241,15 @@ AC_CHECK_DECL(xc_gnttab_open,
 
 case "$memory_model" in
   "32")  AC_SUBST(ARCH_OPTION, "-DCONFIG_X86_32")
+	 AC_SUBST(ARCH_FLAGS,  "")
          MEMMODEL_STR="32-bit" ;
          ARCH=i386 ;;
   "32p") AC_SUBST(ARCH_OPTION, "-DCONFIG_X86_PAE")
+	 AC_SUBST(ARCH_FLAGS,  "")
          MEMMODEL_STR="PAE (36-bit physical / 32-bit virtual)" ;
          ARCH=i386 ;;
   "64")  AC_SUBST(ARCH_OPTION, "-DCONFIG_X86_64")
+	 AC_SUBST(ARCH_FLAGS,  "-fomit-frame-pointer -fno-asynchronous-unwind-tables -fno-builtin -mno-red-zone")
          MEMMODEL_STR="64-bit" ;
          ARCH=x86_64 ;;
   *)     LOG_FAILURE("Unknown memory model (internal error?)") ;;
@@ -283,6 +286,8 @@ else
                    libraries/HALVMCore/HALVMCore.buildinfo
                    libraries/XenDevice/XenDevice.buildinfo
                    libraries/libDomainBuilder/libDomainBuilder.buildinfo
-                   libIVC/Makefile])
+		   libraries/communication/communication.buildinfo
+                   libIVC/Makefile
+                   libm/Makefile])
   AC_OUTPUT
 fi

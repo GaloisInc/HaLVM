@@ -5,6 +5,7 @@
 // - terms and conditions.
 // Author: Adam Wick <awick@galois.com>
 // BANNEREND
+#include <string.h>
 
 typedef uint64_t pt_entry_t;
 
@@ -14,7 +15,7 @@ static maddr_t     l4_base              = NULL;
 // static pt_entry_t  temp_tab[512]      __attribute__ ((aligned(PAGE_SIZE)));
 // static pt_entry_t  clear_block[512]   __attribute__ ((aligned(PAGE_SIZE)));
 
-static pt_entry_t *temp_tab             = NULL;
+static volatile pt_entry_t *temp_tab             = NULL;
 static pt_entry_t* clear_block;
 
 static maddr_t     temp_tab_pt_entry    = NULL;
@@ -93,12 +94,12 @@ static maddr_t pte_phys_address(vaddr_t ptr)
 //      so why not just return the entry?
 // On failure, returns 0.
 // NOTE: Modifies temp_table.
-static pt_entry_t *pte_virt_address(vaddr_t ptr) {
+static pt_entry_t pte_virt_address(vaddr_t ptr) {
   maddr_t addr = pte_phys_address(ptr);
-  if (addr == 1) return NULL;
+  if (addr == 1) return -1;
 
   temporarily_map_page_table(addr);
-  return temp_tab + VADDR_TO_PT_INDEX(ptr);
+  return *(temp_tab + VADDR_TO_PT_INDEX(ptr));
 }
 
 
@@ -108,8 +109,8 @@ static pt_entry_t *pte_virt_address(vaddr_t ptr) {
 // On failure, returns 0.
 // NOTE: Modifies temp_table.
 static pt_entry_t map_page_table_for(vaddr_t ptr) {
-  pt_entry_t *entry = pte_virt_address(ptr);
-  return entry == 0 ? 0 : *entry;
+  pt_entry_t entry = pte_virt_address(ptr);
+  return entry == (-1) ? 0 : entry;
 }
 
 
@@ -169,7 +170,7 @@ vaddr_t machine_to_virtual(maddr_t mptr)
             }
           }
           // Restore L3 table
-          temporarily_map_page_table(l4_table[i]);
+          temporarily_map_page_table(ENTRY_MADDR(l4_table[i]));
         }
       }
     }
@@ -239,7 +240,6 @@ static void force_page_table_for_vaddr(vaddr_t ptr)
 {
   maddr_t entry_base  = l4_base;
   pt_entry_t entry    = l4_table[VADDR_TO_L4_INDEX(ptr)];
-  int i;
 
   // Is there an entry in the L4 table for this address?
   if(!ENTRY_PRESENT(entry)) {
@@ -259,19 +259,18 @@ static void force_page_table_for_vaddr(vaddr_t ptr)
 
   // There is now a page directory for the address. So see if there's a
   // page table.
-  temporarily_map_page_table(entry & PAGE_MASK);
+  temporarily_map_page_table(ENTRY_MADDR(entry));
   entry_base = ENTRY_MADDR(entry);
   entry      = temp_tab[VADDR_TO_PD_INDEX(ptr)];
   if(!ENTRY_PRESENT(entry)) {
     entry = generate_new_page_table(MMUEXT_PIN_L1_TABLE);
     bind_page_table(entry_base, VADDR_TO_PD_INDEX(ptr), entry);
   }
-
 }
 
 // Compute the pseudo-physical page containing a particular virtual address.
 static inline pfn_t vaddr_to_pfn(vaddr_t ptr) {
-  return (ptr - text_start) >> PAGE_SHIFT;
+  return ((unsigned long)ptr - (unsigned long)text_start) >> PAGE_SHIFT;
 
 }
 
@@ -293,12 +292,14 @@ static inline maddr_t pre_initialization_get_pte(vaddr_t ptr)
   entry = table[VADDR_TO_L4_INDEX(ptr)];
   mfn   = ENTRY_MFN(entry);
   pfn   = machine_to_phys_mapping[mfn];
-  table = (pt_entry_t*)(text_start + (((maddr_t)pfn) << PAGE_SHIFT));    // 3
+  table = (pt_entry_t*)((unsigned long)text_start + 
+			(((maddr_t)pfn) << PAGE_SHIFT));    // 3
 
   entry = table[VADDR_TO_L3_INDEX(ptr)];
   mfn   = ENTRY_MFN(entry);
   pfn   = machine_to_phys_mapping[mfn];
-  table = (pt_entry_t*)(text_start + (((maddr_t)pfn) << PAGE_SHIFT));    // 2
+  table = (pt_entry_t*)((unsigned long)text_start + 
+			(((maddr_t)pfn) << PAGE_SHIFT));    // 2
 
   entry = table[VADDR_TO_PD_INDEX(ptr)];
 
@@ -313,15 +314,12 @@ static inline maddr_t pre_initialization_get_pte(vaddr_t ptr)
 #define vmm_page(x) ((x == l4_table)           || \
                 (x == temp_tab)      || \
                 (x == clear_block_addr))
-
+*/
 #define all_xen(a,b) \
   ((BUILD_ADDR(a,b,  0,0,0) >= (vaddr_t)HYPERVISOR_VIRT_START) && \
    (BUILD_ADDR(a,b+1,0,0,0) <= (vaddr_t)HYPERVISOR_VIRT_END))
 
 #define important_page(x) (text_page(x) || xen_page(x) || vmm_page(x))
-*/
-
-static inline void set_pframe_used(pfn_t);
 
 // Initialize what physical memory is already used by the HaLVM.
 // Our memory allocator uses one bit (MFN_IN_USE_BIT) for each
@@ -329,14 +327,24 @@ static inline void set_pframe_used(pfn_t);
 // page is allocated.  Upon start this bit is unset.
 // Here we traverse the pages that are used by the HaLLVM and mark them as used.
 static void setup_used(void) {
-  unsigned long page_num  =
-    (start_info->pt_base + (PAGE_SIZE * start_info->nr_pt_frames)
-                                 - (unsigned long)text_start) >> PAGE_SHIFT;
+  unsigned long the_end = start_info->pt_base
+                        + PAGE_SIZE * start_info->nr_pt_frames;
 
-  // round up to 4MB
-  unsigned long page_num1 = (page_num + 1023) & ~1023;
+  unsigned long plus_stack = the_end + 512 * 1024;
+  unsigned long four_mb_mask = 4 * 1024 * 1024 - 1;
+  unsigned long rounded_up = (plus_stack + four_mb_mask) & ~four_mb_mask;
+  unsigned long start      = (unsigned long)text_start & PAGE_MASK;
+  unsigned long num_bytes = rounded_up - start;
+  unsigned long page_num = (num_bytes >> PAGE_SHIFT);
+
   pfn_t pfn;
-  for (pfn = 0; pfn < page_num1; ++pfn) {
+  for (pfn = 0; pfn < page_num; ++pfn) {
+    set_pframe_used(pfn);
+  }
+
+  claim_vspace((void*)start, num_bytes);
+
+  for (pfn = page_num + 0x100; pfn < page_num + 0x200; ++pfn) {
     set_pframe_used(pfn);
   }
 }
@@ -344,10 +352,8 @@ static void setup_used(void) {
 
 static void initialize_mm_state(void)
 {
-  // pt_entry_t *l3_table, *l2_table, *l1_table;
-  pt_entry_t *l1_table;
-  // int i, j, k, l;
-  int i;
+  pt_entry_t l3_table[512], l2_table[512], l1_table[512];
+  int i, j, k, l;
   pfn_t pfn;
   // void *ptr;
 
@@ -364,42 +370,33 @@ static void initialize_mm_state(void)
   assert(start_info->nr_pt_frames >= 3);
 
   temp_tab              = l4_table + 512;
-  clear_block           = temp_tab + 512;
+  clear_block           = (pt_entry_t*)(temp_tab + 512);
 
-  temp_tab_pt_entry     = pre_initialization_get_pte(temp_tab);
-  clear_block_pt_entry  = pre_initialization_get_pte(clear_block);
-
-  machine_to_virtual(temp_tab);
-
+  temp_tab_pt_entry     = pre_initialization_get_pte((vaddr_t)temp_tab);
+  clear_block_pt_entry  = (maddr_t)pre_initialization_get_pte(clear_block);
 
   setup_used();
-/*
   // For each mapped page, either (a) mark it as used if it's important, or
   // (b) unmap it.
-  for(i = 0; i < 512; i++) {
+  for(i = 0; i < 256; i++) {
     if(ENTRY_PRESENT(l4_table[i])) {
-      printf("L3 table, entry %d, mfn %p\n", i, l4_table[i] & PAGE_MASK);
-      l3_table = temporarily_map_page_table(l4_table[i] & PAGE_MASK);
+      temporarily_map_page_table(ENTRY_MADDR(l4_table[i]));
+      memcpy((void*)l3_table, (void*)temp_tab, sizeof(l3_table));
+
       for(j = 0; j < 512; j++) {
         if(ENTRY_PRESENT(l3_table[j]) && !all_xen(i,j) ) {
-          for(k = 0; k < 512; k++) {
-            printf("L2: %d\n", k);
-            l2_table = temporarily_map_page_table(l3_table[j] & PAGE_MASK);
-            if(ENTRY_PRESENT(l2_table[k])) {
-              for(l = 0; l < 512; l++) {
-                l1_table = temporarily_map_page_table(l2_table[k] & PAGE_MASK);
-                if(ENTRY_PRESENT(l1_table[l])) {
-                  vaddr_t page = BUILD_ADDR(i, j, k, l, 0);
+          temporarily_map_page_table(ENTRY_MADDR(l3_table[j]));
+          memcpy((void*)l2_table, (void*)temp_tab, sizeof(l2_table));
 
-                  if( important_page(page) ) {
-                    pfn_t fn = machine_to_phys_mapping[l1_table[l]>>PAGE_SHIFT];
-                    set_pframe_used(fn);
-                  } else {
-                    mmu_update_t u;
-                    u.ptr = (l2_table[k] & PAGE_MASK) | (i * 8);
-                    u.val = 0;
-                    assert(HYPERVISOR_mmu_update(&u, 1, NULL, DOMID_SELF) >= 0);
-                  }
+          for(k = 0; k < 512; k++) {
+            if(ENTRY_PRESENT(l2_table[k])) {
+              temporarily_map_page_table(ENTRY_MADDR(l2_table[k]));
+              memcpy((void*)l1_table, (void*)temp_tab, sizeof(l1_table));
+
+              for(l = 0; l < 512; l++) {
+                if(ENTRY_PRESENT(l1_table[l])) {
+                    pfn_t fn = machine_to_phys_mapping[ENTRY_MFN(l1_table[l])];
+                    assert(MFN_IN_USE(phys_to_machine_mapping[fn]));
                 }
               }
             }
@@ -408,6 +405,5 @@ static void initialize_mm_state(void)
       }
     }
   }
-*/
   // wow that's a lot of close braces, but I think that's it!
 }

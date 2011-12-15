@@ -44,17 +44,18 @@ void osMemInit(void)
 void *osGetMBlocks(nat n)
 {
   void *start_attempt = next_request;
-  uint32_t size = n * MBLOCK_SIZE;
+  size_t size = n * MBLOCK_SIZE;
 
-  assert( ((uint32_t)start_attempt % MBLOCK_SIZE) == 0);
+  assert( ((uintptr_t)start_attempt % MBLOCK_SIZE) == 0);
   do {
     if( claim_vspace(next_request, size) ) {
       void *retval = next_request;
-      back_pages(retval, retval + size, PROT_READ | PROT_WRITE );
-      next_request += size;
+      back_pages(retval, (void*)((unsigned long)retval + size),
+	         PROT_READ | PROT_WRITE );
+      next_request = (void*)((unsigned long)next_request + size);
       return retval;
     }
-    next_request += MBLOCK_SIZE;
+    next_request = (void*)((unsigned long)next_request + MBLOCK_SIZE);
   } while(next_request != start_attempt);
 
   /* EEEK! We couldn't find memory to allocate! */

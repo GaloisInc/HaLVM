@@ -1,5 +1,5 @@
 name:           HALVMCore
-version:        1.0.0
+version:        1.1.0
 license:        BSD3
 author:         Adam Wick <awick@galois.com>, Andrew Tolmach <apt@galois.com>
 maintainer:     Adam Wick <awick@galois.com>
@@ -36,7 +36,7 @@ library
                     Rank2Types, FlexibleContexts, UndecidableInstances,
                     OverlappingInstances, Generics, ForeignFunctionInterface
   hs-source-dirs:   .
-  ghc-options:      -O2 -Wall
+  ghc-options:      -O2 -Wall -optc-mno-red-zone
   include-dirs:     cbits/include
   c-sources:        cbits/io.c,
                     cbits/start_info.c,

@@ -44,7 +44,7 @@ $(GHC_XENDIR_TARGET): $(PLATFORM_TOOLS) $(GHC_SRC_TARBALL)
 	  $(FIND) * -type d -exec $(MKDIR) -p ../xen-ghc/'{}' \; )
 	( cd ghc-xen-sparse &&						\
 	  $(FIND) * -type f -exec $(LN) -sf `pwd`/'{}' ../xen-ghc/'{}' \; )
-	$(ECHO) "SRC_HC_OPTS = -H32m -O2 -optc$(NO_STACK_PROTECTOR_OPT) $(SANITY_CHECKER_OPT) $(BYTECODE_INTERP_OPT) $(GHC_ARCH_OPT) -I$(TOPDIR)/xen-ghc/rts/xen/include -I$(TOPDIR)/xen-ghc/rts/xen/include/sys"> $@
+	$(ECHO) "SRC_HC_OPTS = -H32m -O2 -optc$(NO_STACK_PROTECTOR_OPT) $(SANITY_CHECKER_OPT) $(BYTECODE_INTERP_OPT) $(GHC_ARCH_OPT) $(GHC_ARCH_FLAGS) -I$(TOPDIR)/xen-ghc/rts/xen/include -I$(TOPDIR)/xen-ghc/rts/xen/include/sys"> $@
 	$(ECHO) "SRC_CC_OPTS = $(CFLAGS)" >> $@
 	test -n $(USE_GMP) && $(ECHO) "INTEGER_LIBRARY = $(INTEGER_LIBRARY)" >> $@
 	$(SED) -e 's!@ProjectVersion@!$(GHC_VER)!g' xen-ghc/compiler/ghc.cabal.in \

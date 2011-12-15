@@ -56,7 +56,7 @@
 # define VADDR_TO_PT_INDEX(x)   ((((vaddr_num_t)x) >> PAGE_SHIFT) & 1023)
 #endif
 
-#define VADDR_TO_PAGE_INDEX(x)  (((vaddr_num_t)x) & PAGE_MASK)
+#define VADDR_TO_PAGE_INDEX(x)  (((vaddr_num_t)x) & (PAGE_SIZE - 1))
 
 #define MFN_MASK                ((((pt_entry_t)1) << MFN_BITS) - 1)
 #define MADDR_MASK              (((pt_entry_t)(MFN_MASK)) << PAGE_SHIFT)

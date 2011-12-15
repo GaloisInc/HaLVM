@@ -83,7 +83,7 @@ unsetPortHandler p = do
 allocPort :: DomId -> Xen Port
 allocPort (DomId remoteDomain) = do 
   let (DomId domSelf) = domidSelf
-  res <- evtchn_alloc_unbound domSelf remoteDomain
+  res <- evtchn_alloc_unbound (fromIntegral domSelf) (fromIntegral remoteDomain)
   case () of
              () | res < 0    -> toError res
                 | res < 1024 -> return $ Port (fromIntegral res)
@@ -92,7 +92,7 @@ allocPort (DomId remoteDomain) = do
 -- |Bind another domain's port, which they've shared with us.
 bindRemotePort :: DomId -> Port -> Xen Port
 bindRemotePort (DomId remoteDomain) (Port remotePort) = do 
-  res <- evtchn_bind_interdomain remoteDomain remotePort
+  res <- evtchn_bind_interdomain (fromIntegral remoteDomain) (fromIntegral remotePort)
   case () of
              () | res < 0    -> toError res
                 | res < 1024 -> return $ Port (fromIntegral res)
@@ -122,7 +122,7 @@ closePort (Port p) = do
 -- The second is the domain it's allocating a port to.
 allocUnboundPort :: DomId -> DomId -> Xen Port
 allocUnboundPort (DomId fromDom) (DomId toDom) = do
-  res <- evtchn_alloc_unbound fromDom toDom
+  res <- evtchn_alloc_unbound (fromIntegral fromDom) (fromIntegral toDom)
   case () of
              () | res < 0    -> toError res
                 | res < 1024 -> return $ Port (fromIntegral res)
@@ -140,9 +140,9 @@ sendOnPort (Port p) = do
 -- given port disabled.
 withPortMasked :: Port -> IO a -> IO a
 withPortMasked (Port p) a = 
-    do mask_evtchn p
+    do mask_evtchn (fromIntegral p)
        r <- a
-       unmask_evtchn p
+       unmask_evtchn (fromIntegral p)
        return r
 
 -- |Bind a physical IRQ to an event channel. The arguments are the IRQ to
@@ -183,13 +183,13 @@ foreign import ccall unsafe "events.h unset_port_handler"
   unset_port_handler :: Port -> IO (StablePtr(IO ()))
 
 foreign import ccall unsafe "events.h evtchn_alloc_unbound" 
-  evtchn_alloc_unbound :: Word16 -> Word16 -> IO Int32
+  evtchn_alloc_unbound :: Word32 -> Word32 -> IO Int32
 
 foreign import ccall unsafe "events.h bind_virq" 
   bind_virq :: Word32 -> Word32 -> IO Int32
 
 foreign import ccall unsafe "events.h evtchn_bind_interdomain" 
-  evtchn_bind_interdomain :: Word16 -> Word10 -> IO Int32
+  evtchn_bind_interdomain :: Word32 -> Word32 -> IO Int32
 
 foreign import ccall unsafe "events.h evtchn_close" 
   evtchn_close :: Word10 -> IO Int32
@@ -198,10 +198,10 @@ foreign import ccall unsafe "events.h evtchn_send"
   evtchn_send :: Word10 -> IO Int32
 
 foreign import ccall unsafe "events.h mask_evtchn" 
-  mask_evtchn :: Word10 -> IO ()
+  mask_evtchn :: Word32 -> IO ()
 
 foreign import ccall unsafe "events.h unmask_evtchn" 
-  unmask_evtchn :: Word10 -> IO ()
+  unmask_evtchn :: Word32 -> IO ()
 
 foreign import ccall unsafe "events.h bind_pirq" 
   bind_pirq :: Word32 -> Bool -> IO Int32

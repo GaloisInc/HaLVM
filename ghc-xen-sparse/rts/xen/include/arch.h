@@ -15,7 +15,7 @@
 
 #define smp_processor_id() 0
 
-#define HALVM_STACK_SIZE 0x10000
+#define HALVM_STACK_SIZE 0x50000
 
 #ifndef __ASSEMBLY__
 #include <types.h>

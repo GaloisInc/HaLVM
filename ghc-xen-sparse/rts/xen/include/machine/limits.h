@@ -1,7 +1,12 @@
 #ifndef MACHINE_LIMITS_H
 #define MACHINE_LIMITS_H
 
+#if defined(__x86_64__)
+#define LONG_MAX 9223372036854775807L
+#else
 #define LONG_MAX 2147483647L
+#endif
+
 #define LONG_MIN (-LONG_MAX - 1L)
 
 #define LLONG_MAX 9223372036854775807LL

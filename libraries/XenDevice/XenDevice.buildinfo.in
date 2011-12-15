@@ -1,1 +1,3 @@
+ghc-options:  @ARCH_OPTION@
+cc-options:   @ARCH_OPTION@ @ARCH_FLAGS@ @NO_STACK_PROTECTOR_OPT@
 include-dirs:     @XEN_INCLUDE_DIRECTORY@

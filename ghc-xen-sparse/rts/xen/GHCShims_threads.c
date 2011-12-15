@@ -11,6 +11,7 @@
 #include "Schedule.h"
 #include "errno.h"
 #include "time.h"
+#include "limits.h"
 
 extern lnat getourtimeofday(void);
 extern void startSignalHandlers(Capability *cap);
@@ -27,7 +28,7 @@ static rtsBool wakeUpSleepingThreads(lnat ticks)
   rtsBool flag = rtsFalse;
 
   while(sleeping_queue != END_TSO_QUEUE && 
-        (int)(ticks - sleeping_queue->block_info.target) > 0)
+        (long)(ticks - sleeping_queue->block_info.target) > 0)
   {
     tso = sleeping_queue;
     sleeping_queue = tso->_link;
@@ -56,7 +57,7 @@ void awaitEvent(rtsBool wait)
         min  = sleeping_queue->block_info.target - ticks; /* in ticks */
         min *= RtsFlags.MiscFlags.tickInterval; /* in milliseconds */
       } else {
-        min = 0x7ffffff;
+        min = LONG_MAX;
       }
       block_domain(min);
     }

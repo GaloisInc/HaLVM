@@ -15,7 +15,6 @@ static unsigned char  clearing_space[4096] __attribute__ ((aligned (4096) ));
 static void          *page_tables_start = NULL;
 
 #define PTENTRYP(x) ((pt_entry_t*)(x))
-#define NUM(x) ((uintptr_t)(x))
 #define ptable_for_vaddr(x) PTENTRYP(NUM(page_tables_start) + \
                                      (4096 * VADDR_TO_L3PD_INDEX(NUM(x))))
 #define RM_PT_BITS(x) (x & 0xFFFFFFFFFFFFF000ULL)
@@ -95,10 +94,10 @@ static pt_entry_t pte_phys_address(vaddr_t ptr)
   // NOTE: The use of uint32_t is safe here because (0 <= pt_index <= 512)
 }
 
-static pt_entry_t *pte_virt_address(vaddr_t ptr)
+static pt_entry_t pte_virt_address(vaddr_t ptr)
 {
   pt_entry_t *ptable = ptable_for_vaddr(ptr);
-  return &(ptable[VADDR_TO_PT_INDEX(ptr)]);
+  return ptable[VADDR_TO_PT_INDEX(ptr)];
 }
 
 static void force_page_table_for_vaddr(vaddr_t);

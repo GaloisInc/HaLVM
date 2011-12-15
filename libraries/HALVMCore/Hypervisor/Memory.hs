@@ -19,7 +19,7 @@ module Hypervisor.Memory(
          , pageSize
          -- * Routines for creating, destroying, and modifying pages.
          , allocPage
-         , AllocProt(..)
+         , AllocProt(..), defaultProt
          , allocPageProt
          , freePage
          , withPage
@@ -67,12 +67,15 @@ import Data.Int
 import Data.IORef
 import Data.Word
 import Foreign.Ptr
+import Foreign.C.Types (CSize)
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
 import Foreign.Storable
-import GHC.IOBase(unsafePerformIO)
+import GHC.IO(unsafePerformIO)
 import Hypervisor.Basics
+#if !defined(CONFIG_X86_64)
 import Hypervisor.Privileged
+#endif
 import Data.Generics.Instances()
 import Data.Generics.Basics(Data,Typeable)
 import Numeric
@@ -84,14 +87,14 @@ import Numeric
 -- |Pseudo-physical frame numbers. These frame numbers have very little to
 -- do with the machine address or the virtual address, but are used in some
 -- Xen hypercalls.
-newtype PFN = PFN Word32
+newtype PFN = PFN Word
 
 _ignore :: Int
 _ignore = undefined PFN
 
 -- |Machine frame numbers. These frame numbers identify a phyical 4096-byte
 -- frame on the underlying hardware.
-newtype MFN = MFN Word32
+newtype MFN = MFN Word
  deriving (Eq, Ord, Num, Read, Data, Typeable)
 
 instance Show MFN where
@@ -110,13 +113,13 @@ instance Bits MFN where
   complement (MFN x)        = MFN $ complement x
   bit x                     = MFN $ bit x
   (MFN x) `testBit` y       = testBit x y
-  bitSize _                 = 32
+  bitSize _                 = bitSize (0 :: Word)
   isSigned _                = False
 
 -- NOTE: we could derive this
 instance Storable MFN where
-  sizeOf _         = 4
-  alignment _      = 1
+  sizeOf _         = sizeOf (0 :: Word)
+  alignment _      = alignment (0 :: Word)
   peek ptr         = MFN `fmap` peek (castPtr ptr)
   poke ptr (MFN v) = poke (castPtr ptr) v
 
@@ -139,18 +142,18 @@ mptrToInteger (MPtr x) = fromIntegral x
 -- |Convert a 32-bit word, from some other source, into an MFN. Manufacturing
 -- your own MFNs is dangerous, so make sure you know what you're doing if 
 -- you use this function.
-toMFN :: Word32 -> MFN
+toMFN :: Word -> MFN
 toMFN = MFN
 
 -- | This is used when passing MFNs to some primitives.
 -- Eventually, we should change the primitives to take MFNs directly.
-fromMFN :: MFN -> Word32
+fromMFN :: MFN -> Word
 fromMFN (MFN x) = x
 
 -- |Convert a machine frame number to the initial machine address within the
 -- block.
 mfnToMPtr :: MFN -> MPtr a
-mfnToMPtr (MFN f) = MPtr ((fromIntegral f :: Word64) `shiftL` 12)
+mfnToMPtr (MFN f) = MPtr (fromIntegral f `shiftL` 12)
 
 -- |Convert a machine frame number to the address at which it is mapped in
 -- the address space. Note that, obviously, if the page isn't currently 
@@ -259,7 +262,7 @@ setPageWritable x val (Just (DomId dom)) = do
 --   Use level '3' for PAE base tables
 markAsPageTable :: Int -> VPtr a -> DomId -> Xen ()
 markAsPageTable l addr (DomId dom) 
-  | (l >= 1) && (l <= 3) = do
+  | (l >= 1) && (l <= 4) = do
      res <- mark_as_page_table l addr dom
      case res of
        0 -> return ()
@@ -269,7 +272,7 @@ markAsPageTable l addr (DomId dom)
 
 markAsPageTableMFN :: Int -> MFN -> DomId -> Xen ()
 markAsPageTableMFN l mfn (DomId dom) 
-  | (l >= 1) && (l <= 3) = do
+  | (l >= 1) && (l <= 4) = do
      res <- mark_as_page_table_mfn l mfn dom
      case res of
        0 -> return ()
@@ -289,6 +292,7 @@ newtype GrantRef = GrantRef Word16
 num_grant_entries :: Num a => a
 num_grant_entries = 2048
 
+{-# NOINLINE unusedGrantRefs #-}
 unusedGrantRefs :: IORef [Word16] 
 unusedGrantRefs = unsafePerformIO $ newIORef [8..num_grant_entries-1]
 
@@ -363,7 +367,7 @@ grantRefToAddress (GrantRef gr) = do
    
 -- |The type of a grant handle, or (in other words), the handle to a
 -- grant from another domain that we've mapped.
-newtype GrantHandle = GrantHandle Word16
+newtype GrantHandle = GrantHandle Word32
   deriving (Eq, Ord, Show, Read)	
 
 -- |Map another domain's grant into our own address space. The return
@@ -403,7 +407,7 @@ mapGrants (DomId remoteDomain) refs writable = do
                      mapM_ (`unmapGrant` Nothing) rest'
     return $! (hndl:rest')
 
-mapGrant' :: VPtr a -> Word32 -> Word32 -> Bool -> Xen (VPtr a, GrantHandle)
+mapGrant' :: VPtr a -> Word16 -> Word32 -> Bool -> Xen (VPtr a, GrantHandle)
 mapGrant' vaddr dom gref writable = do
   res <- gnttab_map_grant_ref vaddr dom gref writable
   case res of
@@ -515,17 +519,56 @@ foreign import ccall unsafe "gnttab.h gnttab_grant_copy"
 
 -- !Lookup the MFN that a given address is mapped to in a foreign
 -- domain's address-space.
+#if defined(CONFIG_X86_64)
+translateForeignAddress :: DomId -> VCPU -> Ptr a -> Xen MFN
+translateForeignAddress _did _vcpu _remAddr = do
+  fail "translateForeignAddress: not implemented"
+{-
+  ctxt <- domainRegisterContext did vcpu
+  let l4 = fromIntegral (cr3 (ctrlreg ctxt))
+  l3 <- lookupPT l4 (ptIndex 4)
+  l2 <- lookupPT l3 (ptIndex 3)
+  l1 <- lookupPT l2 (ptIndex 2)
+  mfn <- lookupPT l1 (ptIndex 1)
+
+  return (MFN mfn)
+
+
+  where
+  ra :: Word
+  ra = fromIntegral $ ptrToIntPtr remAddr
+
+  ptIndex l = ra `shiftR` (3 + l * 9)
+
+  lookupPT maddr i = do
+    pt <- mapForeignMachineFramesReadOnly did [MFN (0xFFFFFFFFF .&. (maddr `shiftR` 12))]
+    pte <- readPageEnt pt i
+    unmapForeignMachineFrames pt 4096
+    if (pte .&. 1) == 0
+      then xThrow EINVAL
+      else return (pte `shiftR` 12)
+
+  readPageEnt :: VPtr a -> Int -> IO Word64
+  readPageEnt base shft = do 
+    let base'    = fromIntegral (ptrToIntPtr base)
+        ent_addr = base' + 8 * shft
+    peek (intPtrToPtr (fromIntegral ent_addr))
+-}
+#else
 translateForeignAddress :: DomId -> VCPU -> Ptr a -> Xen MFN
 translateForeignAddress did vcpu remAddr = do
   ctxt <- domainRegisterContext did vcpu
-  lookupPD ((cr3 . ctrlreg) ctxt)
+  lookupPD $ fromIntegral ((cr3 . ctrlreg) ctxt)
  where
   ra :: Word32
   ra = fromIntegral $ ptrToIntPtr remAddr
   --
+  makeMFN :: Word32 -> MFN
+  makeMFN = MFN . fromIntegral
+  --
   lookupPD :: Word32 -> Xen MFN
   lookupPD pdpe = do
-    pd <- mapForeignMachineFramesReadOnly did [MFN $ pdpe `shiftR` 12]
+    pd <- mapForeignMachineFramesReadOnly did [makeMFN $ pdpe `shiftR` 12]
     pde <- readPageEnt pd 22
     unmapForeignMachineFrames pd 4096
     lookupPT pde
@@ -534,18 +577,19 @@ translateForeignAddress did vcpu remAddr = do
   lookupPT pde
     | pde .&. 1 == 0 = xThrow EINVAL
     | otherwise = do
-        pt <- mapForeignMachineFramesReadOnly did [MFN $ pde `shiftR` 12]
+        pt <- mapForeignMachineFramesReadOnly did [makeMFN $ pde `shiftR` 12]
         pte <- readPageEnt pt 12
         unmapForeignMachineFrames pt 4096
         if (pte .&. 1) == 0
            then xThrow EINVAL
-           else return $ MFN (pte `shiftR` 12)
+           else return $ makeMFN (pte `shiftR` 12)
   --
   readPageEnt :: VPtr a -> Int -> IO Word32
   readPageEnt base shft = do 
     let base'    = fromIntegral (ptrToIntPtr base)
         ent_addr = base' + 4 * ((ra `shiftR` shft) .&. 0x3ff)
     peek (intPtrToPtr (fromIntegral ent_addr))
+#endif
 
 -- |Map a set of foreign machine frame numbers into the address space read-only,
 -- returning the new address.
@@ -593,7 +637,7 @@ machineToVirtual (MPtr x) = machine_to_virtual x >>= \ x'->
 -- the returned addresses will cause a page fault.
 reserveVirtualFrames :: Word32 -> Xen (VPtr a)
 reserveVirtualFrames num = do 
-  va <- claim_vspace nullPtr (num * 4096)
+  va <- claim_vspace nullPtr (fromIntegral num * 4096)
   if va == nullPtr then xThrow ENOMEM else return $ va
 
 -- |Unreserve a previously reserved set of virtual frames, so
@@ -624,7 +668,7 @@ addressMapped addr = (/= 0) `fmap` address_mapped addr
 
 -- Functions from mm.h
 foreign import ccall unsafe "mm.h claim_vspace" 
-  claim_vspace :: C_VADDR_T -> Word32 -> IO C_VADDR_T
+  claim_vspace :: C_VADDR_T -> CSize -> IO C_VADDR_T
 foreign import ccall unsafe "mm.h disclaim_vspace" 
   disclaim_vspace :: C_VADDR_T -> C_VADDR_T -> IO ()
 foreign import ccall unsafe "mm.h alloc_page" 
@@ -678,6 +722,6 @@ foreign import ccall unsafe "gnttab.h gnttab_transfer_page_to_dom"
 foreign import ccall unsafe "gnttab.h gnttab_address_of" 
   gnttab_address_of :: Word16 -> IO (VPtr a)
 foreign import ccall unsafe "gnttab.h gnttab_map_grant_ref" 
-  gnttab_map_grant_ref :: VPtr a -> Word32 -> Word32 -> Bool -> IO Int32
+  gnttab_map_grant_ref :: VPtr a -> Word16 -> Word32 -> Bool -> IO Int32
 foreign import ccall unsafe "gnttab.h gnttab_unmap_grant_ref" 
-  gnttab_unmap_grant_ref :: VPtr a -> Word16 -> IO Int32
+  gnttab_unmap_grant_ref :: VPtr a -> Word32 -> IO Int32

@@ -42,7 +42,7 @@ static pfn_t     last_found_pfn             = 0;
 //   maddr_t virtual_to_machine(vaddr_t);
 //   vaddr_t *machine_to_virtual(maddr_t);
 //   static pt_entry_t pte_phys_address(vaddr_t);
-//   static pt_entry_t *pte_virt_address(vaddr_t);
+//   static pt_entry_t pte_virt_address(vaddr_t);
 //   static void force_page_table_for_vaddr(vaddr_t);
 //   static void initialize_mm_state();
 //
@@ -51,7 +51,7 @@ static pfn_t     last_found_pfn             = 0;
 // and that the physical frame handling routines are functional.
 //
 #if defined(__x86_64__)
-# define MFN_IN_USE_BIT     0x8000000000000000
+# define MFN_IN_USE_BIT     0x8000000000000000UL
 #else
 # define MFN_IN_USE_BIT     0x80000000
 #endif
@@ -59,6 +59,7 @@ static pfn_t     last_found_pfn             = 0;
 #define MFN_IN_USE(x)       (((mfn_t)x) & MFN_IN_USE_BIT)
 #define SET_MFN_IN_USE(x)   ((x) | MFN_IN_USE_BIT) 
 #define CLEAR_MFN_IN_USE(x) ((x) & (~MFN_IN_USE_BIT))
+#define NUM(x) 	            ((uintptr_t)(x))
 
 static inline void set_pframe_used(pfn_t pfn)
 {
@@ -85,8 +86,9 @@ int set_page_writable(vaddr_t addr, int write, domid_t dom)
   mmu_update_t request;
   pt_entry_t val;
 
+  memset(&request, 0, sizeof(mmu_update_t));
   assert(PAGE_ALIGNED((vaddr_num_t)addr));
-  val = *pte_virt_address(addr);
+  val = pte_virt_address(addr);
   if(write) val = val | PTE_RW; else val = val & (~PTE_RW);
   request.ptr = pte_phys_address(addr);
   request.val = val;
@@ -99,7 +101,7 @@ int get_page_protection(vaddr_t ptr)
   int res = 0;
   
   assert(PAGE_ALIGNED((vaddr_num_t)ptr));
-  val = *pte_virt_address(ptr);
+  val = pte_virt_address(ptr);
 
   if(ENTRY_PRESENT(val))
     res |= PROT_READ;
@@ -230,18 +232,19 @@ static void claim_addresses(void *start, void *end)
 
   // Force the page table to exist, because we're probably about to use
   // this space.
-  for(ptr = start; ptr < end; ptr = (void*)(NUM(ptr) + PAGE_SIZE))
+  for(ptr = start; ptr < end; ptr = (void*)(NUM(ptr) + PAGE_SIZE)) {
     force_page_table_for_vaddr(ptr);
+  }
 
   // Now do the updates.
   ptr = start; 
   while(num_updates > 0) {
     int updates_this_time = (num_updates > 16) ? 16 : num_updates;
-    mmu_update_t *updates = alloca(updates_this_time * sizeof(mmu_update_t));
+    mmu_update_t updates[16];
     int res, i;
 
     for(i = 0; i < updates_this_time; i++) {
-      pt_entry_t curval = *pte_virt_address(ptr);
+      pt_entry_t curval = pte_virt_address(ptr);
       updates[i].ptr = pte_phys_address(ptr);
       updates[i].val = curval | PTE_CLAIMED;
       ptr = (void*)(NUM(ptr) + PAGE_SIZE);
@@ -262,11 +265,11 @@ static void disclaim_addresses(void *start, void *end)
   ptr = start; 
   while(num_updates > 0) {
     int updates_this_time = (num_updates > 16) ? 16 : num_updates; 
-    mmu_update_t *updates = alloca(updates_this_time * sizeof(mmu_update_t));
+    mmu_update_t updates[16];
     int res, i;
 
     for(i = 0; i < updates_this_time; i++) {
-      pt_entry_t curval = *pte_virt_address(ptr);
+      pt_entry_t curval = pte_virt_address(ptr);
       updates[i].ptr = pte_phys_address(ptr);
       updates[i].val = curval & (~PTE_CLAIMED);
       ptr = (void*)(NUM(ptr) + PAGE_SIZE);
@@ -401,7 +404,8 @@ static void increase_memory_balloon(void)
   if(res <= 0) pabort("MM: Couldn't increase reservation: %d\n", res);
   current_memory_reservation += res;
   printf("MM: Increased memory reservation to %lld of %lld MB.\n",
-         current_memory_reservation / 256, maximum_memory_reservation / 256);
+         (long long)current_memory_reservation / 256,
+	 (long long)maximum_memory_reservation / 256);
 }
 
 static void reset_memory_balloon(void)

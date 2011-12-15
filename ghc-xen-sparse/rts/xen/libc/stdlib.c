@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <machine/limits.h>
 
 char *getenv(const char *name __attribute__((unused)))
 {
@@ -139,8 +140,6 @@ long int strtol(const char *nptr, char **endptr, int base)
    * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
    * SUCH DAMAGE.
    */
-#define LONG_MAX    0x7fffffffL /* max value for a long */
-#define LONG_MIN    (-0x7fffffffL-1)    /* min value for a long */
 #define isalpha(c)  (((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')))
 #define isupper(c)  ((c >= 'A') && (c <= 'Z'))
 #define isspace(c)  ((c == ' ') || (c == '\n') || (c == '\t'))

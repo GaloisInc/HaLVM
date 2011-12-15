@@ -21,10 +21,11 @@
 
 #if defined(__x86_64__)
 typedef uint64_t mfn_t; // machine frame number
+typedef uint64_t pfn_t; // pseudo-physical frame number
 #else
 typedef uint32_t mfn_t;
-#endif
 typedef uint32_t pfn_t; // pseudo-physical frame number
+#endif
 #if defined(CONFIG_X86_PAE) || defined(__x86_64__)
 typedef uint64_t maddr_t; // machine address
 #else
