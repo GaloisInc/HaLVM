@@ -53,12 +53,11 @@ module Hypervisor.Privileged(
 
 import Control.Exception(assert)
 import Data.Bits
-import Data.List
 import Data.Maybe(fromMaybe)
 import Data.Word
 import Data.Word10
 import Foreign.C.String
-import Foreign.C.Types(CChar)
+import Foreign.C.Types(CChar, CULong)
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
 import Foreign.Ptr
@@ -82,9 +81,10 @@ data DomainInfo = DomainInfo { domain                   :: DomId
                              , cpu                      :: Word8
 #endif
                              , shutdown_code            :: Word8
-                             , tot_pages                :: Word32
-                             , max_pages                :: Word32
-                             , shared_info_frame        :: Word32
+                             , tot_pages                :: Word64
+                             , max_pages                :: Word64
+                             , shr_pages                :: Word64
+                             , shared_info_frame        :: Word64
                              , cpu_time                 :: Word64
                              , nr_online_vcpus          :: Word32
                              , max_vcpu_id              :: Word32
@@ -97,92 +97,234 @@ data DomainInfo = DomainInfo { domain                   :: DomId
 data HostPhysicalInfo = HostPhysicalInfo {
     threads_per_core :: Word32
   , cores_per_socket :: Word32
-  , sockets_per_node :: Word32
-  , num_nodes        :: Word32
+  , num_cpus         :: Word32
+  , max_node_id      :: Word32
   , cpu_khz          :: Word32
   , total_pages      :: Word64
   , free_pages       :: Word64
   , scrub_pages      :: Word64
-  , hw_capability    :: [Word8]
+  , hw_capability    :: [Word32]
+  , max_cpu_id       :: Word32
+#if XEN_SYSCTL_INTERFACE_VERSION < 0x00000008
+  , cpu_to_node      :: Ptr Word32
+#endif
+  , capabilities     :: Word32
   }
 
 -- |The processor state of a (presumably non-running) VM. The 'Context' is
 -- used in the sense of 'a context switch'.
+#if defined(CONFIG_X86_64)
+
+data Arch = Arch
+    { syscall_callback_eip   :: CULong
+    , fs_base                :: Word64
+    , gs_base_kernel         :: Word64
+    , gs_base_user           :: Word64
+    , user_regs              :: UserRegs
+    }
+  deriving (Show, Eq)
+
+peekArchSpecific :: Ptr RegisterContext -> IO Arch
+peekArchSpecific ptr = do
+    user_regs              <- (#peek vcpu_guest_context_t, user_regs           ) ptr
+    syscall_callback_eip   <- (#peek vcpu_guest_context_t, syscall_callback_eip) ptr
+    fs_base                <- (#peek vcpu_guest_context_t, fs_base             ) ptr
+    gs_base_kernel         <- (#peek vcpu_guest_context_t, gs_base_kernel      ) ptr
+    gs_base_user           <- (#peek vcpu_guest_context_t, gs_base_user        ) ptr
+    return Arch {..}
+
+pokeArchSpecific :: Ptr RegisterContext -> Arch -> IO ()
+pokeArchSpecific ptr arch = do
+    (#poke vcpu_guest_context_t, user_regs           ) ptr (user_regs            arch)
+    (#poke vcpu_guest_context_t, syscall_callback_eip) ptr (syscall_callback_eip arch)
+    (#poke vcpu_guest_context_t, fs_base             ) ptr (fs_base              arch)
+    (#poke vcpu_guest_context_t, gs_base_kernel      ) ptr (gs_base_kernel       arch)
+    (#poke vcpu_guest_context_t, gs_base_user        ) ptr (gs_base_user         arch)
+
+-- These fields are ordered by size and not struct order
+data UserRegs = UserRegs { r15, r14, r13, r12, rbp, rbx, r11, r10, r9, r8, rax, rcx, rdx, rsi, rdi
+                        , rip, rflags, rsp :: Word64
+                        , error_code, entry_vector :: Word32
+                        , cs, ss, es, ds, fs, gs :: Word16
+                        , saved_upcall_mask :: Word8
+                         }
+  deriving (Show, Eq)
+
+instance Storable UserRegs where
+  sizeOf _ = (#size cpu_user_regs_t)
+  alignment _ = 8
+  peek ptr = do 
+    r15 <- (#peek cpu_user_regs_t, r15) ptr
+    r14 <- (#peek cpu_user_regs_t, r14) ptr
+    r13 <- (#peek cpu_user_regs_t, r13) ptr
+    r12 <- (#peek cpu_user_regs_t, r12) ptr
+    rbp <- (#peek cpu_user_regs_t, rbp) ptr
+    rbx <- (#peek cpu_user_regs_t, rbx) ptr
+    r11 <- (#peek cpu_user_regs_t, r11) ptr
+    r10 <- (#peek cpu_user_regs_t, r10) ptr
+    r9  <- (#peek cpu_user_regs_t, r9) ptr
+    r8  <- (#peek cpu_user_regs_t, r8) ptr
+    rax <- (#peek cpu_user_regs_t, rax) ptr
+    rcx <- (#peek cpu_user_regs_t, rcx) ptr
+    rdx <- (#peek cpu_user_regs_t, rdx) ptr
+    rsi <- (#peek cpu_user_regs_t, rsi) ptr
+    rdi <- (#peek cpu_user_regs_t, rdi) ptr
+    error_code <- (#peek cpu_user_regs_t, error_code) ptr
+    entry_vector <- (#peek cpu_user_regs_t, entry_vector) ptr
+    rip <- (#peek cpu_user_regs_t, rip) ptr
+    cs <- (#peek cpu_user_regs_t, cs) ptr
+    saved_upcall_mask <- (#peek cpu_user_regs_t, saved_upcall_mask) ptr
+    rflags <- (#peek cpu_user_regs_t, rflags) ptr
+    rsp <- (#peek cpu_user_regs_t, rsp) ptr
+    ss <- (#peek cpu_user_regs_t, ss) ptr
+    es <- (#peek cpu_user_regs_t, es) ptr
+    ds <- (#peek cpu_user_regs_t, ds) ptr
+    fs <- (#peek cpu_user_regs_t, fs) ptr
+    gs <- (#peek cpu_user_regs_t, gs) ptr
+    return $ UserRegs {..}
+  poke ptr ur = do 
+    (#poke cpu_user_regs_t, r15) ptr (r15 ur)
+    (#poke cpu_user_regs_t, r14) ptr (r14 ur)
+    (#poke cpu_user_regs_t, r13) ptr (r13 ur)
+    (#poke cpu_user_regs_t, r12) ptr (r12 ur)
+    (#poke cpu_user_regs_t, rbp) ptr (rbp ur)
+    (#poke cpu_user_regs_t, rbx) ptr (rbx ur)
+    (#poke cpu_user_regs_t, r11) ptr (r11 ur)
+    (#poke cpu_user_regs_t, r10) ptr (r10 ur)
+    (#poke cpu_user_regs_t, r9) ptr (r9 ur)
+    (#poke cpu_user_regs_t, r8) ptr (r8 ur)
+    (#poke cpu_user_regs_t, rax) ptr (rax ur)
+    (#poke cpu_user_regs_t, rcx) ptr (rcx ur)
+    (#poke cpu_user_regs_t, rdx) ptr (rdx ur)
+    (#poke cpu_user_regs_t, rsi) ptr (rsi ur)
+    (#poke cpu_user_regs_t, rdi) ptr (rdi ur)
+    (#poke cpu_user_regs_t, error_code) ptr (error_code ur)
+    (#poke cpu_user_regs_t, entry_vector) ptr (entry_vector ur)
+    (#poke cpu_user_regs_t, rip) ptr (rip ur)
+    (#poke cpu_user_regs_t, cs) ptr (cs ur)
+    (#poke cpu_user_regs_t, saved_upcall_mask) ptr (saved_upcall_mask ur)
+    (#poke cpu_user_regs_t, rflags) ptr (rflags ur)
+    (#poke cpu_user_regs_t, rsp) ptr (rsp ur)
+    (#poke cpu_user_regs_t, ss) ptr (ss ur)
+    (#poke cpu_user_regs_t, es) ptr (es ur)
+    (#poke cpu_user_regs_t, ds) ptr (ds ur)
+    (#poke cpu_user_regs_t, fs) ptr (fs ur)
+    (#poke cpu_user_regs_t, gs) ptr (gs ur)
+
+
+#else
+data Arch = Arch
+    { event_callback_cs      :: CULong
+    , failsafe_callback_cs   :: CULong
+    , user_regs :: UserRegs
+    }
+  deriving (Show, Eq)
+
+peekArchSpecific :: Ptr RegisterContext -> IO Arch
+peekArchSpecific ptr = do
+  event_callback_cs    <- (#peek vcpu_guest_context_t, event_callback_cs) ptr
+  failsafe_callback_cs <- (#peek vcpu_guest_context_t, failsafe_callback_cs) ptr
+  user_regs            <- (#peek vcpu_guest_context_t, user_regs) ptr
+  return Arch {..}
+
+pokeArchSpecific :: Ptr RegisterContext -> Arch -> IO ()
+pokeArchSpecific ptr arch = do
+  (#poke vcpu_guest_context_t, event_callback_cs) ptr (event_callback_cs arch)
+  (#poke vcpu_guest_context_t, failsafe_callback_cs) ptr (failsafe_callback_cs arch)
+  (#poke vcpu_guest_context_t, user_regs) ptr (user_regs arch)
+
+-- These fields are ordered by size and not struct order
+data UserRegs = UserRegs
+                         { ebx, ecx, edx, esi, edi, ebp, eax, eip, eflags, esp :: Word32
+                        , error_code, entry_vector, cs, ss, es, ds, fs, gs :: Word16
+                        , saved_upcall_mask    :: Word8
+                         }
+  deriving (Show, Eq)
+
+instance Storable UserRegs where
+  sizeOf _ = (#size cpu_user_regs_t)
+  alignment _ = 1
+  peek ptr = do 
+    bx <- (#peek cpu_user_regs_t, ebx) ptr
+    cx <- (#peek cpu_user_regs_t, ecx) ptr
+    dx <- (#peek cpu_user_regs_t, edx) ptr
+    si <- (#peek cpu_user_regs_t, esi) ptr
+    di <- (#peek cpu_user_regs_t, edi) ptr
+    bp <- (#peek cpu_user_regs_t, ebp) ptr
+    ax <- (#peek cpu_user_regs_t, eax) ptr
+    ec <- (#peek cpu_user_regs_t, error_code) ptr
+    ev <- (#peek cpu_user_regs_t, entry_vector) ptr
+    ip <- (#peek cpu_user_regs_t, eip) ptr
+    ma <- (#peek cpu_user_regs_t, saved_upcall_mask) ptr
+    fl <- (#peek cpu_user_regs_t, eflags) ptr
+    sp <- (#peek cpu_user_regs_t, esp) ptr
+    sc <- (#peek cpu_user_regs_t, cs) ptr
+    sg <- (#peek cpu_user_regs_t, ss) ptr
+    se <- (#peek cpu_user_regs_t, es) ptr
+    sd <- (#peek cpu_user_regs_t, ds) ptr
+    sf <- (#peek cpu_user_regs_t, fs) ptr
+    sh <- (#peek cpu_user_regs_t, gs) ptr
+    return $ UserRegs bx cx dx si di bp ax ip fl sp ec ev sc sg se sd sf sh ma 
+  poke ptr ur = do 
+    (#poke cpu_user_regs_t, ebx) ptr (ebx ur)
+    (#poke cpu_user_regs_t, ecx) ptr (ecx ur)
+    (#poke cpu_user_regs_t, edx) ptr (edx ur)
+    (#poke cpu_user_regs_t, esi) ptr (esi ur)
+    (#poke cpu_user_regs_t, edi) ptr (edi ur)
+    (#poke cpu_user_regs_t, ebp) ptr (ebp ur)
+    (#poke cpu_user_regs_t, eax) ptr (eax ur)
+    (#poke cpu_user_regs_t, error_code) ptr (error_code ur)
+    (#poke cpu_user_regs_t, entry_vector) ptr (entry_vector ur)
+    (#poke cpu_user_regs_t, eip) ptr (eip ur)
+    (#poke cpu_user_regs_t, cs) ptr (cs ur)
+    (#poke cpu_user_regs_t, saved_upcall_mask) ptr (saved_upcall_mask ur)
+    (#poke cpu_user_regs_t, eflags) ptr (eflags ur)
+    (#poke cpu_user_regs_t, esp) ptr (esp ur)
+    (#poke cpu_user_regs_t, ss) ptr (ss ur)
+    (#poke cpu_user_regs_t, es) ptr (es ur)
+    (#poke cpu_user_regs_t, ds) ptr (ds ur)
+    (#poke cpu_user_regs_t, fs) ptr (fs ur)
+    (#poke cpu_user_regs_t, gs) ptr (gs ur)
+#endif
+
 data RegisterContext = RegisterContext 
     { fpu_ctxt               :: [Word8]
       -- ^The FPU context is exactly equivalent to the structure used for
       -- the FXSAVE instruction on Intel hardware. See also the FXSAVE 
       -- instruction in the Intel 64 and IA-32 Architectures Software
       -- Developer's Manual, Volume 2A.
-    , cpu_flags              :: Word32
-    , user_regs              :: UserRegs
+    , cpu_flags              :: CULong
+    , arch_specific          :: Arch
     , trap_ctxt              :: [TrapInfo]
-    , ldt_base               :: Word32
-    , ldt_ents               :: Word32
-    , gdt_frames             :: [Word32]
-    , gdt_ents               :: Word32
-    , kernel_ss              :: Word32
-    , kernel_sp              :: Word32
+    , ldt_base               :: CULong
+    , ldt_ents               :: CULong
+    , gdt_frames             :: [CULong]
+    , gdt_ents               :: CULong
+    , kernel_ss              :: CULong
+    , kernel_sp              :: CULong
     , ctrlreg                :: ControlRegisterSet 
     , debugreg               :: DebugRegisterSet
-    , event_callback_cs      :: Word32
-    , event_callback_eip     :: Word32
-    , failsafe_callback_cs   :: Word32
-    , failsafe_callback_eip  :: Word32
-    , vm_assist              :: Word32
+    , event_callback_eip     :: CULong
+    , failsafe_callback_eip  :: CULong
+    , vm_assist              :: CULong
     }
   deriving (Show, Eq)
 
-data ControlRegisterSet = ControlRegisterSet { cr0 :: Word32
-                                             , cr1 :: Word32
-                                             , cr2 :: Word32
-                                             , cr3 :: Word32
-                                             , cr4 :: Word32
-                                             , cr5 :: Word32
-                                             , cr6 :: Word32
-                                             , cr7 :: Word32
-                                             }
+
+data ControlRegisterSet = ControlRegisterSet { cr0, cr1, cr2, cr3, cr4, cr5, cr6, cr7 :: CULong }
   deriving (Show, Eq)
 
-data DebugRegisterSet = DebugRegisterSet { dr0 :: Word32
-                                         , dr1 :: Word32
-                                         , dr2 :: Word32
-                                         , dr3 :: Word32
-                                         , dr4 :: Word32
-                                         , dr5 :: Word32
-                                         , dr6 :: Word32
-                                         , dr7 :: Word32
-                                         }
+data DebugRegisterSet = DebugRegisterSet { dr0, dr1, dr2, dr3, dr4, dr5, dr6, dr7 :: CULong }
   deriving (Show, Eq)
 
 data TrapInfo = TrapInfo { vector       :: Word8
                          , trap_flags   :: Word8
                          , trap_cs      :: Word16
-                         , address      :: Word32
+                         , address      :: CULong
                          }
   deriving (Show, Eq)
 
-data UserRegs = UserRegs { ebx                  :: Word32
-                         , ecx                  :: Word32
-                         , edx                  :: Word32
-                         , esi                  :: Word32
-                         , edi                  :: Word32
-                         , ebp                  :: Word32
-                         , eax                  :: Word32
-                         , error_code           :: Word16
-                         , entry_vector         :: Word16
-                         , eip                  :: Word32
-                         , cs                   :: Word16
-                         , saved_upcall_mask    :: Word8
-                         , eflags               :: Word32
-                         , esp                  :: Word32
-                         , ss                   :: Word16
-                         , es                   :: Word16
-                         , ds                   :: Word16
-                         , fs                   :: Word16
-                         , gs                   :: Word16
-                         }
-  deriving (Show, Eq)
+
 
 data PageFlag = PagePinned | Lvl1PageTable | Lvl2PageTable 
               | Lvl3PageTable | Lvl4PageTable | PageInvalid
@@ -262,13 +404,13 @@ instance PrivilegedOpInfo CreateData DomId where
 #ifdef SPLIT_PRIVILEGED
   pushRequestInfo (CreateData ssid hndl _) ptr = do
     (#poke xen_domctl_t, u.createdomain.ssidref) ptr ssid
-    pokeArray (ptr `plusPtr` (#offset xen_domctl_t, u.createdomain.handle)) hndl
+    pokeArray ((#ptr xen_domctl_t, u.createdomain.handle) ptr) hndl
   pullResponseInfo ptr = DomId `fmap` (#peek xen_domctl_t, domain) ptr
 #else
   pushRequestInfo (CreateData ssid handle (DomId dom)) ptr = do
     (#poke dom0_op_t, u.createdomain.domain) ptr dom
     (#poke dom0_op_t, u.createdomain.ssidref) ptr ssid
-    pokeArray (ptr `plusPtr` (#offset dom0_op_t, u.createdomain.handle)) handle
+    pokeArray ((#ptr dom0_op_t, u.createdomain.handle) ptr) handle
   pullResponseInfo p = DomId `fmap` (#peek dom0_op_t, u.createdomain.domain) p
 #endif
 
@@ -332,11 +474,11 @@ instance PrivilegedOpInfo ReadConData (Word32, Word32) where
 instance PrivilegedOpInfo DomInfoData DomainInfo where
 #ifdef SPLIT_PRIVILEGED
   pushRequestInfo (DomInfoData _) _ = return ()
-  pullResponseInfo ptr = peekByteOff ptr (#offset xen_domctl_t, u.getdomaininfo)
+  pullResponseInfo ptr = (#peek xen_domctl_t, u.getdomaininfo) ptr
 #else
   pushRequestInfo (DomInfoData (DomId dom)) ptr =
     (#poke dom0_op_t, u.getdomaininfo.domain) ptr dom
-  pullResponseInfo ptr = peekByteOff ptr (#offset dom0_op_t, u.getdomaininfo)
+  pullResponseInfo ptr = (#peek dom0_op_t, u.getdomaininfo) ptr
 #endif
 
 instance PrivilegedOpInfo GetRegContData () where
@@ -388,10 +530,10 @@ instance PrivilegedOpInfo HyperInitData () where
 instance PrivilegedOpInfo SetDomHndlData () where
   pushRequestInfo (SetDomHndlData (DomId _dom) h) ptr = do
 #ifdef SPLIT_PRIVILEGED
-    pokeArray (ptr `plusPtr` (#offset xen_domctl_t,u.setdomainhandle.handle)) h
+    pokeArray ((#ptr xen_domctl_t,u.setdomainhandle.handle) ptr) h
 #else
     (#poke dom0_op_t, u.setdomainhandle.domain) ptr _dom
-    pokeArray (ptr `plusPtr` (#offset dom0_op_t, u.setdomainhandle.handle)) h
+    pokeArray ((#ptr dom0_op_t, u.setdomainhandle.handle) ptr) h
 #endif
   pullResponseInfo _ = return ()
 
@@ -957,58 +1099,52 @@ instance Storable RegisterContext where
   sizeOf _ = (#size vcpu_guest_context_t)
   alignment _ = 1
   peek ptr = do
-    fc <- peekArray 512 (ptr `plusPtr` (#offset vcpu_guest_context_t, fpu_ctxt))
-    fl <- (#peek vcpu_guest_context_t, flags) ptr
-    ur <- peekByteOff ptr (#offset vcpu_guest_context_t, user_regs)
-    tc <- peekArray 256 (ptr `plusPtr`(#offset vcpu_guest_context_t, trap_ctxt))
-    lb <- (#peek vcpu_guest_context_t, ldt_base) ptr
-    le <- (#peek vcpu_guest_context_t, ldt_ents) ptr
-    gf <- peekArray 16 (ptr `plusPtr`(#offset vcpu_guest_context_t, gdt_frames))
-    ge <- (#peek vcpu_guest_context_t, gdt_ents) ptr
-    ks <- (#peek vcpu_guest_context_t, kernel_ss) ptr
-    kp <- (#peek vcpu_guest_context_t, kernel_sp) ptr
-    cr <- peekArray 8 (ptr `plusPtr` (#offset vcpu_guest_context_t, ctrlreg))
-    dr <- peekArray 8 (ptr `plusPtr` (#offset vcpu_guest_context_t, debugreg))
-    bs <- (#peek vcpu_guest_context_t, event_callback_cs) ptr
-    bp <- (#peek vcpu_guest_context_t, event_callback_eip) ptr
-    cc <- (#peek vcpu_guest_context_t, failsafe_callback_cs) ptr
-    ci <- (#peek vcpu_guest_context_t, failsafe_callback_eip) ptr
-    vm <- (#peek vcpu_guest_context_t, vm_assist) ptr
-    let [c0, c1, c2, c3, c4, c5, c6, c7] = cr
-        rc = ControlRegisterSet c0 c1 c2 c3 c4 c5 c6 c7
-    let [d0, d1, d2, d3, d4, d5, d6, d7] = dr
-        rd = DebugRegisterSet d0 d1 d2 d3 d4 d5 d6 d7
-    return $ RegisterContext fc fl ur tc lb le gf ge ks kp rc rd bs bp cc ci vm
+    arch_specific <- peekArchSpecific ptr
+    fpu_ctxt <- peekArray 512 ((#ptr vcpu_guest_context_t, fpu_ctxt) ptr)
+    cpu_flags <- (#peek vcpu_guest_context_t, flags) ptr
+    trap_ctxt <- peekArray 256 ((#ptr vcpu_guest_context_t, trap_ctxt) ptr)
+    ldt_base <- (#peek vcpu_guest_context_t, ldt_base) ptr
+    ldt_ents <- (#peek vcpu_guest_context_t, ldt_ents) ptr
+    gdt_frames <- peekArray 16 ((#ptr vcpu_guest_context_t, gdt_frames) ptr)
+    gdt_ents <- (#peek vcpu_guest_context_t, gdt_ents) ptr
+    kernel_ss <- (#peek vcpu_guest_context_t, kernel_ss) ptr
+    kernel_sp <- (#peek vcpu_guest_context_t, kernel_sp) ptr
+    ctrlreg_list <- peekArray 8 ((#ptr vcpu_guest_context_t, ctrlreg) ptr)
+    debugreg_list <- peekArray 8 ((#ptr vcpu_guest_context_t, debugreg) ptr)
+    event_callback_eip <- (#peek vcpu_guest_context_t, event_callback_eip) ptr
+    failsafe_callback_eip <- (#peek vcpu_guest_context_t, failsafe_callback_eip) ptr
+    vm_assist <- (#peek vcpu_guest_context_t, vm_assist) ptr
+    let [c0, c1, c2, c3, c4, c5, c6, c7] = ctrlreg_list
+        ctrlreg = ControlRegisterSet c0 c1 c2 c3 c4 c5 c6 c7
+    let [d0, d1, d2, d3, d4, d5, d6, d7] = debugreg_list
+        debugreg = DebugRegisterSet d0 d1 d2 d3 d4 d5 d6 d7
+    return RegisterContext {..}
+
   poke ptr gc = do 
     () <- assert ((length (fpu_ctxt gc)) <= 512) $ return ()
     () <- assert ((length (trap_ctxt gc)) <= 256) $ return ()
     () <- assert ((length (gdt_frames gc)) <= 16) $ return ()
-    pokeArray (ptr `plusPtr` (#offset vcpu_guest_context_t, fpu_ctxt)) 
+    pokeArchSpecific ptr (arch_specific gc)
+    pokeArray ((#ptr vcpu_guest_context_t, fpu_ctxt) ptr)
               (fpu_ctxt gc)
     (#poke vcpu_guest_context_t, flags) ptr (cpu_flags gc)
-    pokeByteOff ptr (#offset vcpu_guest_context_t, user_regs) 
-              (user_regs gc)
-    pokeArray (ptr `plusPtr` (#offset vcpu_guest_context_t, trap_ctxt)) 
+    pokeArray ((#ptr vcpu_guest_context_t, trap_ctxt) ptr)
               (trap_ctxt gc)
     (#poke vcpu_guest_context_t, ldt_base) ptr (ldt_base gc)
     (#poke vcpu_guest_context_t, ldt_ents) ptr (ldt_ents gc)
-    pokeArray (ptr `plusPtr` (#offset vcpu_guest_context_t, gdt_frames)) 
+    pokeArray ((#ptr vcpu_guest_context_t, gdt_frames) ptr)
               (gdt_frames gc)
     (#poke vcpu_guest_context_t, gdt_ents) ptr (gdt_ents gc)
     (#poke vcpu_guest_context_t, kernel_ss) ptr (kernel_ss gc)
     (#poke vcpu_guest_context_t, kernel_sp) ptr (kernel_sp gc)
     let ControlRegisterSet c0 c1 c2 c3 c4 c5 c6 c7 = ctrlreg gc
         ctrlreg' = [c0, c1, c2, c3, c4, c5, c6, c7]
-    pokeArray (ptr `plusPtr` (#offset vcpu_guest_context_t, ctrlreg)) ctrlreg'
+    pokeArray ((#ptr vcpu_guest_context_t, ctrlreg) ptr) ctrlreg'
     let DebugRegisterSet d0 d1 d2 d3 d4 d5 d6 d7 = debugreg gc
         dbgreg' = [d0, d1, d2, d3, d4, d5, d6, d7]
-    pokeArray (ptr `plusPtr` (#offset vcpu_guest_context_t, debugreg)) dbgreg'
-    (#poke vcpu_guest_context_t, event_callback_cs) ptr 
-          (event_callback_cs gc)
+    pokeArray ((#ptr vcpu_guest_context_t, debugreg) ptr) dbgreg'
     (#poke vcpu_guest_context_t, event_callback_eip) ptr 
           (event_callback_eip gc)
-    (#poke vcpu_guest_context_t, failsafe_callback_cs) ptr 
-          (failsafe_callback_cs gc)
     (#poke vcpu_guest_context_t, failsafe_callback_eip) ptr 
           (failsafe_callback_eip gc)
     (#poke vcpu_guest_context_t, vm_assist) ptr (vm_assist gc)
@@ -1026,67 +1162,22 @@ instance Storable TrapInfo where
                    (#poke trap_info_t, cs) ptr (trap_cs ti)
                    (#poke trap_info_t, address) ptr (address ti)
 
-instance Storable UserRegs where
-  sizeOf _ = (#size cpu_user_regs_t)
-  alignment _ = 1
-  peek ptr = do 
-    bx <- (#peek cpu_user_regs_t, ebx) ptr
-    cx <- (#peek cpu_user_regs_t, ecx) ptr
-    dx <- (#peek cpu_user_regs_t, edx) ptr
-    si <- (#peek cpu_user_regs_t, esi) ptr
-    di <- (#peek cpu_user_regs_t, edi) ptr
-    bp <- (#peek cpu_user_regs_t, ebp) ptr
-    ax <- (#peek cpu_user_regs_t, eax) ptr
-    ec <- (#peek cpu_user_regs_t, error_code) ptr
-    ev <- (#peek cpu_user_regs_t, entry_vector) ptr
-    ip <- (#peek cpu_user_regs_t, eip) ptr
-    sc <- (#peek cpu_user_regs_t, eip) ptr
-    ma <- (#peek cpu_user_regs_t, saved_upcall_mask) ptr
-    fl <- (#peek cpu_user_regs_t, eflags) ptr
-    sp <- (#peek cpu_user_regs_t, esp) ptr
-    sg <- (#peek cpu_user_regs_t, ss) ptr
-    se <- (#peek cpu_user_regs_t, es) ptr
-    sd <- (#peek cpu_user_regs_t, ds) ptr
-    sf <- (#peek cpu_user_regs_t, fs) ptr
-    sh <- (#peek cpu_user_regs_t, gs) ptr
-    return $ UserRegs bx cx dx si di bp ax ec ev ip sc ma fl sp sg se sd sf sh
-  poke ptr ur = do 
-    (#poke cpu_user_regs_t, ebx) ptr (ebx ur)
-    (#poke cpu_user_regs_t, ecx) ptr (ecx ur)
-    (#poke cpu_user_regs_t, edx) ptr (edx ur)
-    (#poke cpu_user_regs_t, esi) ptr (esi ur)
-    (#poke cpu_user_regs_t, edi) ptr (edi ur)
-    (#poke cpu_user_regs_t, ebp) ptr (ebp ur)
-    (#poke cpu_user_regs_t, eax) ptr (eax ur)
-    (#poke cpu_user_regs_t, error_code) ptr (error_code ur)
-    (#poke cpu_user_regs_t, entry_vector) ptr (entry_vector ur)
-    (#poke cpu_user_regs_t, eip) ptr (eip ur)
-    (#poke cpu_user_regs_t, cs) ptr (cs ur)
-    (#poke cpu_user_regs_t, saved_upcall_mask) ptr (saved_upcall_mask ur)
-    (#poke cpu_user_regs_t, eflags) ptr (eflags ur)
-    (#poke cpu_user_regs_t, esp) ptr (esp ur)
-    (#poke cpu_user_regs_t, ss) ptr (ss ur)
-    (#poke cpu_user_regs_t, es) ptr (es ur)
-    (#poke cpu_user_regs_t, ds) ptr (ds ur)
-    (#poke cpu_user_regs_t, fs) ptr (fs ur)
-    (#poke cpu_user_regs_t, gs) ptr (gs ur)
-
 #ifdef SPLIT_PRIVILEGED
 instance Storable DomainInfo where
   sizeOf _ = (#size xen_domctl_getdomaininfo_t)
   alignment _ = 1
   peek ptr = do 
     dom <- (#peek xen_domctl_getdomaininfo_t, domain) ptr
-    flags <- (#peek xen_domctl_getdomaininfo_t, flags) ptr
+    flags <- (#peek xen_domctl_getdomaininfo_t, flags) ptr :: IO Word32
     totps <- (#peek xen_domctl_getdomaininfo_t, tot_pages) ptr
     maxps <- (#peek xen_domctl_getdomaininfo_t, max_pages) ptr
+    shr_pages <- (#peek xen_domctl_getdomaininfo_t, shr_pages) ptr
     si_frame <- (#peek xen_domctl_getdomaininfo_t, shared_info_frame) ptr
     cputime <- (#peek xen_domctl_getdomaininfo_t, cpu_time) ptr
     nocpus <- (#peek xen_domctl_getdomaininfo_t, nr_online_vcpus) ptr
     maxid <- (#peek xen_domctl_getdomaininfo_t, max_vcpu_id) ptr
     ssid <- (#peek xen_domctl_getdomaininfo_t, ssidref) ptr
-    handle <- peekArray 16 (ptr `plusPtr` 
-                             (#offset xen_domctl_getdomaininfo_t, handle))
+    handle <- peekArray 16 ((#ptr xen_domctl_getdomaininfo_t, handle) ptr)
     return $ DomainInfo { 
       domain = DomId dom
 #ifdef XEN_DOMINF_dying
@@ -1097,10 +1188,12 @@ instance Storable DomainInfo where
     , blocked   = 0 /= flags .&. (#const XEN_DOMINF_blocked)
     , running   = 0 /= flags .&. (#const XEN_DOMINF_running)
 #ifdef XEN_DOMINF_cpushift
-    , cpu       = shiftR flags (#const XEN_DOMINF_cpushift) .&. 
+    , cpu       = fromIntegral
+                $ shiftR flags (#const XEN_DOMINF_cpushift) .&. 
                     (#const XEN_DOMINF_cpumask)
 #endif
-    , shutdown_code = shiftR flags (#const XEN_DOMINF_shutdownshift) .&. 
+    , shutdown_code = fromIntegral
+                    $ shiftR flags (#const XEN_DOMINF_shutdownshift) .&. 
                         (#const XEN_DOMINF_shutdownmask)
 #else
     , dying     = 0 /= flags .&. (#const DOMFLAGS_DYING)
@@ -1109,13 +1202,16 @@ instance Storable DomainInfo where
     , paused    = 0 /= flags .&. (#const DOMFLAGS_PAUSED)
     , blocked   = 0 /= flags .&. (#const DOMFLAGS_BLOCKED)
     , running   = 0 /= flags .&. (#const DOMFLAGS_RUNNING)
-    , cpu       = shiftR flags (#const DOMFLAGS_CPUSHIFT) .&. 
+    , cpu       = fromIntegral
+                $ shiftR flags (#const DOMFLAGS_CPUSHIFT) .&. 
                     (#const DOMFLAGS_CPUMASK)
-    , shutdown_code = shiftR flags (#const DOMFLAGS_SHUTDOWNSHIFT) .&. 
+    , shutdown_code = fromIntegral
+                    $ shiftR flags (#const DOMFLAGS_SHUTDOWNSHIFT) .&. 
                         (#const DOMFLAGS_SHUTDOWNMASK)
 #endif
     , tot_pages = totps
     , max_pages = maxps
+    , shr_pages = shr_pages
     , shared_info_frame = si_frame
     , cpu_time = cputime
     , nr_online_vcpus = nocpus
@@ -1126,6 +1222,7 @@ instance Storable DomainInfo where
   poke ptr di = do 
     let DomId dom = (domain di)
 #ifdef XEN_DOMINF_dying
+        flags :: Word32
         flags = bbit (dying di) (#const XEN_DOMINF_dying) .|.
                 bbit (hvm_guest di) (#const XEN_DOMINF_hvm_guest) .|.
                 bbit (shutdown di) (#const XEN_DOMINF_shutdown) .|.
@@ -1133,29 +1230,30 @@ instance Storable DomainInfo where
                 bbit (blocked di) (#const XEN_DOMINF_blocked) .|.
                 bbit (running di) (#const XEN_DOMINF_running) .|.
 #ifdef XEN_DOMINF_cpushift
-                shiftL (cpu di) (#const XEN_DOMINF_cpushift) .|.
+                shiftL (fromIntegral (cpu di)) (#const XEN_DOMINF_cpushift) .|.
 #endif
-                shiftL (shutdown_code di) (#const XEN_DOMINF_shutdownshift)
+                shiftL (fromIntegral (shutdown_code di)) (#const XEN_DOMINF_shutdownshift)
 #else
         flags = bbit (dying di) (#const DOMFLAGS_DYING) .|.
                 bbit (shutdown di) (#const DOMFLAGS_SHUTDOWN) .|.
                 bbit (paused di) (#const DOMFLAGS_PAUSED) .|.
                 bbit (blocked di) (#const DOMFLAGS_BLOCKED) .|.
                 bbit (running di) (#const DOMFLAGS_RUNNING) .|.
-                shiftL (cpu di) (#const DOMFLAGS_CPUSHIFT) .|.
-                shiftL (shutdown_code di) (#const DOMFLAGS_SHUTDOWNSHIFT)
+                shiftL (fromIntegral (cpu di)) (#const DOMFLAGS_CPUSHIFT) .|.
+                shiftL (fromIntegral (shutdown_code di)) (#const DOMFLAGS_SHUTDOWNSHIFT)
 #endif
     (#poke xen_domctl_getdomaininfo_t, domain) ptr dom
     (#poke xen_domctl_getdomaininfo_t, flags) ptr flags
     (#poke xen_domctl_getdomaininfo_t, tot_pages) ptr (tot_pages di)
     (#poke xen_domctl_getdomaininfo_t, max_pages) ptr (max_pages di)
+    (#poke xen_domctl_getdomaininfo_t, shr_pages) ptr (shr_pages di)
     (#poke xen_domctl_getdomaininfo_t, shared_info_frame) ptr 
         (shared_info_frame di)
     (#poke xen_domctl_getdomaininfo_t, cpu_time) ptr (cpu_time di)
     (#poke xen_domctl_getdomaininfo_t, nr_online_vcpus) ptr (nr_online_vcpus di)
     (#poke xen_domctl_getdomaininfo_t, max_vcpu_id) ptr (max_vcpu_id di)
     (#poke xen_domctl_getdomaininfo_t, ssidref) ptr (ssidref di)
-    pokeArray (ptr `plusPtr` (#offset xen_domctl_getdomaininfo_t, handle)) 
+    pokeArray ((#ptr xen_domctl_getdomaininfo_t, handle) ptr) 
         (domain_handle di)
 #else
 instance Storable DomainInfo where
@@ -1163,15 +1261,16 @@ instance Storable DomainInfo where
   alignment _ = 1
   peek ptr = do 
     dom <- (#peek dom0_getdomaininfo_t, domain) ptr
-    flags <- (#peek dom0_getdomaininfo_t, flags) ptr
+    flags <- (#peek dom0_getdomaininfo_t, flags) ptr :: IO Word32
     totpages <- (#peek dom0_getdomaininfo_t, tot_pages) ptr
     maxpages <- (#peek dom0_getdomaininfo_t, max_pages) ptr
+    shr_pages <- (#peek dom0_getdomaininfo_t, shr_pages) ptr
     si_frame <- (#peek dom0_getdomaininfo_t, shared_info_frame) ptr
     cputime <- (#peek dom0_getdomaininfo_t, cpu_time) ptr
     nocpus <- (#peek dom0_getdomaininfo_t, nr_online_vcpus) ptr
     maxvcpuid <- (#peek dom0_getdomaininfo_t, max_vcpu_id) ptr
     ssid <- (#peek dom0_getdomaininfo_t, ssidref) ptr
-    handle <- peekArray 16 (ptr `plusPtr` (#offset dom0_getdomaininfo_t,handle))
+    handle <- peekArray 16 ((#ptr dom0_getdomaininfo_t,handle) ptr)
     return $ DomainInfo { 
       domain = DomId dom
     , dying     = 0 /= flags .&. (#const DOMFLAGS_DYING)
@@ -1186,6 +1285,7 @@ instance Storable DomainInfo where
                     (#const DOMFLAGS_SHUTDOWNMASK)
     , tot_pages = totpages
     , max_pages = maxpages
+    , shr_pages = shr_pages
     , shared_info_frame = si_frame
     , cpu_time = cputime
     , nr_online_vcpus = nocpus
@@ -1206,54 +1306,50 @@ instance Storable DomainInfo where
     (#poke dom0_getdomaininfo_t, flags) ptr flags
     (#poke dom0_getdomaininfo_t, tot_pages) ptr (tot_pages di)
     (#poke dom0_getdomaininfo_t, max_pages) ptr (max_pages di)
+    (#poke dom0_getdomaininfo_t, shr_pages) ptr (shr_pages di)
     (#poke dom0_getdomaininfo_t, shared_info_frame) ptr (shared_info_frame di)
     (#poke dom0_getdomaininfo_t, cpu_time) ptr (cpu_time di)
     (#poke dom0_getdomaininfo_t, nr_online_vcpus) ptr (nr_online_vcpus di)
     (#poke dom0_getdomaininfo_t, max_vcpu_id) ptr (max_vcpu_id di)
     (#poke dom0_getdomaininfo_t, ssidref) ptr (ssidref di)
-    pokeArray (ptr `plusPtr` (#offset dom0_getdomaininfo_t, handle)) 
+    pokeArray ((#ptr dom0_getdomaininfo_t, handle) ptr)
               (domain_handle di)
 #endif
 
 instance Storable HostPhysicalInfo where
-  alignment _ = 1
-#ifdef SPLIT_PRIVILEGED
-  sizeOf _ = (5 * 4) + (3 * 8) + (8 * 4)
-#else
-  sizeOf _ = (5 * 4) + (2 * 8) + (8 * 4)
-#endif
+  alignment _ = 8
+  sizeOf _ = (#size xen_sysctl_physinfo_t)
   peek ptr = do
-    tpc <- peekByteOff (castPtr ptr) 0
-    cps <- peekByteOff (castPtr ptr) 4
-    spn <- peekByteOff (castPtr ptr) 8
-    nrn <- peekByteOff (castPtr ptr) 12
-    khz <- peekByteOff (castPtr ptr) 16
-    tpg <- peekByteOff (castPtr ptr) 20
-    fpg <- peekByteOff (castPtr ptr) 28
-#ifdef SPLIT_PRIVILEGED
-    let cap_off = 44
-    spg <- peekByteOff (castPtr ptr) 36
-#else
-    let cap_off = 36
-    spg <- return 0
+    threads_per_core <- (#peek xen_sysctl_physinfo_t, threads_per_core) ptr
+    cores_per_socket <- (#peek xen_sysctl_physinfo_t, cores_per_socket) ptr
+    num_cpus         <- (#peek xen_sysctl_physinfo_t, nr_cpus         ) ptr
+    max_node_id      <- (#peek xen_sysctl_physinfo_t, max_node_id     ) ptr
+    cpu_khz          <- (#peek xen_sysctl_physinfo_t, cpu_khz         ) ptr
+    total_pages      <- (#peek xen_sysctl_physinfo_t, total_pages     ) ptr
+    free_pages       <- (#peek xen_sysctl_physinfo_t, free_pages      ) ptr
+    scrub_pages      <- (#peek xen_sysctl_physinfo_t, scrub_pages     ) ptr
+    hw_capability    <- peekArray 8 ((#ptr xen_sysctl_physinfo_t, hw_cap) ptr)
+    max_cpu_id       <- (#peek xen_sysctl_physinfo_t, max_cpu_id      ) ptr
+#if XEN_SYSCTL_INTERFACE_VERSION < 0x00000008
+    cpu_to_node      <- (#peek xen_sysctl_physinfo_t, cpu_to_node     ) ptr
 #endif
-    cbt <- peekArray 8 (castPtr ptr `plusPtr` cap_off)
-    return $ HostPhysicalInfo tpc cps spn nrn khz tpg fpg spg cbt
+    capabilities     <- (#peek xen_sysctl_physinfo_t, capabilities    ) ptr
+    return HostPhysicalInfo {..}
   poke ptr hpi = do
-    pokeByteOff (castPtr ptr) 0  (threads_per_core hpi)
-    pokeByteOff (castPtr ptr) 4  (cores_per_socket hpi)
-    pokeByteOff (castPtr ptr) 8  (sockets_per_node hpi)
-    pokeByteOff (castPtr ptr) 12 (num_nodes hpi)
-    pokeByteOff (castPtr ptr) 16 (cpu_khz hpi)
-    pokeByteOff (castPtr ptr) 20 (total_pages hpi)
-    pokeByteOff (castPtr ptr) 28 (free_pages hpi)
-#ifdef SPLIT_PRIVILEGED
-    pokeByteOff (castPtr ptr) 36 (scrub_pages hpi)
-    let cap_off = 44
-#else
-    let cap_off = 36
+    (#poke xen_sysctl_physinfo_t, threads_per_core) ptr (threads_per_core hpi)
+    (#poke xen_sysctl_physinfo_t, cores_per_socket) ptr (cores_per_socket hpi)
+    (#poke xen_sysctl_physinfo_t, nr_cpus         ) ptr (num_cpus         hpi)
+    (#poke xen_sysctl_physinfo_t, max_node_id     ) ptr (max_node_id      hpi)
+    (#poke xen_sysctl_physinfo_t, cpu_khz         ) ptr (cpu_khz          hpi)
+    (#poke xen_sysctl_physinfo_t, total_pages     ) ptr (total_pages      hpi)
+    (#poke xen_sysctl_physinfo_t, free_pages      ) ptr (free_pages       hpi)
+    (#poke xen_sysctl_physinfo_t, scrub_pages     ) ptr (scrub_pages      hpi)
+    pokeArray ((#ptr xen_sysctl_physinfo_t, hw_cap) ptr) (hw_capability   hpi)
+    (#poke xen_sysctl_physinfo_t, max_cpu_id      ) ptr (max_cpu_id       hpi)
+#if XEN_SYSCTL_INTERFACE_VERSION < 0x00000008
+    (#poke xen_sysctl_physinfo_t, cpu_to_node     ) ptr (cpu_to_node      hpi)
 #endif
-    pokeArray (castPtr ptr `plusPtr` cap_off) (hw_capability hpi)
+    (#poke xen_sysctl_physinfo_t, capabilities    ) ptr (capabilities     hpi)
 
 --
 -- --------------------------------------------------------------------------
