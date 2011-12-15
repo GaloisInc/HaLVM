@@ -10,30 +10,25 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <string.h>
+#include <libIVC.h>
 #include "ivc_private.h"
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <xs.h>
-#include <libIVC.h>
 #include <errno.h>
 
 #define PROT_READWRITE (PROT_READ | PROT_WRITE)
 
 struct xs_handle *xsd = 0;
-int xcg = 0;
+XC_HANDLE_TYPE xcg = NULL;
 
 extern int asprintf (char **__restrict __ptr,
                      __const char *__restrict __fmt, ...);
 
-static void mfree(void *ptr)
-{
-  if(ptr) free(ptr);
-}
-
 void initialize_libIVC_library(void)
 {
   xsd = xs_domain_open();
-  xcg = xc_gnttab_open();
+  xcg = xc_gnttab_open(XC_OPEN_ARGS);
 }
 
 // Count the number of grant references that are likely to be present in a
@@ -124,8 +119,8 @@ int bind_memory_and_port(char *name, unsigned long *otherDom,
   unsigned int *grefs = NULL;
   int  grefs_len = 0;
 
-  chan->xce = xc_evtchn_open();
-  if(chan->xce == -1) {
+  chan->xce = xc_evtchn_open(XC_OPEN_ARGS);
+  if((long)chan->xce == -1) {
     fprintf(stderr, "Failed to open evtchn handle\n");
     return 0;
   }
@@ -154,12 +149,12 @@ int bind_memory_and_port(char *name, unsigned long *otherDom,
       return 0;
 
     // Recreate the directory, if it's not there
-    mfree(key), asprintf(&key, "/halvm/%s", name);
+    free(key), asprintf(&key, "/halvm/%s", name);
     xs_mkdir(xsd, tran, key);
 
     // Throw in our domain identifier.
-    mfree(key), asprintf(&key, "/halvm/%s/starterDomId", name);
-    mfree(val), asprintf(&val, "DomId %i", myDom);
+    free(key), asprintf(&key, "/halvm/%s/starterDomId", name);
+    free(val), asprintf(&val, "DomId %i", myDom);
     xs_write(xsd, tran, key, val, strlen(val));
 
     // End this transaction, just for fun.
@@ -167,15 +162,15 @@ int bind_memory_and_port(char *name, unsigned long *otherDom,
   }
 
   // Spin until we've pulled all the needed keys.
-  mfree(key), asprintf(&key, "/halvm/%s/grant-refs", name);
+  free(key), asprintf(&key, "/halvm/%s/grant-refs", name);
   while(!grefStr) { grefStr = xs_read(xsd, 0, key, &len); }
-  mfree(key), asprintf(&key, "/halvm/%s/accepterDomId", name);
+  free(key), asprintf(&key, "/halvm/%s/accepterDomId", name);
   while(!otherDomStr) { otherDomStr = xs_read(xsd, 0, key, &len);  }
-  mfree(key), asprintf(&key, "/halvm/%s/event-channel", name);
+  free(key), asprintf(&key, "/halvm/%s/event-channel", name);
   while(!echanStr) { echanStr = xs_read(xsd, 0, key, &len);  }
 
   // Remove the directory, now that the connection is made.
-  mfree(key), asprintf(&key, "/halvm/%s", name);
+  free(key), asprintf(&key, "/halvm/%s", name);
   xs_rm(xsd, 0, key);
 
   // Translate these into useful bits of information.
@@ -236,11 +231,22 @@ int resize_channel_core(struct channel_core *chan, unsigned int new, char **mem)
   return (size - new);
 }
 
-int pull_next_size(struct channel_core *chan)
+uint32_t pull_next_size(struct channel_core *chan)
 {
-  unsigned long size = 0;
-  internal_read(chan, (void *)&size, 4);
-  return ntohl(size);
+  uint32_t size = 0;
+
+  internal_read(chan, (void *)&size, sizeof(size));
+  size = ntohl(size);
+
+  printf("pull_next_size(%p) = 0x%x\n", chan, size);
+  return size;
+}
+
+void push_next_size(struct channel_core *chan, uint32_t size)
+{
+  printf("push_next_size(%p, 0x%x)\n", chan, size);
+  size = htonl(size);
+  internal_write(chan, &size, sizeof(size));
 }
 
 #define RING_DATA_SIZE(x) x->ring_size
@@ -259,7 +265,7 @@ static inline unsigned long chan_free_write_space(unsigned long ring_size,
   }
 }
 
-static inline unsigned long chan_free_read_space(unsigned long ring_size,
+static unsigned long chan_free_read_space(unsigned long ring_size,
     unsigned long prod, unsigned long cons)
 {
   return (ring_size - chan_free_write_space(ring_size, prod, cons) - 1);
@@ -277,18 +283,18 @@ static inline unsigned int wait_chan(struct channel_core *chan)
   return port == chan->port;
 }
 
-int internal_read(struct channel_core *chan, void *buffer, int size)
+void internal_read(struct channel_core *chan, void *buffer, int size)
 {
-  int res = 0;
+  unsigned long readable_space;
   unsigned long prod;
   unsigned long cons;
   unsigned long buflen = chan->ring_size;
+  unsigned long read_amt;
 
   while(size > 0) {
-    int readable_space = 0, read_amt = 0;
+    readable_space = 0, read_amt = 0;
     void *start_cpy;
 
-    *(unsigned long*)buffer = 0;
     // Wait for available data.
     while(1) {
       prod           = chan->block->bytes_produced;
@@ -307,7 +313,7 @@ int internal_read(struct channel_core *chan, void *buffer, int size)
     read_amt = (readable_space > size) ? size : readable_space;
 
     // Copy the data to the buffer
-    start_cpy = (void*)((unsigned long)chan->mem + cons);
+    start_cpy = chan->mem + cons;
 
     rmb();
     if(cons + read_amt > buflen) {
@@ -326,18 +332,15 @@ int internal_read(struct channel_core *chan, void *buffer, int size)
     // Update the various counters
     size   -= read_amt;
     buffer += read_amt;
-    res    += read_amt;
+
 
     // notify that we are trying to read something
     xc_evtchn_notify(chan->xce, chan->port);
   }
-
-  return res;
 }
 
-int internal_write(struct channel_core *chan, void *buffer, int size)
+void internal_write(struct channel_core *chan, void *buffer, int size)
 {
-  int res = 0;
   int free_space;
   unsigned long prod;
   unsigned long cons;
@@ -364,9 +367,9 @@ int internal_write(struct channel_core *chan, void *buffer, int size)
     write_amt = (free_space > size) ? size : free_space;
 
     // Copy the data to the buffer
-    start_cpy = (void*)((unsigned long)chan->mem + prod);
+    start_cpy = chan->mem + prod;
     end_cpy = start_cpy + write_amt;
-    end_page = (void*)((unsigned long)chan->mem + buflen);
+    end_page = chan->mem + buflen;
 
     rmb();
     if(prod + write_amt > buflen) {
@@ -387,12 +390,10 @@ int internal_write(struct channel_core *chan, void *buffer, int size)
     // Update the various counters
     size   -= write_amt;
     buffer += write_amt;
-    res    += write_amt;
+
 
     // notify that we would like to read something
     xc_evtchn_notify(chan->xce, chan->port);
   }
-
-  return res;
 }
 

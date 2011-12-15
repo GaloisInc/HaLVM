@@ -11,12 +11,13 @@
 
 #include <xenctrl.h>
 #include <xs.h>
+#include <stdint.h>
 
 extern struct xs_handle *xsd;
 
 struct ivc_shared_page {
-  volatile unsigned long bytes_consumed;
-  volatile unsigned long bytes_produced;
+  volatile uint32_t bytes_consumed;
+  volatile uint32_t bytes_produced;
 } __packed__;
 
 typedef struct ivc_shared_page ivc_shared_page;
@@ -28,15 +29,16 @@ struct channel_core {
   // ring_size + sizeof(ivc_shared_page)
   int ring_size;
   evtchn_port_t port;
-  int xce;
+  EVTCHN_INTERFACE_TYPE xce;
 };
 
 void initialize_libIVC_library(void);
 int resize_channel_core(struct channel_core *chan, unsigned int size, char **mem);
 int bind_memory_and_port(char *key, unsigned long *other_dom,
                          struct channel_core *chan);
-int pull_next_size(struct channel_core *chan);
-int internal_read(struct channel_core *chan, void *buffer, int size);
-int internal_write(struct channel_core *chan, void *buffer, int size);
+void push_next_size(struct channel_core *chan, uint32_t size);
+uint32_t pull_next_size(struct channel_core *chan);
+void internal_read(struct channel_core *chan, void *buffer, int size);
+void internal_write(struct channel_core *chan, void *buffer, int size);
 
 #endif

@@ -6,9 +6,9 @@
 // Author: Adam Wick <awick@galois.com>
 // BANNEREND
 //
+#include <xenctrl.h>
 #include "libIVC.h"
 #include "ivc_private.h"
-#include <xenctrl.h>
 #include <xs.h>
 #include <xen/io/xs_wire.h>
 #include <string.h>
@@ -20,15 +20,13 @@ struct xbackend {
   // Turns out we don't need anything here.
 };
 
+extern EVTCHN_INTERFACE_TYPE xce;
+extern XC_HANDLE_TYPE        xcg;
+
 #define PROT_READWRITE (PROT_READ | PROT_WRITE)
 
 extern int asprintf (char **__restrict __ptr,
                      __const char *__restrict __fmt, ...);
-
-static void mfree(void *ptr)
-{
-  if(ptr) free(ptr);
-}
 
 xen_backend *create_responder(char *name)
 {
@@ -59,18 +57,18 @@ xen_backend *create_responder(char *name)
     xs_mkdir(xsd, 0, key);
 
     // Throw in our domain identifier and create the subdirectory.
-    mfree(key); asprintf(&key, "/halvm/%s/server-id", name);
-    mfree(val); asprintf(&val, "DomId %i", myDom);
+    free(key); asprintf(&key, "/halvm/%s/server-id", name);
+    free(val); asprintf(&val, "DomId %i", myDom);
 
     xs_write(xsd, 0, key, val, strlen(val));
-    mfree(val);
+    free(val);
 
-    mfree(key); asprintf(&key, "/halvm/%s/clients", name);
+    free(key); asprintf(&key, "/halvm/%s/clients", name);
     xs_mkdir(xsd, 0, key);
 
     // Set the watch
     done = xs_watch(xsd, key, "cwatch");
-    mfree(key);
+    free(key);
   }
 
   bzero(res, sizeof(res));
@@ -101,11 +99,11 @@ void accept_connection(xen_backend *be, unsigned long *otherDom,
           unsigned int gref = 0, echan = 0;
          
           basedir[len - 6] = 0;
-          mfree(key), asprintf(&key, "%s/domain-id", basedir);
+          free(key), asprintf(&key, "%s/domain-id", basedir);
           while(!odomStr) odomStr = xs_read(xsd, 0, key, &num_strs);
-          mfree(key), asprintf(&key, "%s/grant-ref0", basedir);
+          free(key), asprintf(&key, "%s/grant-ref0", basedir);
           while(!grefStr) grefStr = xs_read(xsd, 0, key, &num_strs);
-          mfree(key), asprintf(&key, "%s/event-channel0", basedir);
+          free(key), asprintf(&key, "%s/event-channel0", basedir);
           while(!chanStr) chanStr = xs_read(xsd, 0, key, &num_strs);
           //
           sscanf(grefStr, "%*s (GrantRef %i)", &gref);

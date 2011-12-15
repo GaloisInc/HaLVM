@@ -61,34 +61,29 @@ unsigned long channel_peer(inout_chan *chan)
 
 int read_chan(inout_chan *chan, void *buffer, int size)
 {
-  unsigned long len = pull_next_size(&chan->rcore);
-
+  uint32_t len = pull_next_size(&chan->rcore);
 
   if(len > size) {
     return 0;
   }
 
-  return internal_read(&chan->rcore, buffer, len);
+  internal_read(&chan->rcore, buffer, len);
+  return len;
 }
 
-int read_unknown_chan(inout_chan *chan, void **out_buffer)
+size_t read_unknown_chan(inout_chan *chan, void **out_buffer)
 {
-  unsigned long len = pull_next_size(&chan->rcore);
-
+  uint32_t len = pull_next_size(&chan->rcore);
   *out_buffer = malloc(len);
-  return internal_read(&chan->rcore, *out_buffer, len);
+  if (*out_buffer == NULL) {
+    return 0;
+  }
+  internal_read(&chan->rcore, *out_buffer, len);
+  return len;
 }
 
-int write_chan(inout_chan *chan, void *buffer, int size)
+void write_chan(inout_chan *chan, void *buffer, int size)
 {
-  unsigned long write_size;
-
-  if(size <= 0)
-    return 0;
-
-  write_size = htonl(size);
-  if(internal_write(&chan->wcore, &write_size, 4) != 4)
-    return 0;
-
-  return internal_write(&chan->wcore, buffer, size);
+  push_next_size(&chan->wcore, size);
+  internal_write(&chan->wcore, buffer, size);
 }

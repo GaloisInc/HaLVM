@@ -9,13 +9,25 @@
 #define HALVM_LIBIVC_H
 
 //#include <xenctrl.h>
+#include <stdlib.h>
+
+#ifdef XENCTRL_HAS_XC_INTERFACE
+#define XC_HANDLE_TYPE xc_gnttab *
+#define EVTCHN_INTERFACE_TYPE xc_evtchn *
+#define XC_OPEN_ARGS NULL, XC_OPENFLAG_NON_REENTRANT
+#else
+#define XC_HANDLE_TYPE int
+#define EVTCHN_INTERFACE_TYPE int
+#define XC_OPEN_ARGS
+#endif
 
 typedef struct unidir_chan in_chan;
 typedef struct unidir_chan out_chan;
 typedef struct bidir_chan inout_chan;
 typedef struct xbackend xen_backend;
 
-extern int xcg, xce;
+extern EVTCHN_INTERFACE_TYPE xce;
+extern XC_HANDLE_TYPE xcg;
 
 void            initialize_libIVC_library(void);
 in_chan        *connect_one_way_in(char *name);
@@ -24,15 +36,13 @@ inout_chan     *connect_two_way(char *name);
 // RETURNS: 0 on error, # of bytes read otherwise
 int             read_inchan(in_chan *chan, void *buffer, int size);
 // RETURNS: 0 on error, # of bytes read otherwise, data in out_buffer
-int             read_unknown_inchan(in_chan *chan, void **out_buffer);
-// RETURNS: 0 on error, # of bytes written otherwise
-int             write_outchan(out_chan *chan, void *buffer, int size);
+size_t          read_unknown_inchan(in_chan *chan, void **out_buffer);
+void            write_outchan(out_chan *chan, void *buffer, int size);
 // RETURNS: 0 on error, # of bytes read otherwise
 int             read_chan(inout_chan *chan, void *buffer, int size);
 // RETURNS: 0 on error, # of bytes read otherwise, data in out_buffer
-int             read_unknown_chan(inout_chan *chan, void **out_buffer);
-// RETURNS: 0 on error, # of bytes read otherwise
-int             write_chan(inout_chan *chan, void *buffer, int size);
+size_t          read_unknown_chan(inout_chan *chan, void **out_buffer);
+void             write_chan(inout_chan *chan, void *buffer, int size);
 // Returns the domain id of the other side of the channel.
 unsigned long   channel_peer(inout_chan *chan);
 unsigned long   inchannel_peer(in_chan *chan);
