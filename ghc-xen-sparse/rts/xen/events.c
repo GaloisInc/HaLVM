@@ -345,6 +345,8 @@ void force_evtchn_callback(void)
   }
 }
 
+extern int signals_pending(void);
+
 int pause(void) 
 {
   // All the ifs / clis / forces are due to obscene little race conditions,

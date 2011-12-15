@@ -171,22 +171,9 @@ char *strstr(const char *str1, const char *str2) {
 
 void   bzero(void *ptr, size_t size)
 {
-  const size_t w = sizeof(unsigned long);
-  unsigned long *pword;
-  unsigned char *pchar;
-
-  // Align to a word
-  for (pchar = ptr; ((uintptr_t)ptr) % w != 0; --size, ++pchar)
-    *pchar = 0;
-
-  // Process some words
-  for (pword = (unsigned long*)pchar; size >= w; size -= w, ++pword)
-    *pword = 0;
-
-  // Finish off
-  for (pchar = (unsigned char*)pword; size > 0; --size, ++pchar)
-    *pchar = 0;
-
+  unsigned long i;
+  unsigned char *p = ptr;
+  for(i = 0; i < size; ++i) p[i] = 0;
 }
 
 

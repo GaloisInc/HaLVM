@@ -439,6 +439,11 @@ int vfprintf(FILE *stream, const char *format, va_list ap)
   }
 }
 
+int putchar(char c) {
+  emergency_console_msg(1, &c);
+  return c;
+}
+
 int puts(const char *s)
 {
   int len = strlen(s);
