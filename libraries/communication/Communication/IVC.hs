@@ -8,6 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE EmptyDataDecls             #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE BangPatterns               #-}
 
 -- BANNERSTART
 -- - Copyright 2006-2008, Galois, Inc.
@@ -75,17 +76,16 @@ import Text.ReadP(readP_to_S)
 import Foreign.Ptr
 import Foreign.Storable
 import Hypervisor.Basics
-import Hypervisor.Debug
 import Hypervisor.Memory
 import Hypervisor.Port
-import Hypervisor.Privileged(myDomId)
-import System.Exit
 import Util.WaitSet
+import XenDevice.Xenbus(myDomId)
 
 import qualified Data.ByteString          as BS
-import qualified Data.ByteString.Char8    as SBS
 import qualified Data.ByteString.Internal as BSI
 import qualified Data.ByteString.Unsafe   as USBS
+
+import Hypervisor.Debug
 
 newtype PageCount = PageCount Word32
   deriving (Eq, Num, Ord, Show, Bounded, Enum, Real, Integral)
@@ -105,6 +105,8 @@ data PageReference =
 -- |                    |
 -- |        ...         |
 -- |                    |
+-- +--------------------+ bufferSize - 12
+-- | Lock               |
 -- +--------------------+ bufferSize - 8
 -- | Bytes Consumed     |
 -- +--------------------+ bufferSize - 4
@@ -116,13 +118,16 @@ data PageReference =
 -- unidirectional channels, each one using half a bufferSize.
 
 rbOverhead :: Word32
-rbOverhead = 8 -- for the two indexes
+rbOverhead = 12 -- for the two indexes and lock
 
 rbConsumedOff :: Word32 -> Word32
 rbConsumedOff size = size - 8
 
 rbProducedOff :: Word32 -> Word32
 rbProducedOff size = size - 4
+
+rbLockedOff :: Word32 -> Word32
+rbLockedOff size = size - 12
 
 setConsumerOff :: VPtr a -> Word32 -> Word32 -> IO ()
 setConsumerOff page size val =
@@ -138,6 +143,12 @@ consumerOff page size = peekByteOffW (castPtr page) (rbConsumedOff size)
 producerOff :: VPtr a -> Word32 -> IO Word32
 producerOff page size = peekByteOffW (castPtr page) (rbProducedOff size)
 
+lockPage :: VPtr a -> Word32 -> IO ()
+lockPage page size = spinlock (page `plusPtrW` rbLockedOff size)
+
+unlockPage :: VPtr a -> Word32 -> IO ()
+unlockPage page size = spinunlock (page `plusPtrW` rbLockedOff size)
+
 -- Top-level operations
 
 mkWriter' :: WaitSet -> (VPtr BS.ByteString,Word32) -> Port -> BS.ByteString
@@ -147,8 +158,10 @@ mkWriter' waitset (page,psize) prt = checkWrite
           checkWrite bstr = do
             let l = writerLen bstr
             -- Now see if we can just write some (or all) of it out right now.
+            lockPage page psize
             prod <- producerOff page psize
             cons <- consumerOff page psize
+	    unlockPage page psize
             case freeWriteSpace psize prod cons of
               -- There is no space left in the ring.
               x | x == 0 ->
@@ -169,8 +182,10 @@ mkWriter' waitset (page,psize) prt = checkWrite
           --stallWrite :: a -> IO ()
           stallWrite bstr = do
             ignoreErrors $ sendOnPort prt
-            wait waitset $ do prod <- producerOff page psize
+            wait waitset $ do lockPage page psize
+			      prod <- producerOff page psize
                               cons <- consumerOff page psize
+			      unlockPage page psize
                               return $ freeWriteSpace psize prod cons /= 0
             checkWrite bstr
           -- -------------------------------------------------------------------
@@ -178,8 +193,10 @@ mkWriter' waitset (page,psize) prt = checkWrite
           immediateWrite bstr prod l = do
             -- index read must occur before data write across CPUs
             systemMB
+	    lockPage page psize
             if (prod + fromIntegral l) > (psize - rbOverhead)
-               then do let (start, end) = writerSplit (psize - rbOverhead - prod) bstr
+               then do let (start, end) =
+			         writerSplit (psize - rbOverhead - prod) bstr
                        -- In this case, the write is wrapping around the buffer
                        copyByteString start (page `plusPtrW` prod)
                        copyByteString end (castPtr page)
@@ -188,6 +205,7 @@ mkWriter' waitset (page,psize) prt = checkWrite
                else do copyByteString bstr (page `plusPtrW` prod)
                        systemWMB
                        setProducerOff page psize (prod + writerLen bstr)
+	    unlockPage page psize
             -- data write must occur before index write across CPUs
             ignoreErrors $ sendOnPort prt
 
@@ -218,8 +236,10 @@ mkReader' :: WaitSet -> (VPtr a,Word32) -> Port -> Word32 -> Ptr a -> IO ()
 mkReader' waitset (page,psize) prt = checkRead
     where checkRead :: Word32-> Ptr a -> IO ()
           checkRead size buffer = do
+	    lockPage page psize
             prod <- producerOff page psize
             cons <- consumerOff page psize
+	    unlockPage page psize
             -- The amount of data available to be read is the number of bytes
             -- that have been produced but not consumed.
             case usedSpace psize prod cons of -- Word32 -> Int
@@ -239,27 +259,31 @@ mkReader' waitset (page,psize) prt = checkRead
           -- ------------------------------------------------------------------
           stallRead :: Word32 -> Ptr a -> IO ()
           stallRead size buffer = do
-            wait waitset $ do prod <- producerOff page psize
+            wait waitset $ do lockPage page psize
+			      prod <- producerOff page psize
                               cons <- consumerOff page psize
+			      unlockPage page psize
                               return $ usedSpace psize prod cons > 0
             checkRead size buffer
           -- ------------------------------------------------------------------
           immediateRead :: Word32 -> Word32 -> Ptr a -> IO ()
           immediateRead size cons buffer = do
             -- index read must occur before data read across CPUs
+            lockPage page psize
             systemRMB
             let off = cons
             if (off + size) > (psize - rbOverhead)
                then do let size1 = psize - rbOverhead - cons
                            size2 = size - size1
                        -- In this case, the read is wrapping around the buffer
-                       memcpy buffer (page `plusPtrW` cons) size1
-                       memcpy (buffer `plusPtrW` size1) page size2
+                       memcpy buffer (page `plusPtrW` cons) (fromIntegral size1)
+                       memcpy (buffer `plusPtrW` size1) page (fromIntegral size2)
                        systemMB
                        setConsumerOff page psize size2
-               else do memcpy buffer (page `plusPtrW` off) size
+               else do memcpy buffer (page `plusPtrW` off) (fromIntegral size)
                        systemMB
                        setConsumerOff page psize (cons + size)
+	    unlockPage page psize
             -- data read must occur before index write across CPUs
             ignoreErrors $ sendOnPort prt
 
@@ -272,9 +296,6 @@ usedSpace :: Word32 -> Word32 -> Word32 -> Word32
 usedSpace psize prod cons =
   psize - rbOverhead - freeWriteSpace psize prod cons - 1
 
-hDEBUG :: String -> IO ()
-hDEBUG = writeDebugConsole . (++ "\n")
-
 plusPtrW :: Ptr a -> Word32 -> Ptr b
 plusPtrW p x = p `plusPtr` (fromIntegral x)
 
@@ -285,7 +306,13 @@ pokeByteOffW :: Storable a => Ptr a -> Word32 -> a -> IO ()
 pokeByteOffW p o x = pokeByteOff p (fromIntegral o) x
 
 foreign import ccall unsafe "string.h memcpy"
-  memcpy :: Ptr a -> Ptr b -> Word32 -> IO ()
+  memcpy :: Ptr a -> Ptr b -> Word -> IO ()
+
+foreign import ccall unsafe "spinlocks.h spinlock"
+  spinlock :: Ptr a -> IO ()
+
+foreign import ccall unsafe "spinlocks.h spinunlock"
+  spinunlock :: Ptr a -> IO ()
 
 -----------------------------------------------------
 -- New interface
@@ -633,8 +660,10 @@ getC c =
 
 getB :: (Serialize a, GetRaw c) =>c -> IO a
 getB c =
-  do s <- getRaw c (fromIntegral $ sizeOf (undefined :: MessageSizeType))
-     b <- getRaw c (fromIntegral (liftError (decode s) :: MessageSizeType))
+  do !s <- getRaw c (fromIntegral $ sizeOf (undefined :: MessageSizeType))
+     -- writeDebugConsole $ "Start getRaw" ++ show s ++ "\n"
+     let !size = fromIntegral (liftError (decode s) :: MessageSizeType)
+     !b <- getRaw c size
      return (liftError (decode b))
 
 -- | Low-level write operation for channels.  Writes a ByteString
