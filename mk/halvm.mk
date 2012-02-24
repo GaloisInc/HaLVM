@@ -28,7 +28,7 @@ define rts-header
 $(call halvm-rts-header-path,$1): $(call rts-header-path,$1)
 	$(CP) $$< $$@
 ifneq "$(dir $1)" "./"
-$(call halvm-rts-header-path,$1): $(call halvm-rts-header-path,$(dir $1))
+$(call halvm-rts-header-path,$1): $(call halvm-rts-header-path,$(subst /,,$(dir $1)))
 endif
 
 HALVM_EXTRA_HEADERS += $(call halvm-rts-header-path,$1)
@@ -42,7 +42,6 @@ endef
 
 $(eval $(call halvm-rts-header-dir,sm))
 $(eval $(call rts-header,sm/GC.h))
-
 
 
 ################################################################################

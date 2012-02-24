@@ -1,11 +1,14 @@
 *.o
 *.a
+.*.swp
 autom4te.cache/
 config.log
 config.status
-configure
+/configure
 dist/
 libIVC/Makefile
+libm/Makefile
+libraries/communication/communication.buildinfo
 libraries/BitFiddler/dist/
 libraries/BoundedChan-1.0.0.0/
 libraries/HALVMCore/HALVMCore.buildinfo
