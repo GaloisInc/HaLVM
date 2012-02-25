@@ -9,7 +9,7 @@ build-type:     Configure
 cabal-version:  >= 1.2
 
 library
-  build-depends:        HALVMCore == 1.1.0, base == 4.*, cereal >= 0.3.0.0,
+  build-depends:        HALVMCore == 1.1.0, base == 4.*, cereal >= 0.3.5.0,
                         bytestring == 0.9.*, containers == 0.3.*, syb == 0.1.*,
                         XenDevice == 1.1.0
   exposed-modules:      Communication.IVC

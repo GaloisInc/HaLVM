@@ -654,8 +654,8 @@ $(HALVM_LIBDIR)/.cabal/packages/hackage.haskell.org/00-index.tar:
 	$(HALVM_CABAL) update
 
 # cereal
-$(eval $(call cabal-install-rule,cereal,0.3.0.0))
-$(call package-name,cereal,0.3.0.0):        \
+$(eval $(call cabal-install-rule,cereal,0.3.5.1))
+$(call package-name,cereal,0.3.5.1):        \
     $(call package-name,base,4.2.0.2)       \
     $(call package-name,containers,0.3.0.0) \
     $(call package-name,array,0.3.0.1)      \
@@ -699,7 +699,7 @@ $(call package-name,BitFiddler,1.0.0):            \
     $(call package-name,base,4.2.0.2)             \
     $(call package-name,template-haskell,2.4.0.1) \
     $(call package-name,bytestring,0.9.1.7)       \
-    $(call package-name,cereal,0.3.0.0)
+    $(call package-name,cereal,0.3.5.1)
 
 # communication
 $(eval $(call build-halvm-rule,communication,1.1.0))
@@ -708,7 +708,7 @@ $(call package-name,communication,1.1.0):   \
     $(call package-name,bytestring,0.9.1.7) \
     $(call package-name,containers,0.3.0.0) \
     $(call package-name,syb,0.1.0.2)        \
-    $(call package-name,cereal,0.3.0.0)     \
+    $(call package-name,cereal,0.3.5.1)     \
     $(call package-name,HALVMCore,1.1.0)    \
     $(call package-name,XenDevice,1.1.0)
 
