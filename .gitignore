@@ -17,7 +17,8 @@ libraries/RealDevice/dist/
 libraries/RendezvousLib/dist/
 libraries/XenDevice/XenDevice.buildinfo
 libraries/XenDevice/dist/
-libraries/cereal-0.3.0.0/
+libraries/bytestring-*/
+libraries/cereal-*/
 libraries/communication/dist/
 libraries/libDomainBuilder/libDomainBuilder.buildinfo
 libraries/log4h/dist/

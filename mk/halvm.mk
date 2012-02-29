@@ -71,7 +71,7 @@ HALVM_LIBDIR_REQS   = $(HALVM_START_O)     $(HALVM_GHC_BIN)           \
 BASE_PACKAGES       = $(call package-name,ghc-prim,0.2.0.0)           \
                       $(call package-name,base,4.2.0.2)               \
                       $(call package-name,array,0.3.0.1)              \
-                      $(call package-name,bytestring,0.9.1.7)         \
+                      $(call package-name,bytestring,0.9.2.1)         \
                       $(call package-name,containers,0.3.0.0)         \
                       $(call package-name,pretty,1.0.1.1)             \
                       $(call package-name,syb,0.1.0.2)                \
@@ -559,10 +559,6 @@ $(call package-name,base,4.2.0.2):
 $(call package-name,base,4.2.0.2): $(integer)
 $(call package-name,base,4.2.0.2): $(call package-name,ghc-prim,0.2.0.0)
 
-# bytestring
-$(eval $(call build-library-rule,bytestring,0.9.1.7))
-$(call package-name,bytestring,0.9.1.7): $(call package-name,base,4.2.0.2)
-
 # containers
 $(eval $(call build-library-rule,containers,0.3.0.0))
 $(call package-name,containers,0.3.0.0): \
@@ -654,13 +650,17 @@ endef
 $(HALVM_LIBDIR)/.cabal/packages/hackage.haskell.org/00-index.tar:
 	$(HALVM_CABAL) update
 
+# bytestring
+$(eval $(call cabal-install-rule,bytestring,0.9.2.1))
+$(call package-name,bytestring,0.9.2.1): $(call package-name,base,4.2.0.2)
+
 # cereal
 $(eval $(call cabal-install-rule,cereal,0.3.5.1))
 $(call package-name,cereal,0.3.5.1):        \
     $(call package-name,base,4.2.0.2)       \
     $(call package-name,containers,0.3.0.0) \
     $(call package-name,array,0.3.0.1)      \
-    $(call package-name,bytestring,0.9.1.7)
+    $(call package-name,bytestring,0.9.2.1)
 
 # stm
 $(eval $(call cabal-install-rule,stm,2.1.2.2))
@@ -699,14 +699,14 @@ $(eval $(call build-halvm-rule,BitFiddler,1.0.0))
 $(call package-name,BitFiddler,1.0.0):            \
     $(call package-name,base,4.2.0.2)             \
     $(call package-name,template-haskell,2.4.0.1) \
-    $(call package-name,bytestring,0.9.1.7)       \
+    $(call package-name,bytestring,0.9.2.1)       \
     $(call package-name,cereal,0.3.5.1)
 
 # communication
 $(eval $(call build-halvm-rule,communication,1.1.0))
 $(call package-name,communication,1.1.0):   \
     $(call package-name,base,4.2.0.2)       \
-    $(call package-name,bytestring,0.9.1.7) \
+    $(call package-name,bytestring,0.9.2.1) \
     $(call package-name,containers,0.3.0.0) \
     $(call package-name,syb,0.1.0.2)        \
     $(call package-name,cereal,0.3.5.1)     \
@@ -717,7 +717,7 @@ $(call package-name,communication,1.1.0):   \
 $(eval $(call build-halvm-rule,HALVMCore,1.1.0))
 $(call package-name,HALVMCore,1.1.0):       \
     $(call package-name,base,4.2.0.2)       \
-    $(call package-name,bytestring,0.9.1.7) \
+    $(call package-name,bytestring,0.9.2.1) \
     $(call package-name,syb,0.1.0.2)        \
     $(call package-name,mtl,1.1.0.2)        \
     $(call package-name,BoundedChan,1.0.0.0)
@@ -736,7 +736,7 @@ $(call package-name,RealDevice,1.0.0):      \
     $(call package-name,base,4.2.0.2)       \
     $(call package-name,array,0.3.0.1)      \
     $(call package-name,mtl,1.1.0.2)        \
-    $(call package-name,bytestring,0.9.1.7) \
+    $(call package-name,bytestring,0.9.2.1) \
     $(call package-name,stm,2.1.2.2)        \
     $(call package-name,HALVMCore,1.1.0)
 
@@ -744,7 +744,7 @@ $(call package-name,RealDevice,1.0.0):      \
 $(eval $(call build-halvm-rule,RendezvousLib,1.1.0))
 $(call package-name,RendezvousLib,1.1.0):    \
     $(call package-name,base,4.2.0.2)        \
-    $(call package-name,bytestring,0.9.1.7)  \
+    $(call package-name,bytestring,0.9.2.1)  \
     $(call package-name,communication,1.1.0) \
     $(call package-name,HALVMCore,1.1.0)     \
     $(call package-name,XenDevice,1.1.0)
@@ -757,7 +757,7 @@ $(call package-name,XenDevice,1.1.0):        \
     $(call package-name,containers,0.3.0.0)  \
     $(call package-name,array,0.3.0.1)       \
     $(call package-name,mtl,1.1.0.2)         \
-    $(call package-name,bytestring,0.9.1.7)
+    $(call package-name,bytestring,0.9.2.1)
 
 
 # ##############################################################################
