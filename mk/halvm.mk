@@ -552,6 +552,7 @@ $(eval $(call remove-rule,base,4.2.0.2))
 $(call package-name,base,4.2.0.2):
 	$(QUIET_RM)$(RM) -f $@
 	$(QUIET_LIB)( cd $(TOPDIR)/xen-ghc/libraries/base && \
+	  	autoconf									  && \
 	    $(cabal-configure)                            && \
 	    ($(cabal-build) || $(cabal-build))            && \
 	    $(cabal-install-only))
