@@ -56,5 +56,5 @@ mapBAR dev bar = do
   case barLenPages size of
     0     -> xThrow ENXIO
     pages -> mapForeignMachineFrames (DomId 0) mfns
-      where mfns = [ toMFN ((addr mem `shiftR` 12) + i)
+      where mfns = [ toMFN (fromIntegral $ (addr mem `shiftR` 12) + i)
                    | i <- [0 .. pages - 1] ]
