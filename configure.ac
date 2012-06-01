@@ -115,7 +115,7 @@ AC_LANG_PUSH(C)
 AC_CACHE_CHECK([whether gcc has -fno-unit-at-a-time], [fp_cv_gcc_has_no_unit_at_a_time],
 [OLD_CFLAGS=$CFLAGS
  CFLAGS="${CFLAGS} -fno-unit-at-a-time"
- AC_COMPILE_IFELSE(AC_LANG_SOURCE([[int main(int a, char *b){ return 1; }]]),
+ AC_COMPILE_IFELSE([AC_LANG_SOURCE([[int main(int a, char *b){ return 1; }]])],
    [fp_cv_gcc_has_no_unit_at_a_time=yes],
    [fp_cv_gcc_has_no_unit_at_a_time=no])
  CFLAGS=$OLD_CFLAGS])
@@ -130,7 +130,7 @@ AC_LANG_PUSH(C)
 AC_CACHE_CHECK([whether gcc has -fno-stack-protector], [fp_cv_gcc_has_no_stack_protector],
 [OLD_CFLAGS=$CFLAGS
  CFLAGS="${CFLAGS} -fno-stack-protector"
- AC_COMPILE_IFELSE(AC_LANG_SOURCE([[int main(int a, char *b){ return 1; }]]),
+ AC_COMPILE_IFELSE([AC_LANG_SOURCE([[int main(int a, char *b){ return 1; }]])],
    [fp_cv_gcc_has_no_stack_protector=yes],
    [fp_cv_gcc_has_no_stack_protector=no])
  CFLAGS=$OLD_CFLAGS])
@@ -144,13 +144,13 @@ AC_LANG_POP(C)
 dnl Figure out if we have a sufficiently recent version of glibc
 AC_LANG_PUSH(C)
 AC_CACHE_CHECK([whether glibc version >= 2.4], [fp_cv_glibc_better_then_24],
-  [AC_RUN_IFELSE(AC_LANG_SOURCE([[
+  [AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <features.h>
 
 int main(int a, char *b) {
   return !((__GLIBC__ >= 2) && (__GLIBC_MINOR__ >= 4));
 }
-]]),
+]])],
   [fp_cv_glibc_better_than_24=yes
    echo -n "yes"],
   [fp_cv_glibc_better_than_24=no
