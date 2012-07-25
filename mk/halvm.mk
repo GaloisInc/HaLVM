@@ -190,7 +190,7 @@ $(HALVM_LIBDIR)/cabal.conf: $(DIST_DIR_TREE)
 	       -DHAPPY_PROG=$(HALVM_HAPPY)				\
 	       -DHSCOLOUR_PROG=$(HALVM_HSCOLOUR)			\
 	       -DSPLIT_OBJS=True					\
-            static-bits/lib/cabal.conf					\
+            static-bits/lib/cabal-conf.pp					\
 	  | $(SED) "/^#.*/d"						\
 	  > $@
 

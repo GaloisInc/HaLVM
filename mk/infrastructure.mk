@@ -82,7 +82,7 @@ $(PLATFORM_CABAL_EXE): $(PLATFORM_GHC) $(CABAL_INST_TARBALL)		\
 	       -DGHC_PKG=$(PLATFORM_GHC_PKG)				\
 	       -DINSTALL_PREFIX=$(PLATFORM_GHC_PATH)			\
 	       -DHALVM_VER=$(HALVM_VER)					\
-	     static-bits/lib/cabal.conf					\
+	     static-bits/lib/cabal-conf.pp					\
 	  | $(SED) "/^#.*/d"						\
 	  > $(PLATFORM_GHC_PATH)/cabal_config
 	$(PLATFORM_CABAL) update
