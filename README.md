@@ -43,6 +43,7 @@ and GitHub's tools make merging your changes much more easy.
 Once checked out, the HaLVM utilizes a very traditional build process:
 
 > ./configure
+
 > make
 
 We typically recommend building the HaLVM in place. The above commands will
@@ -52,7 +53,9 @@ also include a less-tested capability to install the HaLVM tools into another
 directory:
 
 > ./configure --prefix=...
+
 > make
+
 > make install
 
 However, be warned that this is frequently less tested than the former
