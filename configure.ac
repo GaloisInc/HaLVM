@@ -255,9 +255,6 @@ case "$memory_model" in
   *)     LOG_FAILURE("Unknown memory model (internal error?)") ;;
 esac
 
-ghc_download_name=ghc-6.12.3-${ARCH}-unknown-linux-n.tar.bz2
-AC_SUBST(GHC_BINARY_NAME,$ghc_download_name)
-
 if test "${MESSAGE_LOG}" != ""; then
   echo ${MESSAGE_LOG} | sed -e "s/-IT-/\n /g" -e "s/-WBR-/\n           /g" -e "s/-EBR-/\n         /g"
 fi

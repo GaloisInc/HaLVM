@@ -6,8 +6,27 @@
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
 
-HaLVM_VERSION           = 1.0.0
-GHC_VER                 = 6.12.3
+HaLVM_VERSION           = 1.2.0
+GHC_VER                 = 7.6.1
+TR_VERSION              = 0.3.0.0
+MTL_VERSION             = 2.1.2
+NETWORK_VERSION         = 2.4.0.1
+TEXT_VERSION            = 0.11.2.3
+PARSEC_VERSION          = 3.1.3
+CABAL_VERSION           = 1.16.0.1
+ZLIB_VERSION            = 0.5.4.0
+HTTP_VERSION            = 4000.2.5
+RANDOM_VERSION          = 1.0.1.1
+CI_VER                  = 1.16.0
+FGL_VER                 = 5.4.2.4
+TIME_VER                = 1.4.0.1
+BC_VER                  = 1.0.1.0
+GHC_PATHS_VERSION       = 0.1.0.8
+HADDOCK_VERSION         = 2.13.1
+ALEX_VERSION            = 3.0.2
+HAPPY_VERSION           = 1.18.10
+HSCOLOUR_VERSION        = 1.20.3
+
 
 # Top of the build system, set by auto[re]conf.  This allows any other makefile
 # to include common.mk and get a consistent variable environment.
@@ -79,8 +98,8 @@ NO_STACK_PROTECTOR_OPT = @NO_STACK_PROTECTOR_OPT@
 SANITY_CHECKER_OPT     = @SANITY_CHECKER_OPT@
 BYTECODE_INTERP_OPT    = @BYTECODE_INTERP_OPT@
 ARCH_OPT               = @ARCH_OPTION@
-ARCH_FLAGS	       = @ARCH_FLAGS@
-GHC_ARCH_OPT	       = -optc$(ARCH_OPT)
+ARCH_FLAGS             = @ARCH_FLAGS@
+GHC_ARCH_OPT           = -optc$(ARCH_OPT)
 GHC_ARCH_FLAGS         = $(foreach opt,$(ARCH_FLAGS),-optc$(opt))
 NO_UNIT_AT_A_TIME_OPT  = @NO_UNIT_AT_A_TIME_OPT@
 ARCH                   = @ARCHITECTURE@
@@ -181,44 +200,48 @@ GHC_XENDIR_TARGET	= $(TOPDIR)/xen-ghc/mk/build.mk
 #
 # HTTP information
 #
-GHC_BASE                = http://darcs.haskell.org/download/dist/$(GHC_VER)
+GHC_BASE                = http://www.haskell.org/ghc/dist/$(GHC_VER)
 HACKAGE                 = http://hackage.haskell.org/packages/archive
 build_hackage_tarball   = $(TOPDIR)/tarballs/$1-$2.tar.gz
 build_hackage_link      = $(HACKAGE)/$1/$2/$1-$2.tar.gz
 build_hackage_target    = $(TOPDIR)/platform_ghc/lib/$1-$2/ghc-$(GHC_VER)/libHS$(1)-$(2).a
 
-GHC_BINARY_LINK     = $(GHC_BASE)/@GHC_BINARY_NAME@
-GHC_BINARY_TARBALL  = $(TOPDIR)/tarballs/@GHC_BINARY_NAME@
+GHC_FILE            = ghc-$(GHC_VER)-$(ARCH)-unknown-linux.tar.bz2
+GHC_BINARY_LINK     = $(GHC_BASE)/$(GHC_FILE)
+GHC_BINARY_TARBALL  = $(TOPDIR)/tarballs/$(GHC_FILE)
 GHC_SRC_LINK        = $(GHC_BASE)/ghc-$(GHC_VER)-src.tar.bz2
 GHC_SRC_TARBALL     = $(TOPDIR)/tarballs/ghc-$(GHC_VER)-src.tar.bz2
 GHC_EXTRAS_LINK     = $(GHC_BASE)/ghc-$(GHC_VER)-src-extralibs.tar.bz2
 GHC_EXTRAS_TARBALL  = $(TOPDIR)/tarballs/ghc-$(GHC_VER)-src-extralibs.tar.bz2
 
-MTL_VERSION         = 1.1.0.2
+TRANS_LINK          = $(call build_hackage_link,transformers,$(TR_VERSION))
+TRANS_TARBALL       = $(call build_hackage_tarball,transformers,$(TR_VERSION))
+TRANS_TARGET        = $(call build_hackage_target,transformers,$(TR_VERSION))
 MTL_LINK            = $(call build_hackage_link,mtl,$(MTL_VERSION))
 MTL_TARBALL         = $(call build_hackage_tarball,mtl,$(MTL_VERSION))
 MTL_TARGET          = $(call build_hackage_target,mtl,$(MTL_VERSION))
-NETWORK_VERSION     = 2.2.1.7
 NETWORK_LINK        = $(call build_hackage_link,network,$(NETWORK_VERSION))
 NETWORK_TARBALL     = $(call build_hackage_tarball,network,$(NETWORK_VERSION))
 NETWORK_TARGET      = $(call build_hackage_target,network,$(NETWORK_VERSION))
-PARSEC_VERSION      = 3.1.0
+TEXT_LINK           = $(call build_hackage_link,text,$(TEXT_VERSION))
+TEXT_TARBALL        = $(call build_hackage_tarball,text,$(TEXT_VERSION))
+TEXT_TARGET         = $(call build_hackage_target,text,$(TEXT_VERSION))
 PARSEC_LINK         = $(call build_hackage_link,parsec,$(PARSEC_VERSION))
 PARSEC_TARBALL      = $(call build_hackage_tarball,parsec,$(PARSEC_VERSION))
 PARSEC_TARGET       = $(call build_hackage_target,parsec,$(PARSEC_VERSION))
-CABAL_VERSION       = 1.8.0.6
 CABAL_LINK          = $(call build_hackage_link,Cabal,$(CABAL_VERSION))
 CABAL_TARBALL       = $(call build_hackage_tarball,Cabal,$(CABAL_VERSION))
 CABAL_TARGET        = $(call build_hackage_target,Cabal,$(CABAL_VERSION))
-ZLIB_VERSION        = 0.5.2.0
 ZLIB_LINK           = $(call build_hackage_link,zlib,$(ZLIB_VERSION))
 ZLIB_TARBALL        = $(call build_hackage_tarball,zlib,$(ZLIB_VERSION))
 ZLIB_TARGET         = $(call build_hackage_target,zlib,$(ZLIB_VERSION))
-HTTP_VERSION        = 4000.0.9
 HTTP_LINK           = $(call build_hackage_link,HTTP,$(HTTP_VERSION))
 HTTP_TARBALL        = $(call build_hackage_tarball,HTTP,$(HTTP_VERSION))
 HTTP_TARGET         = $(call build_hackage_target,HTTP,$(HTTP_VERSION))
-CI_VER              = 0.8.2
+RANDOM_LINK         = $(call build_hackage_link,random,$(RANDOM_VERSION))
+RANDOM_TARBALL      = $(call build_hackage_tarball,random,$(RANDOM_VERSION))
+RANDOM_TARGET       = $(call build_hackage_target,random,$(RANDOM_VERSION))
+
 CABAL_INST_LINK     = $(call build_hackage_link,cabal-install,$(CI_VER))
 CABAL_INST_TARBALL  = $(call build_hackage_tarball,cabal-install,$(CI_VER))
 ifeq ($(ARCH),x86_64)
@@ -226,20 +249,12 @@ CABAL_ORIG_SIG      = e4d9e6cfffe2de416a529213f6ec0f28
 else
 CABAL_ORIG_SIG      = 0fa5fba8bc5459391e6ec30b2b2ff632
 endif
-FGL_VER             = 5.4.2.2
 FGL_LINK            = $(call build_hackage_link,fgl,$(FGL_VER))
 FGL_TARBALL         = $(call build_hackage_tarball,fgl,$(FGL_VER))
-TIME_VER            = 1.2.0.3
 TIME_LINK           = $(call build_hackage_link,time,$(TIME_VER))
 TIME_TARBALL        = $(call build_hackage_tarball,time,$(TIME_VER))
-BC_VER              = 1.0.0.0
 BC_LINK             = $(call build_hackage_link,BoundedChan,$(BC_VER))
 BC_TARBALL          = $(call build_hackage_tarball,BoundedChan,$(BC_VER))
-GHC_PATHS_VERSION   = 0.1.0.6
-HADDOCK_VERSION     = 2.7.2
-ALEX_VERSION        = 2.3.3
-HAPPY_VERSION       = 1.18.5
-HSCOLOUR_VERSION    = 1.16
 
 # Install targets
 DESTDIR            ?=

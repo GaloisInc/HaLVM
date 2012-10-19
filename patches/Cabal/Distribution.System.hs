@@ -1,28 +1,29 @@
---- a/Distribution/System.hs	2010-06-15 07:09:39.000000000 -0700
-+++ b/Distribution/System.hs	2010-07-20 11:01:06.097908508 -0700
-@@ -67,7 +67,7 @@
- knownOSs :: [OS]
- knownOSs = [Linux, Windows, OSX
-            ,FreeBSD, OpenBSD, NetBSD
--           ,Solaris, AIX, HPUX, IRIX]
-+           ,Solaris, AIX, HPUX, IRIX, OtherOS "Xen"]
- 
- osAliases :: ClassificationStrictness -> OS -> [String]
- osAliases Permissive Windows = ["mingw32", "cygwin32"]
-@@ -75,6 +75,7 @@
- osAliases _          OSX     = ["darwin"]
- osAliases Permissive FreeBSD = ["kfreebsdgnu"]
- osAliases Permissive Solaris = ["solaris2"]
-+osAliases _          (OtherOS "Xen") = ["xen"]
- osAliases _          _       = []
- 
- instance Text OS where
-@@ -94,7 +95,7 @@
-             , name <- display os : osAliases strictness os ]
- 
- buildOS :: OS
--buildOS = classifyOS Permissive System.Info.os
-+buildOS = OtherOS "Xen" -- classifyOS Permissive System.Info.os
- 
- -- ------------------------------------------------------------
- -- * Machine Architecture
+*** pristine-Cabal/Distribution/System.hs	2012-10-03 08:45:36.000000000 -0700
+--- Cabal-1.16.0.1/Distribution/System.hs	2012-10-19 14:56:18.983580093 -0700
+***************
+*** 82,87 ****
+--- 82,88 ----
+  osAliases _          OSX     = ["darwin"]
+  osAliases Permissive FreeBSD = ["kfreebsdgnu"]
+  osAliases Permissive Solaris = ["solaris2"]
++ osAliases _          HaLVM   = ["xen"]
+  osAliases _          _       = []
+  
+  instance Text OS where
+***************
+*** 101,107 ****
+              , name <- display os : osAliases strictness os ]
+  
+  buildOS :: OS
+! buildOS = classifyOS Permissive System.Info.os
+  
+  -- ------------------------------------------------------------
+  -- * Machine Architecture
+--- 102,108 ----
+              , name <- display os : osAliases strictness os ]
+  
+  buildOS :: OS
+! buildOS = OtherOS "Xen" -- classifyOS Permissive System.Info.os
+  
+  -- ------------------------------------------------------------
+  -- * Machine Architecture
