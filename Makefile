@@ -7,41 +7,90 @@
 # BANNEREND
 #
 
-# This Makefile just forwards off to the other two.
+# THE HALVM BUILD PROCESS:
+#
+# 1. Download and install a version of GHC that runs on the current platform.
+# 2. Add libraries to the platform version of GHC until it is capable of
+#    running cabal-install.
+# 3. Use that platform cabal-instasll to install the HaLVM that will run on
+#    the platform: haddock, happy, alex, etc..
+# 4. Download the GHC source and patch it appropriately for running on Xen.
+# 5. Use the platform GHC to build the patched GHC compiler, creating the
+#    HaLVM compiler.
+# 6. Use the HaLVM compiler to build the core GHC libraries.
+# 7. Use the HaLVM compiler and core libraries to build the core HaLVM
+#    libraries.
+# 8. Copy/install everything into a useful place.
 #
 
-all:
-	$(MAKE) -f mk/infrastructure.mk all
-	$(MAKE) -f mk/halvm.mk all
+include mk/funs.mk
+include mk/common.mk
 
-docs:
-	$(MAKE) -f mk/infrastructure.mk all
-	$(MAKE) -f mk/halvm.mk docs
+all:: $(PLATFORM_CABAL_EXE)
 
-infrastructure:
-	$(MAKE) -f mk/infrastructure.mk all
-	$(MAKE) -f mk/tests.mk all
+###############################################################################
+###############################################################################
+#
+# STEP #1: Downaload and install a version of GHC that runs on the current
+#          platform.
+#
+###############################################################################
+###############################################################################
 
-examples:
-	$(MAKE) -f mk/tests.mk examples
+$(PLATFORM_GHC): $(GHC_BINARY_TARBALL)
+	$(RM) -rf tmp
+	$(MKDIR) tmp
+	$(TAR) jxf $(GHC_BINARY_TARBALL) -C tmp
+	( cd tmp/ghc-$(GHC_VER) && ./configure --prefix=$(PLATFORM_GHC_PATH) )
+	( cd tmp/ghc-$(GHC_VER) && $(MAKE) -j1 install )
+	$(RM) -rf tmp
 
-tests: infrastructure
-	$(MAKE) -f mk/tests.mk tests
+$(eval $(call build_downloader,GHC_BINARY))
 
-clean:
-	$(MAKE) -f mk/halvm.mk clean
-	$(MAKE) -f mk/infrastructure.mk clean
+clean::
+	$(RM) -rf platform_ghc
 
-partial-clean:
-	$(MAKE) -f mk/halvm.mk partial-clean
+###############################################################################
+###############################################################################
+#
+# STEP #2: Add libraries to the platform version of GHC until it is capable of
+#          running cabal-install.
+#
+###############################################################################
+###############################################################################
 
-mrproper:
-	$(MAKE) -f mk/halvm.mk mrproper
-	$(MAKE) -f mk/infrastructure.mk mrproper
-	$(MAKE) -f mk/tests.mk clean
+STEP2_LIBRARIES = transformers mtl network text parsec Cabal zlib HTTP random
 
-remove-%:
-	$(MAKE) -f mk/halvm.mk $@
+$(foreach l,$(STEP2_LIBRARIES),$(eval $(call build_platcabal_lib_stuff,$l)))
 
-install:
-	$(MAKE) -f mk/halvm.mk install
+$(mtl_TARGET): $(transformers_TARGET)
+$(parsec_TARGET): $(text_TARGET)
+$(network_TARGET): $(parsec_TARGET)
+$(HTTP_TARGET): $(network_TARGET)
+$(HTTP_TARGET): $(mtl_TARGET)
+$(HTTP_TARGET): $(parsec_TARGET)
+
+$(PLATFORM_CABAL_EXE): $(Cabal_TARGET)
+$(PLATFORM_CABAL_EXE): $(mtl_TARGET)
+$(PLATFORM_CABAL_EXE): $(HTTP_TARGET)
+$(PLATFORM_CABAL_EXE): $(network_TARGET)
+$(PLATFORM_CABAL_EXE): $(zlib_TARGET)
+$(PLATFORM_CABAL_EXE): $(random_TARGET)
+$(PLATFORM_CABAL_EXE): $(PLATFORM_GHC)
+
+$(PLATFORM_CABAL_EXE): $(CABAL_INST_TARBALL)
+	$(call build_cabal_target,$(CABAL_INST_TARBALL),cabal-install,$(CI_VER))
+	$(MKDIR) -p $(PLATFORM_GHC_PATH)/.cabal
+	$(CPP) -std=c89							\
+	       -DCABAL_CACHE_DIR=$(PLATFORM_GHC_PATH)/.cabal		\
+	       -DBUILD_DOCS=False					\
+	       -DGHC_COMPILER=$(PLATFORM_GHC)				\
+	       -DGHC_PKG=$(PLATFORM_GHC_PKG)				\
+	       -DINSTALL_PREFIX=$(PLATFORM_GHC_PATH)			\
+	       -DHALVM_VER=$(HALVM_VER)					\
+	     static-bits/lib/cabal-conf.pp					\
+	  | $(SED) "/^#.*/d"						\
+	  > $(PLATFORM_GHC_PATH)/cabal_config
+	$(PLATFORM_CABAL) update
+
+$(eval $(call build_downloader,CABAL_INST))
