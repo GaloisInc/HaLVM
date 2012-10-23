@@ -12,7 +12,7 @@
 # 1. Download and install a version of GHC that runs on the current platform.
 # 2. Add libraries to the platform version of GHC until it is capable of
 #    running cabal-install.
-# 3. Use that platform cabal-instasll to install the HaLVM that will run on
+# 3. Use that platform cabal-install to install the HaLVM tools that will run on
 #    the platform: haddock, happy, alex, etc..
 # 4. Download the GHC source and patch it appropriately for running on Xen.
 # 5. Use the platform GHC to build the patched GHC compiler, creating the
@@ -23,10 +23,10 @@
 # 8. Copy/install everything into a useful place.
 #
 
-include mk/funs.mk
 include mk/common.mk
+include mk/funs.mk
 
-all:: $(PLATFORM_CABAL_EXE)
+all: $(PLATFORM_CABAL_EXE)
 
 ###############################################################################
 ###############################################################################
@@ -94,3 +94,22 @@ $(PLATFORM_CABAL_EXE): $(CABAL_INST_TARBALL)
 	$(PLATFORM_CABAL) update
 
 $(eval $(call build_downloader,CABAL_INST))
+
+###############################################################################
+###############################################################################
+#
+# STEP #3. Use that platform cabal-install to install the HaLVM tools that will
+#          run on the platform: haddock, happy, alex, etc..
+#
+###############################################################################
+###############################################################################
+
+HALVM_TOOLS        = haddock happy alex hscolour
+HALVM_TOOL_TARGETS = $(foreach t,$(HALVM_TOOLS),$(PLATFORM_BIN_PATH)/$t)
+
+$(foreach t,$(HALVM_TOOLS),$(eval $(call build_cabalinst_target,$t)))
+
+$(PLATFORM_BIN_PATH)/haddock: $(PLATFORM_BIN_PATH)/alex
+$(PLATFORM_BIN_PATH)/haddock: $(PLATFORM_BIN_PATH)/happy
+
+all: $(HALVM_TOOL_TARGETS)

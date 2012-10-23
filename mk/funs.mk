@@ -22,3 +22,9 @@ $(call build_downloader,$1)
 $$($(1)_TARGET): $(PLATFORM_GHC) $$($(1)_TARBALL)
 	$$(call build_cabal_target,$$($(1)_TARBALL),$1,$$($(1)_VERSION))
 endef
+
+define build_cabalinst_target
+$(PLATFORM_BIN_PATH)/$1: $(PLATFORM_CABAL_EXE)
+	PATH=$(PLATFORM_BIN_PATH):$${PATH} $(PLATFORM_CABAL) install $1-$($(1)_VERSION)
+endef
+

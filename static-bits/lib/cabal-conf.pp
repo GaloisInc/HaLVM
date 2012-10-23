@@ -1,15 +1,9 @@
 remote-repo: hackage.haskell.org:http://hackage.haskell.org/packages/archive
 remote-repo-cache: CABAL_CACHE_DIR/packages
-
 -- local-repo:
-documentation: BUILD_DOCS
--- root-cmd:
--- symlink-bindir:
--- cabal-lib-version:
--- log-builds: False
--- build-reports:
+-- logs-dir:
+world-file: CABAL_CACHE_DIR/world
 -- verbose: 1
--- distpref: dist
 compiler: ghc
 with-compiler: GHC_COMPILER
 with-hc-pkg: GHC_PKG
@@ -22,17 +16,20 @@ with-happy: HAPPY_PROG
 with-hscolour: HSCOLOUR_PROG
 ghc-opts: GHC_OPTIONS
 #endif
+-- scratchdir:
 -- program-prefix: 
 -- program-suffix: 
 library-vanilla: True
 library-profiling: False
 shared: False
+executable-dynamic: False
 executable-profiling: False
--- optimization:
-library-for-ghci: True
+-- optimization: True
+-- library-for-ghci: True
 #ifdef SPLIT_OBJS
 split-objs: True
 #endif
+-- split-objs: False
 executable-stripping: True
 user-install: False
 -- package-db:
@@ -45,7 +42,29 @@ extra-include-dirs: EXTRA_INCDIRS/xenghc/sys
 #ifdef EXTRA_LIBDIRS
 extra-lib-dirs: EXTRA_LIBDIRS
 #endif
+tests: False
+library-coverage: False
+benchmarks: False
+-- cabal-lib-version:
 -- constraint:
+-- preference:
+-- solver: choose
+documentation: BUILD_DOCS
+-- doc-index-file: $datadir/doc/index.html
+-- max-backjumps: 200
+-- reorder-goals: False
+-- shadow-installed-packages:
+-- reinstall: False
+-- avoid-reinstalls: False
+-- force-reinstalls: False
+-- upgrade-dependencies: False
+-- only-dependencies: False
+-- root-cmd:
+-- symlink-bindir:
+build-summary: CABAL_CACHE_DIR/logs/build.log
+-- build-log:
+remote-build-reporting: anonymous
+-- one-shot: False
 -- username:
 -- password:
 

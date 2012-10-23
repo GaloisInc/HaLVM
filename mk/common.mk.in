@@ -21,11 +21,10 @@ CI_VER                  = 1.16.0
 FGL_VER                 = 5.4.2.4
 TIME_VER                = 1.4.0.1
 BC_VER                  = 1.0.1.0
-GHC_PATHS_VERSION       = 0.1.0.8
-HADDOCK_VERSION         = 2.13.1
-ALEX_VERSION            = 3.0.2
-HAPPY_VERSION           = 1.18.10
-HSCOLOUR_VERSION        = 1.20.3
+haddock_VERSION         = 2.13.1
+alex_VERSION            = 3.0.2
+happy_VERSION           = 1.18.10
+hscolour_VERSION        = 1.20.3
 
 
 # Top of the build system, set by auto[re]conf.  This allows any other makefile
@@ -132,6 +131,7 @@ HALVM_LIB_TARGETS       = $(addprefix $(TOPDIR)/libraries/.built-,$(ALL_LIBRARIE
 # Internal programs of interest
 #
 PLATFORM_GHC_PATH       = $(TOPDIR)/platform_ghc
+PLATFORM_BIN_PATH       = $(TOPDIR)/platform_ghc/bin
 PLATFORM_LIB_PATH       = $(PLATFORM_GHC_PATH)/lib/ghc-$(GHC_VER)
 PLATFORM_PACKAGE_D      = $(PLATFORM_LIB_PATH)/package.conf.d
 PLATFORM_GHC            = $(PLATFORM_GHC_PATH)/bin/ghc
