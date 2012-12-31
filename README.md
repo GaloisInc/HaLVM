@@ -42,6 +42,8 @@ and GitHub's tools make merging your changes much more easy.
 
 Once checked out, the HaLVM utilizes a very traditional build process:
 
+> autoreconf
+
 > ./configure
 
 > make
