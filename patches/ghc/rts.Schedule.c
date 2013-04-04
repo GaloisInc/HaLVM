@@ -18,33 +18,6 @@
   #endif
   
 ***************
-*** 486,496 ****
-  	ret = r->rRet;
-  	break;
-      }
-!     
-      case ThreadInterpret:
-  	cap = interpretBCO(cap);
-  	ret = cap->r.rRet;
-  	break;
-  	
-      default:
-  	barf("schedule: invalid what_next field");
---- 486,498 ----
-  	ret = r->rRet;
-  	break;
-      }
-!    
-! #if (defined(xen_HOST_OS) && defined(ALLOW_INTERPRETER)) || !defined(xen_HOST_OS)
-      case ThreadInterpret:
-  	cap = interpretBCO(cap);
-  	ret = cap->r.rRet;
-  	break;
-+ #endif
-  	
-      default:
-  	barf("schedule: invalid what_next field");
-***************
 *** 1003,1008 ****
 --- 1005,1020 ----
   static void

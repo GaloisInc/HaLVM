@@ -186,7 +186,6 @@ dnl Xen Stuff
 dnl
 dnl -------------------------------------------------------------------------
 
-
 AC_ARG_WITH(xen-tree, 
  [AS_HELP_STRING([--with-xen-tree=ARG],
    [build against the given Xen source tree])],
