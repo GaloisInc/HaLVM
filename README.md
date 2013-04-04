@@ -5,6 +5,15 @@ The Haskell Lightweight Virtual Machine (HALVM) Source Archive
 > three-clause BSD license. Please see the file LICENSE, distributed with
 > this software, for specific terms and conditions.
 
+**WARNING**        **WARNING**          **WARNING**
+
+You are on a development branch of the HaLVM. It is very unlikely that
+this branch will work. You should probably switch back to the 'master'
+branch right now, and come back later.
+
+**WARNING**        **WARNING**          **WARNING**
+
+
 1. What is the HaLVM?
 ---------------------
 
@@ -31,7 +40,12 @@ purpose Xen domains with minimal resource requirements.
 
 The HaLVM is available publicly [on GitHub](http://github.org/GaloisInc/HaLVM).
 
-We develop the HaLVM almost exclusively in Fedora Linux 16 or 17 running their
+**WARNING**        **WARNING**          **WARNING**
+This is a development branch of the HaLVM. The build process is currently
+under flux. You probably shouldn't even try to build it.
+**WARNING**        **WARNING**          **WARNING**
+
+We develop the HaLVM almost exclusively in Fedora Linux 17 or 18, running their
 associated versions of Xen. Please see the HaLVM wiki at GitHub for information
 on how you can tune your version of Xen to be better for debugging.
 
