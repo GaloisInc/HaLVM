@@ -7,41 +7,77 @@
 # BANNEREND
 #
 
-# This Makefile just forwards off to the other two.
+include mk/common.mk
+-include mk/autoconf.mk
+
+.PHONY: all
+all::
+
+.PHONY: clean
+clean::
+
+.PHONY: mrproper
+mrproper:: clean
+
+#############################################################################
 #
+# Basic Tree and Makefile contruction
+#
+#############################################################################
 
-all:
-	$(MAKE) -f mk/infrastructure.mk all
-	$(MAKE) -f mk/halvm.mk all
+quiet_cmd_gitsubmod  = GITSUB      $@
+      cmd_gitsubmod  = $(GIT) submodule update --init --recursive --quiet && \
+                      touch $@
+.submodule.init:
+	$(call cmd,gitsubmod)
 
-docs:
-	$(MAKE) -f mk/infrastructure.mk all
-	$(MAKE) -f mk/halvm.mk docs
+all:: .submodule.init
 
-infrastructure:
-	$(MAKE) -f mk/infrastructure.mk all
-	$(MAKE) -f mk/tests.mk all
+quiet_cmd_autoreconf = AUTOCONF    $@
+      cmd_autoreconf = autoreconf
+configure: configure.ac
+	$(call cmd,autoreconf)
 
-examples:
-	$(MAKE) -f mk/tests.mk examples
+quiet_cmd_configure  = CONFIGURE   $@
+      cmd_configure  = ./configure $(CONFIGURE_FLAGS) 2>&1 > /dev/null
+mk/autoconf.mk: configure
+	$(call cmd,configure)
 
-tests: infrastructure
-	$(MAKE) -f mk/tests.mk tests
+mrproper::
+	$(RM) -f configure mk/autoconf.mk
 
-clean:
-	$(MAKE) -f mk/halvm.mk clean
-	$(MAKE) -f mk/infrastructure.mk clean
-
-partial-clean:
-	$(MAKE) -f mk/halvm.mk partial-clean
-
-mrproper:
-	$(MAKE) -f mk/halvm.mk mrproper
-	$(MAKE) -f mk/infrastructure.mk mrproper
-	$(MAKE) -f mk/tests.mk clean
-
-remove-%:
-	$(MAKE) -f mk/halvm.mk $@
-
-install:
-	$(MAKE) -f mk/halvm.mk install
+#all: halvm-ghc/.submodule.init
+#	$(MAKE) -f mk/infrastructure.mk all
+#	$(MAKE) -f mk/halvm.mk all
+#
+#docs:
+#	$(MAKE) -f mk/infrastructure.mk all
+#	$(MAKE) -f mk/halvm.mk docs
+#
+#infrastructure:
+#	$(MAKE) -f mk/infrastructure.mk all
+#	$(MAKE) -f mk/tests.mk all
+#
+#examples:
+#	$(MAKE) -f mk/tests.mk examples
+#
+#tests: infrastructure
+#	$(MAKE) -f mk/tests.mk tests
+#
+#clean:
+#	$(MAKE) -f mk/halvm.mk clean
+#	$(MAKE) -f mk/infrastructure.mk clean
+#
+#partial-clean:
+#	$(MAKE) -f mk/halvm.mk partial-clean
+#
+#mrproper:
+#	$(MAKE) -f mk/halvm.mk mrproper
+#	$(MAKE) -f mk/infrastructure.mk mrproper
+#	$(MAKE) -f mk/tests.mk clean
+#
+#remove-%:
+#	$(MAKE) -f mk/halvm.mk $@
+#
+#install:
+#	$(MAKE) -f mk/halvm.mk install

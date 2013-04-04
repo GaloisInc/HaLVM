@@ -5,6 +5,15 @@ dnl - Please see the file LICENSE, distributed with this software, for specific
 dnl - terms and conditions.
 dnl Author: Adam Wick <awick@galois.com>
 dnl BANNEREND
+AC_PREREQ(2.60)
+AC_INIT(HALVM,2.0,awick@galois.com,halvm)
+
+dnl -------------------------------------------------------------------------
+dnl
+dnl Message logging system for autoconf. Allows us to stack up errors and
+dnl warnings and print them all in a lump at the end.
+dnl
+dnl -------------------------------------------------------------------------
 
 MESSAGE_LOG=
 FAILED=No
@@ -65,8 +74,13 @@ ifelse([$6],,,
 fi])
 ])
 
-AC_PREREQ(2.53)
-AC_INIT(HALVM,1.0,awick@galois.com,halvm)
+dnl -------------------------------------------------------------------------
+dnl
+dnl Basic program requirements: If these don't exist, then the rest of our
+dnl autoconf system won't work.
+dnl
+dnl -------------------------------------------------------------------------
+
 
 dnl Check for sed and echo first, with an abrupt failure if they're not found,
 dnl because we need these to show output.
@@ -79,36 +93,54 @@ if test "$ECHO" == no; then
   AC_MSG_ERROR("The HaLVM requires echo to build.")
 fi
 
+dnl -------------------------------------------------------------------------
+dnl
+dnl Other program requirements: If these don't exist, then the autoconf
+dnl script will run correctly, but we either we won't be able to build
+dnl anything or we'll have to disable some portion of the system.
+dnl
+dnl -------------------------------------------------------------------------
+
 dnl From this point on, we should use LOG_FAILURE instead of AC_FORCE_EXIST.
 AC_FORCE_EXIST(RM,rm)
-AC_FORCE_EXIST(CP,cp)
-AC_FORCE_EXIST(MV,mv)
-AC_FORCE_EXIST(LN,ln)
-AC_FORCE_EXIST(LD,ld)
-AC_FORCE_EXIST(AR,ar)
-AC_FORCE_EXIST(CAT,cat)
-AC_FORCE_EXIST(CPP,cpp)
-AC_FORCE_EXIST(TAR,tar)
-AC_FORCE_EXIST(WGET,wget)
-AC_FORCE_EXIST(FIND,find)
-AC_FORCE_EXIST(GREP,grep)
-AC_FORCE_EXIST(MAKE,make)
-AC_FORCE_EXIST(PERL,perl)
-AC_FORCE_EXIST(TAIL,tail)
-AC_FORCE_EXIST(CHMOD,chmod)
-AC_FORCE_EXIST(MKDIR,mkdir)
-AC_FORCE_EXIST(PATCH,patch)
+dnl AC_FORCE_EXIST(CP,cp)
+dnl AC_FORCE_EXIST(MV,mv)
+dnl AC_FORCE_EXIST(LN,ln)
+dnl AC_FORCE_EXIST(LD,ld)
+dnl AC_FORCE_EXIST(AR,ar)
+dnl AC_FORCE_EXIST(CAT,cat)
+dnl AC_FORCE_EXIST(CPP,cpp)
+AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [[789].*],
+                  LOG_FAILURE("The HaLVM requires GHC 7 or higher."))
+AC_FORCE_EXIST(GIT,git)
+dnl AC_FORCE_EXIST(TAR,tar)
+dnl AC_FORCE_EXIST(WGET,wget)
+dnl AC_FORCE_EXIST(FIND,find)
+dnl AC_FORCE_EXIST(GREP,grep)
+dnl AC_FORCE_EXIST(MAKE,make)
+dnl AC_FORCE_EXIST(PERL,perl)
+dnl AC_FORCE_EXIST(TAIL,tail)
+dnl AC_FORCE_EXIST(CHMOD,chmod)
+dnl AC_FORCE_EXIST(MKDIR,mkdir)
+dnl AC_FORCE_EXIST(PATCH,patch)
 AC_FORCE_EXIST(TOUCH,touch)
-AC_FORCE_EXIST(XARGS,xargs)
-AC_FORCE_EXIST(AUTORECONF,autoreconf)
-AC_FORCE_EXIST(AUTOCONF,autoconf)
+dnl AC_FORCE_EXIST(XARGS,xargs)
+dnl AC_FORCE_EXIST(AUTORECONF,autoreconf)
+dnl AC_FORCE_EXIST(AUTOCONF,autoconf)
+dnl 
+dnl AC_TESTS_WANT_EXIST(XM,xm)
+dnl AC_TESTS_WANT_EXIST(DIFF,diff)
+dnl AC_TESTS_WANT_EXIST(QEMU,qemu)
+dnl AC_TESTS_WANT_EXIST(SUDO,sudo)
+dnl AC_TESTS_WANT_EXIST(CABAL,cabal)
+dnl AC_TESTS_WANT_EXIST(KILLALL,killall)
 
-AC_TESTS_WANT_EXIST(XM,xm)
-AC_TESTS_WANT_EXIST(DIFF,diff)
-AC_TESTS_WANT_EXIST(QEMU,qemu)
-AC_TESTS_WANT_EXIST(SUDO,sudo)
-AC_TESTS_WANT_EXIST(CABAL,cabal)
-AC_TESTS_WANT_EXIST(KILLALL,killall)
+dnl -------------------------------------------------------------------------
+dnl
+dnl C Compiler Oddities: Here we check for a few different flags that we
+dnl may need to pass in order fo the HaLVM to run correctly.
+dnl
+dnl -------------------------------------------------------------------------
 
 dnl Figure out whether or not the compiler accepts -fno-unit-at-a-time
 AC_LANG_PUSH(C)
@@ -141,58 +173,19 @@ if test "$fp_cv_gcc_has_no_stack_protector" = "yes"; then
 fi
 AC_LANG_POP(C)
 
-dnl Figure out if we have a sufficiently recent version of glibc
-AC_LANG_PUSH(C)
-AC_CACHE_CHECK([whether glibc version >= 2.4], [fp_cv_glibc_better_then_24],
-  [AC_RUN_IFELSE([AC_LANG_SOURCE([[
-#include <features.h>
+dnl Build with GMP?
+AC_ARG_ENABLE([gmp],
+  [AC_HELP_STRING([--enable-gmp],
+                  [Build with gmp instead of integer-simple])],
+  [use_gmp=true], [])
+AC_SUBST(USE_GMP, [$use_gmp])
 
-int main(int a, char *b) {
-  return !((__GLIBC__ >= 2) && (__GLIBC_MINOR__ >= 4));
-}
-]])],
-  [fp_cv_glibc_better_than_24=yes
-   echo -n "yes"],
-  [fp_cv_glibc_better_than_24=no
-   echo -n "no"]]))
-AC_LANG_POP(C)
+dnl -------------------------------------------------------------------------
+dnl
+dnl Xen Stuff
+dnl
+dnl -------------------------------------------------------------------------
 
-if test "$fp_cv_glibc_better_than_24" = "no"; then
-  LOG_FAILURE("The HaLVm requires GLIBC >= 2.4.")
-fi
-
-dnl Make sure we have gmp.so.3
-AC_LANG_PUSH(C)
-AC_CHECK_LIB(gmp, __gmpz_mul_si, [], LOG_FAILURE("The HaLVM requires GMP (version 3) to be installed."))
-AC_LANG_POP(C)
-
-dnl See if we have the FUSE library
-AC_LANG_PUSH(C)
-OLDCPPFLAGS="${CPPFLAGS}"
-CPPFLAGS="${CPPFLAGS} -D_FILE_OFFSET_BITS=64"
-AC_CHECK_HEADER(fuse.h,[AC_SUBST(HAVE_FUSE_H,yes)],[
-  LOG_WARNING("You don't appear to have the FUSE library. This isn't a")
-  LOG_WARNINGC(["problem per se, but will make it much more difficult to"])
-  LOG_WARNINGC("develop domains that have a file system. We recommend you")
-  LOG_WARNINGC("add the FUSE library - usually fuse-devel or similar - before")
-  LOG_WARNINGC("continuing.")
-  AC_SUBST(HAVE_FUSE_H,no)])
-CPPFLAGS="${OLDCPPFLAGS}"
-AC_LANG_POP(C)
-
-AC_ARG_ENABLE(bytecode-interpreter,
- [AS_HELP_STRING([--enable-bytecode-interpreter],
-   [include support for the GHC runtime to execute bytecode])],
- [AC_SUBST(BYTECODE_INTERP_OPT, "-optc-DALLOW_INTERPRETER")],
- [AC_SUBST(BYTECODE_INTERP_OPT, "")])
-
-AC_ARG_ENABLE(sanity-checker,
- [AS_HELP_STRING([--enable-sanity-checker],
-   [include support for running the GHC sanity checker outside debug mode])],
- [AC_SUBST(SANITY_CHECKER_OPT, "-optc-DPERFORM_SANITY_CHECKS")],
- [AC_SUBST(SANITY_CHECKER_OPT, "")])
-
-dnl Now check for the Xen functionality we want.
 
 AC_ARG_WITH(xen-tree, 
  [AS_HELP_STRING([--with-xen-tree=ARG],
@@ -255,8 +248,12 @@ case "$memory_model" in
   *)     LOG_FAILURE("Unknown memory model (internal error?)") ;;
 esac
 
-ghc_download_name=ghc-6.12.3-${ARCH}-unknown-linux-n.tar.bz2
-AC_SUBST(GHC_BINARY_NAME,$ghc_download_name)
+
+dnl -------------------------------------------------------------------------
+dnl
+dnl Final message and file dump
+dnl
+dnl -------------------------------------------------------------------------
 
 if test "${MESSAGE_LOG}" != ""; then
   echo ${MESSAGE_LOG} | sed -e "s/-IT-/\n /g" -e "s/-WBR-/\n           /g" -e "s/-EBR-/\n         /g"
@@ -268,26 +265,81 @@ dnl common.mk from anywhere
 CURDIR=`pwd`
 AC_SUBST(TOPDIR,${CURDIR})
 
-dnl Build with GMP?
-AC_ARG_ENABLE([gmp],
-  [AC_HELP_STRING([--enable-gmp],
-                  [Build with gmp instead of integer-simple])],
-  [use_gmp=true], [])
-AC_SUBST(USE_GMP, [$use_gmp])
-
 if test "${FAILED}" == "Yes"; then
   echo "Fix these errors, and then try again."
 else
   echo "  HaLVM Memory Model: ${MEMMODEL_STR}"
   echo
-  AC_CONFIG_FILES([mk/common.mk
-                   static-bits/examples/mk/tests.mk
-                   static-bits/examples/mk/rules.mk
-                   libraries/HALVMCore/HALVMCore.buildinfo
-                   libraries/XenDevice/XenDevice.buildinfo
-                   libraries/libDomainBuilder/libDomainBuilder.buildinfo
-		   libraries/communication/communication.buildinfo
-                   libIVC/Makefile
-                   libm/Makefile])
+  AC_CONFIG_FILES([mk/autoconf.mk])
+dnl                    static-bits/examples/mk/tests.mk
+dnl                    static-bits/examples/mk/rules.mk
+dnl                    libraries/HALVMCore/HALVMCore.buildinfo
+dnl                    libraries/XenDevice/XenDevice.buildinfo
+dnl                    libraries/libDomainBuilder/libDomainBuilder.buildinfo
+dnl                    libraries/communication/communication.buildinfo
+dnl                    libIVC/Makefile
+dnl                    libm/Makefile])
   AC_OUTPUT
 fi
+
+dnl ------------------------------------------------------------------------
+dnl
+dnl Legacy bits.
+dnl
+dnl ------------------------------------------------------------------------
+
+dnl dnl Figure out if we have a sufficiently recent version of glibc
+dnl AC_LANG_PUSH(C)
+dnl AC_CACHE_CHECK([whether glibc version >= 2.4], [fp_cv_glibc_better_then_24],
+dnl   [AC_RUN_IFELSE([AC_LANG_SOURCE([[
+dnl #include <features.h>
+dnl 
+dnl int main(int a, char *b) {
+dnl   return !((__GLIBC__ >= 2) && (__GLIBC_MINOR__ >= 4));
+dnl }
+dnl ]])],
+dnl   [fp_cv_glibc_better_than_24=yes
+dnl    echo -n "yes"],
+dnl   [fp_cv_glibc_better_than_24=no
+dnl    echo -n "no"]]))
+dnl AC_LANG_POP(C)
+dnl 
+dnl if test "$fp_cv_glibc_better_than_24" = "no"; then
+dnl   LOG_FAILURE("The HaLVm requires GLIBC >= 2.4.")
+dnl fi
+dnl 
+dnl dnl Make sure we have gmp.so.3
+dnl AC_LANG_PUSH(C)
+dnl AC_CHECK_LIB(gmp, __gmpz_mul_si, [], LOG_FAILURE("The HaLVM requires GMP (version 3) to be installed."))
+dnl AC_LANG_POP(C)
+dnl 
+dnl dnl See if we have the FUSE library
+dnl AC_LANG_PUSH(C)
+dnl OLDCPPFLAGS="${CPPFLAGS}"
+dnl CPPFLAGS="${CPPFLAGS} -D_FILE_OFFSET_BITS=64"
+dnl AC_CHECK_HEADER(fuse.h,[AC_SUBST(HAVE_FUSE_H,yes)],[
+dnl   LOG_WARNING("You don't appear to have the FUSE library. This isn't a")
+dnl   LOG_WARNINGC(["problem per se, but will make it much more difficult to"])
+dnl   LOG_WARNINGC("develop domains that have a file system. We recommend you")
+dnl   LOG_WARNINGC("add the FUSE library - usually fuse-devel or similar - before")
+dnl   LOG_WARNINGC("continuing.")
+dnl   AC_SUBST(HAVE_FUSE_H,no)])
+dnl CPPFLAGS="${OLDCPPFLAGS}"
+dnl AC_LANG_POP(C)
+
+dnl AC_ARG_ENABLE(bytecode-interpreter,
+dnl  [AS_HELP_STRING([--enable-bytecode-interpreter],
+dnl    [include support for the GHC runtime to execute bytecode])],
+dnl  [AC_SUBST(BYTECODE_INTERP_OPT, "-optc-DALLOW_INTERPRETER")],
+dnl  [AC_SUBST(BYTECODE_INTERP_OPT, "")])
+dnl 
+dnl AC_ARG_ENABLE(sanity-checker,
+dnl  [AS_HELP_STRING([--enable-sanity-checker],
+dnl    [include support for running the GHC sanity checker outside debug mode])],
+dnl  [AC_SUBST(SANITY_CHECKER_OPT, "-optc-DPERFORM_SANITY_CHECKS")],
+dnl  [AC_SUBST(SANITY_CHECKER_OPT, "")])
+dnl 
+dnl ghc_download_name=ghc-6.12.3-${ARCH}-unknown-linux-n.tar.bz2
+dnl AC_SUBST(GHC_BINARY_NAME,$ghc_download_name)
+dnl 
+
