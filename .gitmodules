@@ -1,0 +1,3 @@
+[submodule "halvm-ghc"]
+	path = halvm-ghc
+	url = git://github.com/GaloisInc/halvm-ghc.git
