@@ -102,11 +102,13 @@ dnl
 dnl -------------------------------------------------------------------------
 
 dnl From this point on, we should use LOG_FAILURE instead of AC_FORCE_EXIST.
+AC_FORCE_EXIST(CC,gcc)
+AC_FORCE_EXIST(LD,ld)
+AC_FORCE_EXIST(NM,nm)
 AC_FORCE_EXIST(RM,rm)
 dnl AC_FORCE_EXIST(CP,cp)
 dnl AC_FORCE_EXIST(MV,mv)
 dnl AC_FORCE_EXIST(LN,ln)
-dnl AC_FORCE_EXIST(LD,ld)
 dnl AC_FORCE_EXIST(AR,ar)
 dnl AC_FORCE_EXIST(CAT,cat)
 dnl AC_FORCE_EXIST(CPP,cpp)
@@ -125,7 +127,8 @@ dnl AC_FORCE_EXIST(MKDIR,mkdir)
 dnl AC_FORCE_EXIST(PATCH,patch)
 AC_FORCE_EXIST(TOUCH,touch)
 dnl AC_FORCE_EXIST(XARGS,xargs)
-dnl AC_FORCE_EXIST(AUTORECONF,autoreconf)
+AC_FORCE_EXIST(OBJDUMP,objdump)
+AC_FORCE_EXIST(AUTORECONF,autoreconf)
 dnl AC_FORCE_EXIST(AUTOCONF,autoconf)
 dnl 
 dnl AC_TESTS_WANT_EXIST(XM,xm)
@@ -141,36 +144,38 @@ dnl C Compiler Oddities: Here we check for a few different flags that we
 dnl may need to pass in order fo the HaLVM to run correctly.
 dnl
 dnl -------------------------------------------------------------------------
-
-dnl Figure out whether or not the compiler accepts -fno-unit-at-a-time
 AC_LANG_PUSH(C)
-AC_CACHE_CHECK([whether gcc has -fno-unit-at-a-time], [fp_cv_gcc_has_no_unit_at_a_time],
-[OLD_CFLAGS=$CFLAGS
- CFLAGS="${CFLAGS} -fno-unit-at-a-time"
- AC_COMPILE_IFELSE([AC_LANG_SOURCE([[int main(int a, char *b){ return 1; }]])],
-   [fp_cv_gcc_has_no_unit_at_a_time=yes],
-   [fp_cv_gcc_has_no_unit_at_a_time=no])
- CFLAGS=$OLD_CFLAGS])
 
-if test "$fp_cv_gcc_has_no_unit_at_a_time" = "yes"; then
-  AC_SUBST(NO_UNIT_AT_A_TIME_OPT,"-fno-unit-at-a-time")
-fi
-AC_LANG_POP(C)
+AC_DEFUN([GCC_FLAG_CHECK], [
+    AC_CACHE_CHECK([whether gcc has $1], [$2], [
+      OLD_CFLAGS=${CFLAGS}
+      CFLAGS="${CFLAGS} $1"
+      AC_COMPILE_IFELSE([AC_LANG_SOURCE([[int main(int a,char*b){return 1;}]])],
+        [$2=yes],
+        [$2=no])
+      CFLAGS=${OLD_CFLAGS}
+    ])
 
-dnl Figure out whether or not the compiler accepts -fno-stack-protector
-AC_LANG_PUSH(C)
-AC_CACHE_CHECK([whether gcc has -fno-stack-protector], [fp_cv_gcc_has_no_stack_protector],
-[OLD_CFLAGS=$CFLAGS
- CFLAGS="${CFLAGS} -fno-stack-protector"
- AC_COMPILE_IFELSE([AC_LANG_SOURCE([[int main(int a, char *b){ return 1; }]])],
-   [fp_cv_gcc_has_no_stack_protector=yes],
-   [fp_cv_gcc_has_no_stack_protector=no])
- CFLAGS=$OLD_CFLAGS])
+    if test "$$2" = "yes"; then
+      AC_SUBST($3,"$1")
+    else
+      AC_SUBST($3,"")
+    fi
+  ])
 
-if test "$fp_cv_gcc_has_no_stack_protector" = "yes"; then
-  AC_SUBST(NO_STACK_PROTECTOR_OPT,"-fno-stack-protector")
-  CFLAGS="${CFLAGS} -fno-stack-protector"
-fi
+GCC_FLAG_CHECK(-fno-unit-at-a-time,fp_cv_gcc_has_no_unit_at_a_time,
+               NO_UNIT_AT_A_TIME_OPT)
+GCC_FLAG_CHECK(-fno-stack-protector,fp_cv_gcc_has_no_stack_protector,
+               NO_STACK_PROT_OPT)
+GCC_FLAG_CHECK(-fomit-frame-pointer,fp_cv_gcc_has_omit_frame_pointer,
+               NO_FRAME_PTR_OPT)
+GCC_FLAG_CHECK(-fno-asynchronous-unwind-tables,fp_cv_gcc_has_no_async_unwind,
+               NO_ASYNC_UNWIND_OPT)
+GCC_FLAG_CHECK(-mno-red-zone,fp_cv_gcc_has_no_red_zone,
+               NO_RED_ZONE_OPT)
+GCC_FLAG_CHECK(-fno-builtin,gp_cv_gcc_has_no_builtin,
+               NO_BUILTIN_OPT)
+
 AC_LANG_POP(C)
 
 dnl Build with GMP?
@@ -233,15 +238,12 @@ AC_CHECK_DECL(xc_gnttab_open,
 
 case "$memory_model" in
   "32")  AC_SUBST(ARCH_OPTION, "-DCONFIG_X86_32")
-	 AC_SUBST(ARCH_FLAGS,  "")
          MEMMODEL_STR="32-bit" ;
          ARCH=i386 ;;
   "32p") AC_SUBST(ARCH_OPTION, "-DCONFIG_X86_PAE")
-	 AC_SUBST(ARCH_FLAGS,  "")
          MEMMODEL_STR="PAE (36-bit physical / 32-bit virtual)" ;
          ARCH=i386 ;;
   "64")  AC_SUBST(ARCH_OPTION, "-DCONFIG_X86_64")
-	 AC_SUBST(ARCH_FLAGS,  "-fomit-frame-pointer -fno-asynchronous-unwind-tables -fno-builtin -mno-red-zone")
          MEMMODEL_STR="64-bit" ;
          ARCH=x86_64 ;;
   *)     LOG_FAILURE("Unknown memory model (internal error?)") ;;
