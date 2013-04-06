@@ -31,16 +31,15 @@ quiet_cmd_gitsubmod  = GITSUB      $@
 .submodule.init:
 	$(call cmd,gitsubmod)
 
-all:: .submodule.init
-
 quiet_cmd_autoreconf = AUTOCONF    $@
-      cmd_autoreconf = autoreconf
-configure: configure.ac
+      cmd_autoreconf = (cd $(dir $(lastword $^)) && $(AUTORECONF))
+./configure: configure.ac
 	$(call cmd,autoreconf)
 
 quiet_cmd_configure  = CONFIGURE   $@
-      cmd_configure  = ./configure $(CONFIGURE_FLAGS) 2>&1 > /dev/null
-mk/autoconf.mk: configure
+      cmd_configure  = (cd $(dir $(lastword $^)) && \
+                        ./configure $(CONFIGURE_FLAGS))
+mk/autoconf.mk: mk/autoconf.mk.in ./configure
 	$(call cmd,configure)
 
 mrproper::
