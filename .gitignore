@@ -27,4 +27,4 @@ mk/autoconf.mk
 platform_ghc/
 tarballs/
 xen-ghc/
-
+.submodule.init
