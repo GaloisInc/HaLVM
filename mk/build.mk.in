@@ -1,0 +1,11 @@
+/* These are always true of HaLVM versions of GHC */
+DYNAMIC_GHC_PROGRAMS := NO
+Stage1Only           := YES
+SplitObjs            := YES
+GhcLibWays           := v
+GhcRTSWays           := thr
+
+/* These are dependent on configure options */
+SRC_HC_OPTS    = GHC_FLAGS
+SRC_CC_OPTS    = C_FLAGS
+INTEGER_LIBARY = INT_LIBRARY

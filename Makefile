@@ -9,6 +9,7 @@
 
 include mk/common.mk
 -include mk/autoconf.mk
+AUTORECONF ?= autoreconf
 
 .PHONY: all
 all::
@@ -45,38 +46,50 @@ mk/autoconf.mk: mk/autoconf.mk.in ./configure
 mrproper::
 	$(RM) -f configure mk/autoconf.mk
 
-#all: halvm-ghc/.submodule.init
-#	$(MAKE) -f mk/infrastructure.mk all
-#	$(MAKE) -f mk/halvm.mk all
+#############################################################################
 #
-#docs:
-#	$(MAKE) -f mk/infrastructure.mk all
-#	$(MAKE) -f mk/halvm.mk docs
+# Basic Tree and Makefile contruction
 #
-#infrastructure:
-#	$(MAKE) -f mk/infrastructure.mk all
-#	$(MAKE) -f mk/tests.mk all
-#
-#examples:
-#	$(MAKE) -f mk/tests.mk examples
-#
-#tests: infrastructure
-#	$(MAKE) -f mk/tests.mk tests
-#
-#clean:
-#	$(MAKE) -f mk/halvm.mk clean
-#	$(MAKE) -f mk/infrastructure.mk clean
-#
-#partial-clean:
-#	$(MAKE) -f mk/halvm.mk partial-clean
-#
-#mrproper:
-#	$(MAKE) -f mk/halvm.mk mrproper
-#	$(MAKE) -f mk/infrastructure.mk mrproper
-#	$(MAKE) -f mk/tests.mk clean
-#
-#remove-%:
-#	$(MAKE) -f mk/halvm.mk $@
-#
-#install:
-#	$(MAKE) -f mk/halvm.mk install
+#############################################################################
+
+halvm-ghc/configure: .submodule.init halvm-ghc/configure.ac
+	$(call cmd,autoreconf)
+
+SYNC_ALL_FLAGS            = --no-dph
+SYNC_ALL_FLAGS           += -r
+SYNC_ALL_FLAGS           += http://darcs.haskell.org/
+
+quiet_cmd_syncall    = SYNC_ALL    ghc-libraries
+cmd_syncall    = (cd halvm-ghc && ./sync-all $(SYNC_ALL_FLAGS) get)
+halvm-ghc/libraries/base/base.cabal: .submodule.init
+	$(call cmd,syncall)
+
+HALVM_GHC_CONFIGURE_FLAGS  = --target=$(TARGET_ARCH)
+HALVM_GHC_CONFIGURE_FLAGS += --with-gcc=$(GCC)
+HALVM_GHC_CONFIGURE_FLAGS += --with-ld=$(LD)
+HALVM_GHC_CONFIGURE_FLAGS += --with-nm=$(NM)
+HALVM_GHC_CONFIGURE_FLAGS += --with-objdump=$(OBJDUMP)
+
+halvm-ghc/mk/config.mk: CONFIGURE_FLAGS=--target=$(TARGET_ARCH)
+halvm-ghc/mk/config.mk: halvm-ghc/libraries/base/base.cabal
+halvm-ghc/mk/config.mk: mk/autoconf.mk .submodule.init halvm-ghc/configure
+	$(call cmd,configure)
+
+BUILD_MK_REWRITES          = -DC_FLAGS="$(CFLAGS)"
+BUILD_MK_REWRITES         += -DGHC_FLAGS="$(GHCFLAGS)"
+BUILD_MK_REWRITES         += -DINT_LIBRARY=$(INTEGER_LIBRARY)
+
+quiet_cmd_cpp        = CPP        $@
+      cmd_cpp        = $(CPP) $(CPP_FLAGS) -P -x c $(lastword $^) > $@
+halvm-ghc/mk/build.mk: CPP_FLAGS=$(BUILD_MK_REWRITES)
+halvm-ghc/mk/build.mk: .submodule.init mk/build.mk.in
+	$(call cmd,cpp)
+
+clean::
+	$(RM) -f halvm-ghc/mk/build.mk
+
+mrproper::
+	$(RM) -f halvm-ghc/configure halvm-ghc/mk/config.mk
+
+all:: halvm-ghc/mk/build.mk halvm-ghc/libraries/base/base.cabal
+
