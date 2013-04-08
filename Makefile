@@ -44,7 +44,8 @@ mk/autoconf.mk: mk/autoconf.mk.in ./configure
 	$(call cmd,configure)
 
 mrproper::
-	$(RM) -f configure mk/autoconf.mk
+	$(RM) -f configure mk/autoconf.mk .submodule.init
+	$(RM) -rf halvm-ghc/libraries/base
 
 #############################################################################
 #
@@ -52,15 +53,17 @@ mrproper::
 #
 #############################################################################
 
-halvm-ghc/configure: .submodule.init halvm-ghc/configure.ac
-	$(call cmd,autoreconf)
+quiet_cmd_ghcboot     = BOOT        ghc
+      cmd_ghcboot     = (cd halvm-ghc && ./boot)
+halvm-ghc/configure: .submodule.init halvm-ghc/configure.ac halvm-ghc/boot
+	$(call cmd,ghcboot)
 
 SYNC_ALL_FLAGS            = --no-dph
 SYNC_ALL_FLAGS           += -r
 SYNC_ALL_FLAGS           += http://darcs.haskell.org/
 
 quiet_cmd_syncall    = SYNC_ALL    ghc-libraries
-cmd_syncall    = (cd halvm-ghc && ./sync-all $(SYNC_ALL_FLAGS) get)
+cmd_syncall    = (cd halvm-ghc && ./sync-all $(SYNC_ALL_FLAGS) get && rm -rf libraries/base && $(GIT) clone $(GIT_LIBRARIES_URL)/halvm-base.git --branch halvm libraries/base)
 halvm-ghc/libraries/base/base.cabal: .submodule.init
 	$(call cmd,syncall)
 
