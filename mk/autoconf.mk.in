@@ -75,7 +75,7 @@ XEN_INCLUDE_DIR        = @XEN_INCLUDE_DIRECTORY@
 
 BUILD_ARCH             = $(ARCH)-unknown-linux
 HOST_ARCH              = $(BUILD_ARCH)
-TARGET_ARCH            = $(ARCH)-unknown-xen
+TARGET_ARCH            = $(ARCH)-unknown-HaLVM
 
 ARCH_CC_FLAGS          = $(NO_UNIT_AT_A_TIME_OPT)
 ARCH_CC_FLAGS         += $(NO_STACK_PROT_OPT)

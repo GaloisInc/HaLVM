@@ -65,14 +65,14 @@ halvm-ghc/libraries/base/base.cabal: .submodule.init
 	$(call cmd,syncall)
 
 HALVM_GHC_CONFIGURE_FLAGS  = --target=$(TARGET_ARCH)
-HALVM_GHC_CONFIGURE_FLAGS += --with-gcc=$(GCC)
+HALVM_GHC_CONFIGURE_FLAGS += --with-gcc=$(CC)
 HALVM_GHC_CONFIGURE_FLAGS += --with-ld=$(LD)
 HALVM_GHC_CONFIGURE_FLAGS += --with-nm=$(NM)
 HALVM_GHC_CONFIGURE_FLAGS += --with-objdump=$(OBJDUMP)
 
-halvm-ghc/mk/config.mk: CONFIGURE_FLAGS=--target=$(TARGET_ARCH)
-halvm-ghc/mk/config.mk: halvm-ghc/libraries/base/base.cabal
+halvm-ghc/mk/config.mk: CONFIGURE_FLAGS=$(HALVM_GHC_CONFIGURE_FLAGS)
 halvm-ghc/mk/config.mk: mk/autoconf.mk .submodule.init halvm-ghc/configure
+halvm-ghc/mk/config.mk: halvm-ghc/libraries/base/base.cabal
 	$(call cmd,configure)
 
 BUILD_MK_REWRITES          = -DC_FLAGS="$(CFLAGS)"
@@ -86,10 +86,10 @@ halvm-ghc/mk/build.mk: .submodule.init mk/build.mk.in
 	$(call cmd,cpp)
 
 clean::
-	$(RM) -f halvm-ghc/mk/build.mk
+	$(RM) -f halvm-ghc/mk/build.mk halvm-ghc/mk/config.mk
 
 mrproper::
-	$(RM) -f halvm-ghc/configure halvm-ghc/mk/config.mk
+	$(RM) -f halvm-ghc/configure
 
 all:: halvm-ghc/mk/build.mk halvm-ghc/libraries/base/base.cabal
 

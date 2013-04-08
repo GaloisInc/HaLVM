@@ -116,6 +116,10 @@ AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [[789].*],
                   LOG_FAILURE("The HaLVM requires GHC 7 or higher."))
 AC_FORCE_EXIST(GIT,git)
 dnl AC_FORCE_EXIST(TAR,tar)
+AC_CHECK_PROG_VER(ALEX, alex, --version, [version \([0-9.]*\)],
+                  [3.[0-9]* | 2.3[0-9.]*],
+                  LOG_FAILURE("The HaLVM requires alex 2.2+."))
+dnl                  [\(2.[23456789].*\)\|\([3456789].*\)],
 dnl AC_FORCE_EXIST(WGET,wget)
 dnl AC_FORCE_EXIST(FIND,find)
 dnl AC_FORCE_EXIST(GREP,grep)
@@ -125,6 +129,8 @@ dnl AC_FORCE_EXIST(TAIL,tail)
 dnl AC_FORCE_EXIST(CHMOD,chmod)
 dnl AC_FORCE_EXIST(MKDIR,mkdir)
 dnl AC_FORCE_EXIST(PATCH,patch)
+AC_CHECK_PROG_VER(HAPPY, happy, --version, [Version \([0-9.]*\)], [1.1[89].*],
+                  LOG_FAILURE("The HaLVM requires Happy 1.16+."))
 AC_FORCE_EXIST(TOUCH,touch)
 dnl AC_FORCE_EXIST(XARGS,xargs)
 AC_FORCE_EXIST(OBJDUMP,objdump)
