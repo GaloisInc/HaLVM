@@ -12,7 +12,7 @@ include mk/common.mk
 AUTORECONF ?= autoreconf
 
 .PHONY: all
-all::
+all:
 
 .PHONY: clean
 clean::
@@ -94,5 +94,4 @@ clean::
 mrproper::
 	$(RM) -f halvm-ghc/configure
 
-all:: halvm-ghc/mk/build.mk halvm-ghc/libraries/base/base.cabal
-
+all: halvm-ghc/mk/build.mk halvm-ghc/libraries/base/base.cabal
