@@ -6,7 +6,7 @@ dnl - terms and conditions.
 dnl Author: Adam Wick <awick@galois.com>
 dnl BANNEREND
 AC_PREREQ(2.60)
-AC_INIT(HALVM,2.0,awick@galois.com,halvm)
+AC_INIT(HALVM,2.0.0,awick@galois.com,halvm)
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -185,10 +185,11 @@ GCC_FLAG_CHECK(-fno-builtin,gp_cv_gcc_has_no_builtin,
 AC_LANG_POP(C)
 
 dnl Build with GMP?
+int_library=integer-simple
 AC_ARG_ENABLE([gmp],
   [AC_HELP_STRING([--enable-gmp],
                   [Build with gmp instead of integer-simple])],
-  [int_library=integer-gmp], [int_library=integer-simple])
+  [int_library=integer-gmp])
 AC_SUBST(INTEGER_LIBRARY, [$int_library])
 
 if test "$int_library" = "integer-gmp"; then
@@ -296,12 +297,14 @@ else
   echo
   AC_CONFIG_FILES([mk/autoconf.mk mk/build.mk
                    static-bits/bin/halvm-cabal
+                   static-bits/bin/halvm-config
                    static-bits/bin/halvm-ghc
                    static-bits/bin/halvm-ghc-pkg
                   ])
   AC_OUTPUT
 
   chmod +x static-bits/bin/halvm-cabal
+  chmod +x static-bits/bin/halvm-config
   chmod +x static-bits/bin/halvm-ghc
   chmod +x static-bits/bin/halvm-ghc-pkg
 fi

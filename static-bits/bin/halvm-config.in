@@ -1,6 +1,11 @@
 #!/bin/sh
 
-HALVM_LIBDIR=@HALVM_LIBRARY_DIRECTORY@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+bindir=@bindir@
+libdir=@libdir@
+
+HALVM_LIBDIR=${libdir}/HaLVM/@PACKAGE_VERSION@
 
 usage()
 {

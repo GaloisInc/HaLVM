@@ -6,18 +6,25 @@
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
 
-HaLVM_VERSION           := 2.0.0
+HaLVM_VERSION           := @PACKAGE_VERSION@
 GHC_VER                 := 7.8.1
 GIT_LIBRARIES_URL       := git://github.com/GaloisInc
 
 # Top of the build system, set by auto[re]conf.  This allows any other makefile
 # to include common.mk and get a consistent variable environment.
-TOPDIR                  := @abs_top_builddir@
+TOPDIR      := @abs_top_builddir@
+
+prefix      := @prefix@
+exec_prefix := @exec_prefix@
+bindir      := @bindir@
+libdir      := @libdir@
+
+ghc-prefix  := $(libdir)/HaLVM/$(HaLVM_VERSION)
 
 # Should we build with GMP?
 USE_GMP                 := @USE_GMP@
 GMP_ABI                 := @ABI@
-INTEGER_LIBRARY         := @INT_LIBRARY@
+INTEGER_LIBRARY         := @INTEGER_LIBRARY@
 
 #
 # External programs of interest

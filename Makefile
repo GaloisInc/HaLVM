@@ -64,12 +64,12 @@ HALVM_GHC_CONFIGURE_FLAGS += --with-gcc=$(CC)
 HALVM_GHC_CONFIGURE_FLAGS += --with-ld=$(LD)
 HALVM_GHC_CONFIGURE_FLAGS += --with-nm=$(NM)
 HALVM_GHC_CONFIGURE_FLAGS += --with-objdump=$(OBJDUMP)
+HALVM_GHC_CONFIGURE_FLAGS += --prefix=$(ghc-prefix)
 
-halvm-ghc/mk/config.mk: CONFIGURE_FLAGS=$(HALVM_GHC_CONFIGURE_FLAGS)
 halvm-ghc/mk/config.mk: mk/autoconf.mk halvm-ghc/configure
 halvm-ghc/mk/config.mk: halvm-ghc/libraries/base/base.cabal
 	$(call label,CONFIGURE GHC)(cd halvm-ghc && \
-		./configure $(CONFIGURE_FLAGS) )
+		./configure $(HALVM_GHC_CONFIGURE_FLAGS) )
 
 halvm-ghc/mk/build.mk: mk/build.mk
 	$(call cmd,cp)
