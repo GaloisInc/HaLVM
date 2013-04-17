@@ -288,12 +288,6 @@ dnl -------------------------------------------------------------------------
 if test "${MESSAGE_LOG}" != ""; then
   echo ${MESSAGE_LOG} | sed -e "s/-IT-/\n /g" -e "s/-WBR-/\n           /g" -e "s/-EBR-/\n         /g"
 fi
-echo
-
-dnl Set the TOPDIR for the HaLVM build system; makes it viable to include
-dnl common.mk from anywhere
-CURDIR=`pwd`
-AC_SUBST(TOPDIR,${CURDIR})
 
 if test "${FAILED}" == "Yes"; then
   echo "Fix these errors, and then try again."
@@ -301,20 +295,13 @@ else
   echo "  HaLVM Memory Model: ${MEMMODEL_STR}"
   echo
   AC_CONFIG_FILES([mk/autoconf.mk mk/build.mk
+                   static-bits/bin/halvm-cabal
                    static-bits/bin/halvm-ghc
                    static-bits/bin/halvm-ghc-pkg
-                   static-bits/bin/halvm-cabal
                   ])
-dnl                    static-bits/examples/mk/tests.mk
-dnl                    static-bits/examples/mk/rules.mk
-dnl                    libraries/HALVMCore/HALVMCore.buildinfo
-dnl                    libraries/XenDevice/XenDevice.buildinfo
-dnl                    libraries/libDomainBuilder/libDomainBuilder.buildinfo
-dnl                    libraries/communication/communication.buildinfo
-dnl                    libIVC/Makefile
-dnl                    libm/Makefile])
   AC_OUTPUT
 
+  chmod +x static-bits/bin/halvm-cabal
   chmod +x static-bits/bin/halvm-ghc
   chmod +x static-bits/bin/halvm-ghc-pkg
 fi

@@ -10,7 +10,7 @@
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 bindir=@bindir@
-libdir=@libdir@
+libdir=@libdir@/HaLVM/@PACKAGE_VERSION@
 
 GHCBIN="${libdir}/ghc-GHC_VER"
 LIBDIROPT="-B${libdir}"

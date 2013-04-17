@@ -8,8 +8,9 @@
 # BANNEREND
 prefix=@prefix@
 exec_prefix=@exec_prefix@
+libdir=@libdir@/HaLVM/@PACKAGE_VERSION@
 
-GHCPKGBIN="@libdir@/ghc-pkg.bin"
-GLOBFILEOPT="--global-conf @libdir@/package.conf.d"
+GHCPKGBIN="${libdir}/ghc-pkg.bin"
+GLOBFILEOPT="--global-conf ${libdir}/package.conf.d"
 
 ${GHCPKGBIN} ${GLOBFILEOPT} ${1+"$@"}

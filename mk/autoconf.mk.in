@@ -12,7 +12,7 @@ GIT_LIBRARIES_URL       := git://github.com/GaloisInc
 
 # Top of the build system, set by auto[re]conf.  This allows any other makefile
 # to include common.mk and get a consistent variable environment.
-TOPDIR                  := @TOPDIR@
+TOPDIR                  := @abs_top_builddir@
 
 # Should we build with GMP?
 USE_GMP                 := @USE_GMP@

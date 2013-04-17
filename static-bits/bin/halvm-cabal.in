@@ -1,19 +1,13 @@
-BINDIR=`echo $0 | sed 's/[^/]*$//g'`
-LIBDIR_REL=${BINDIR}../lib/HaLVM-HALVM_VER
-CURDIR=`pwd`
-cd ${LIBDIR_REL}
-LIBDIR=`pwd`
-cd ${CURDIR}
-CABALBIN=${LIBDIR}/cabal
-CABALCONF=${LIBDIR}/cabal.conf
+#!/bin/sh
 
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+bindir=@bindir@
+libdir=@libdir@/HaLVM/@PACKAGE_VERSION@
+
+CABALBIN=${libdir}/cabal
+CABALCONF=${libdir}/cabal.conf
 HSC2HS=""
 CABALCMD=${1+"$@"}
-# for CMD in ${CABALCMD} ; do
-#    if [ "$CMD" = "configure" -o "$CMD" = "install"   -o "$CMD" = "build"        ] ; then
-#      HSC2HS=--with-hsc2hs=HALVM_HSC2HS
-#      break
-#    fi
-# done
 
 exec ${CABALBIN} --config-file ${CABALCONF} ${HSC2HS} ${CABALCMD}
