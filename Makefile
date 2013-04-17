@@ -19,6 +19,9 @@ clean::
 .PHONY: mrproper
 mrproper:: clean
 
+.PHONY: install
+install:
+
 #############################################################################
 #
 # Basic Tree and Makefile contruction
@@ -77,7 +80,29 @@ halvm-ghc/mk/build.mk: mk/build.mk
 all: halvm-ghc/inplace/bin/ghc-stage1
 
 halvm-ghc/inplace/bin/ghc-stage1: halvm-ghc/mk/config.mk
-	(cd halvm-ghc && $(MAKE))
+	$(MAKE) -C halvm-ghc
 
 clean::
-	(cd halvm-ghc && $(MAKE) clean)
+	$(MAKE) -C halvm-ghc clean
+
+mrproper::
+	$(RM) static-bits/bin/halvm-cabal
+	$(RM) static-bits/bin/halvm-config
+	$(RM) static-bits/bin/halvm-ghc
+	$(RM) static-bits/bin/halvm-ghc-pkg
+
+
+# Installation #################################################################
+
+programs := $(bindir)/halvm-ghc $(bindir)/halvm-ghc-pkg  \
+            $(bindir)/halvm-cabal $(bindir)/halvm-config \
+            $(bindir)/make_halvm_dir.py
+
+$(programs): $(bindir)/%: $(TOPDIR)/static-bits/bin/%
+	install -D $< $@
+
+install: $(programs) install-ghc
+
+.PHONY: install-ghc
+install-ghc:
+	$(MAKE) -C halvm-ghc install
