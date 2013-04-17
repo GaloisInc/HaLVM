@@ -39,10 +39,11 @@ SYNC_ALL_FLAGS            = --no-dph
 SYNC_ALL_FLAGS           += -r
 SYNC_ALL_FLAGS           += http://darcs.haskell.org/
 
-quiet_cmd_syncall    = SYNC_ALL    ghc-libraries
-cmd_syncall    = (cd halvm-ghc && ./sync-all $(SYNC_ALL_FLAGS) get && rm -rf libraries/base && $(GIT) clone $(GIT_LIBRARIES_URL)/halvm-base.git --branch halvm libraries/base)
 halvm-ghc/libraries/base/base.cabal:
-	$(call cmd,syncall)
+	$(call label,halvm-ghc/sync-all)(cd halvm-ghc \
+	  && ./sync-all $(SYNC_ALL_FLAGS) get \
+	  && rm -rf libraries/base \
+	  && $(GIT) clone $(GIT_LIBRARIES_URL)/halvm-base.git --branch halvm libraries/base)
 
 clean::
 	$(RM) -f halvm-ghc/mk/build.mk halvm-ghc/mk/config.mk
@@ -55,11 +56,8 @@ all: halvm-ghc/mk/build.mk halvm-ghc/libraries/base/base.cabal
 
 # Build GHC ####################################################################
 
-quiet_cmd_ghcboot     = BOOT        ghc
-      cmd_ghcboot     = (cd halvm-ghc && ./boot)
-
 halvm-ghc/configure: halvm-ghc/configure.ac halvm-ghc/boot
-	$(call cmd,ghcboot)
+	$(call label,halvm-ghc/boot)(cd halvm-ghc && ./boot)
 
 HALVM_GHC_CONFIGURE_FLAGS  = --target=$(TARGET_ARCH)
 HALVM_GHC_CONFIGURE_FLAGS += --with-gcc=$(CC)
