@@ -188,8 +188,31 @@ dnl Build with GMP?
 AC_ARG_ENABLE([gmp],
   [AC_HELP_STRING([--enable-gmp],
                   [Build with gmp instead of integer-simple])],
-  [use_gmp=true], [])
-AC_SUBST(USE_GMP, [$use_gmp])
+  [int_library=integer-gmp], [int_library=integer-simple])
+AC_SUBST(INTEGER_LIBRARY, [$int_library])
+
+if test "$int_library" = "integer-gmp"; then
+  AC_SUBST(USE_GMP, [yes])
+else
+  AC_SUBST(USE_GMP, [no])
+fi
+
+
+dnl -------------------------------------------------------------------------
+dnl
+dnl GHC Config
+dnl
+dnl -------------------------------------------------------------------------
+
+AC_ARG_ENABLE(docs,
+  [AS_HELP_STRING([--enable-docs], [build documentation])],
+  [if test "$enableval" = "yes"; then
+     enable_docs="yes"
+   else
+     enable_docs="no"
+   fi
+  ], [enable_docs="no"])
+AC_SUBST(ENABLE_DOCS, [$enable_docs])
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -277,7 +300,7 @@ if test "${FAILED}" == "Yes"; then
 else
   echo "  HaLVM Memory Model: ${MEMMODEL_STR}"
   echo
-  AC_CONFIG_FILES([mk/autoconf.mk])
+  AC_CONFIG_FILES([mk/autoconf.mk mk/build.mk])
 dnl                    static-bits/examples/mk/tests.mk
 dnl                    static-bits/examples/mk/rules.mk
 dnl                    libraries/HALVMCore/HALVMCore.buildinfo

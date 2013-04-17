@@ -6,93 +6,88 @@
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
 
-HaLVM_VERSION           = 2.0.0
-GHC_VER                 = 7.8.1
-GIT_LIBRARIES_URL       = git://github.com/GaloisInc
+HaLVM_VERSION           := 2.0.0
+GHC_VER                 := 7.8.1
+GIT_LIBRARIES_URL       := git://github.com/GaloisInc
 
 # Top of the build system, set by auto[re]conf.  This allows any other makefile
 # to include common.mk and get a consistent variable environment.
-TOPDIR                  = @TOPDIR@
+TOPDIR                  := @TOPDIR@
 
 # Should we build with GMP?
-USE_GMP                 = @USE_GMP@
-GMP_ABI                 = @ABI@
-
-ifeq ($(USE_GMP),true)
-INTEGER_LIBRARY         = integer-gmp
-else
-INTEGER_LIBRARY         = integer-simple
-endif
+USE_GMP                 := @USE_GMP@
+GMP_ABI                 := @ABI@
+INTEGER_LIBRARY         := @INT_LIBRARY@
 
 #
 # External programs of interest
 #
-#AR                      = @AR@
-CC                      = @CC@
-#CP                      = @CP@
-LD                      = @LD@
-#LN                      = @LN@
-#MV                      = @MV@
-NM                      = @NM@
-RM                      = @RM@
-#CAT                     = @CAT@
-CPP                     = @CPP@
-GHC                     = @GHC@
-GIT                     = @GIT@
-SED                     = @SED@
-#TAR                     = @TAR@
-ECHO                    = @ECHO@
-#FIND                    = @FIND@
-#GREP                    = @GREP@
-#MAKE                    = @MAKE@
-#PERL                    = @PERL@
-#TAIL                    = @TAIL@
-#WGET                    = @WGET@
-#CHMOD                   = @CHMOD@
-#MKDIR                   = @MKDIR@
-#PATCH                   = @PATCH@
-TOUCH                   = @TOUCH@
-#XARGS                   = @XARGS@
-OBJDUMP                 = @OBJDUMP@
-AUTORECONF              = @AUTORECONF@
+#AR                      := @AR@
+CC                      := @CC@
+#CP                      := @CP@
+LD                      := @LD@
+#LN                      := @LN@
+#MV                      := @MV@
+NM                      := @NM@
+RM                      := @RM@
+#CAT                     := @CAT@
+CPP                     := @CPP@
+GHC                     := @GHC@
+GIT                     := @GIT@
+SED                     := @SED@
+#TAR                     := @TAR@
+ECHO                    := @ECHO@
+#FIND                    := @FIND@
+#GREP                    := @GREP@
+#MAKE                    := @MAKE@
+#PERL                    := @PERL@
+#TAIL                    := @TAIL@
+#WGET                    := @WGET@
+#CHMOD                   := @CHMOD@
+#MKDIR                   := @MKDIR@
+#PATCH                   := @PATCH@
+TOUCH                   := @TOUCH@
+#XARGS                   := @XARGS@
+OBJDUMP                 := @OBJDUMP@
+AUTORECONF              := @AUTORECONF@
 
 #
 # Interesting flags from configure
 #
 
-NO_UNIT_AT_A_TIME_OPT  = @NO_UNIT_AT_A_TIME_OPT@
-NO_STACK_PROT_OPT      = @NO_STACK_PROT_OPT@
-NO_FRAME_PTR_OPT       = @NO_FRAME_PTR_OPT@
-NO_ASYNC_UNWIND_OPT    = @NO_ASYNC_UNWIND_OPT@
-NO_RED_ZONE_OPT        = @NO_RED_ZONE_OPT@
-NO_BUILTIN_OPT         = @NO_BUILTIN_OPT@
-ARCH_OPT               = @ARCH_OPTION@
-ARCH                   = @ARCHITECTURE@
-XEN_INCLUDE_DIR        = @XEN_INCLUDE_DIRECTORY@
+NO_UNIT_AT_A_TIME_OPT  := @NO_UNIT_AT_A_TIME_OPT@
+NO_STACK_PROT_OPT      := @NO_STACK_PROT_OPT@
+NO_FRAME_PTR_OPT       := @NO_FRAME_PTR_OPT@
+NO_ASYNC_UNWIND_OPT    := @NO_ASYNC_UNWIND_OPT@
+NO_RED_ZONE_OPT        := @NO_RED_ZONE_OPT@
+NO_BUILTIN_OPT         := @NO_BUILTIN_OPT@
+ARCH_OPT               := @ARCH_OPTION@
+ARCH                   := @ARCHITECTURE@
+XEN_INCLUDE_DIR        := @XEN_INCLUDE_DIRECTORY@
 
 #
 # Derivations of the above.
 #
 
-BUILD_ARCH             = $(ARCH)-unknown-linux
-HOST_ARCH              = $(BUILD_ARCH)
-TARGET_ARCH            = $(ARCH)-unknown-HaLVM
+BUILD_ARCH             := $(ARCH)-unknown-linux
+HOST_ARCH              := $(BUILD_ARCH)
+TARGET_ARCH            := $(ARCH)-unknown-HaLVM
 
-ARCH_CC_FLAGS          = $(NO_UNIT_AT_A_TIME_OPT)
+ARCH_CC_FLAGS         := $(NO_UNIT_AT_A_TIME_OPT)
 ARCH_CC_FLAGS         += $(NO_STACK_PROT_OPT)
 ARCH_CC_FLAGS         += $(NO_FRAME_PTR_OPT)
 ARCH_CC_FLAGS         += $(NO_ASYNC_UNWIND_OPT)
 ARCH_CC_FLAGS         += $(NO_RED_ZONE_OPT)
 ARCH_CC_FLAGS         += $(NO_BUILTIN_OPT)
 ARCH_CC_FLAGS         += $(ARCH_OPT)
-ARCH_GHC_FLAGS         = $(foreach f,$(ARCH_CC_FLAGS),-optc$f)
+ARCH_GHC_FLAGS        := $(foreach f,$(ARCH_CC_FLAGS),-optc$f)
 ARCH_GHC_FLAGS        += $(ARCH_OPT)
 
-CFLAGS                 = -O2 -Wall -Wno-unused-variable
+CFLAGS                := -O2 -Wall -Wno-unused-variable
 CFLAGS                += -I$(XEN_INCLUDE_DIR)
 CFLAGS                += $(ARCH_CC_FLAGS)
 
-GHCFLAGS               = -O2 -H32m
+GHCFLAGS              := -O2 -H32m
 GHCFLAGS              += $(ARCH_GHC_FLAGS)
 
 #
