@@ -243,12 +243,17 @@ AC_CHECK_HEADER(xen/xen.h,[],[
 dnl Is this a 64-bit platform?
 if test `uname -m` = "x86_64"; then
   memory_model="64";
-  AC_SUBST(ARCHITECTURE,"x86_64")
-  AC_SUBST(ABI,64)
+  arch="x86_64"
+  abi="32"
 else
-  AC_SUBST(ARCHITECTURE,"i386")
-  AC_SUBST(ABI,32)
+  arch="i368"
+  abi="32"
 fi
+
+AC_SUBST(ARCHITECTURE, "$arch")
+AC_SUBST(ABI, "$abi")
+AC_SUBST(target,"${arch}-unknown-HaLVM")
+AC_SUBST(target_prefix,"${arch}-unknown-HaLVM-")
 
 if test "$memory_model" != "64"; then
   AC_ARG_ENABLE(pae,
