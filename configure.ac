@@ -102,6 +102,7 @@ dnl
 dnl -------------------------------------------------------------------------
 
 dnl From this point on, we should use LOG_FAILURE instead of AC_FORCE_EXIST.
+AC_FORCE_EXIST(INSTALL,install)
 AC_FORCE_EXIST(CC,gcc)
 AC_FORCE_EXIST(LD,ld)
 AC_FORCE_EXIST(NM,nm)

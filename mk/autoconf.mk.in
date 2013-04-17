@@ -29,6 +29,7 @@ INTEGER_LIBRARY         := @INTEGER_LIBRARY@
 #
 # External programs of interest
 #
+INSTALL                 := @INSTALL@
 #AR                      := @AR@
 CC                      := @CC@
 #CP                      := @CP@
