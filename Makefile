@@ -25,14 +25,8 @@ mrproper:: clean
 #
 #############################################################################
 
-quiet_cmd_gitsubmod  = GITSUB      $@
-      cmd_gitsubmod  = $(GIT) submodule update --init --recursive --quiet && \
-                      touch $@
-.submodule.init:
-	$(call cmd,gitsubmod)
-
 mrproper::
-	$(RM) -f configure mk/autoconf.mk .submodule.init
+	$(RM) -f configure mk/autoconf.mk
 	$(RM) -rf halvm-ghc/libraries/base
 
 #############################################################################
@@ -47,7 +41,7 @@ SYNC_ALL_FLAGS           += http://darcs.haskell.org/
 
 quiet_cmd_syncall    = SYNC_ALL    ghc-libraries
 cmd_syncall    = (cd halvm-ghc && ./sync-all $(SYNC_ALL_FLAGS) get && rm -rf libraries/base && $(GIT) clone $(GIT_LIBRARIES_URL)/halvm-base.git --branch halvm libraries/base)
-halvm-ghc/libraries/base/base.cabal: .submodule.init
+halvm-ghc/libraries/base/base.cabal:
 	$(call cmd,syncall)
 
 clean::
@@ -64,7 +58,7 @@ all: halvm-ghc/mk/build.mk halvm-ghc/libraries/base/base.cabal
 quiet_cmd_ghcboot     = BOOT        ghc
       cmd_ghcboot     = (cd halvm-ghc && ./boot)
 
-halvm-ghc/configure: .submodule.init halvm-ghc/configure.ac halvm-ghc/boot
+halvm-ghc/configure: halvm-ghc/configure.ac halvm-ghc/boot
 	$(call cmd,ghcboot)
 
 HALVM_GHC_CONFIGURE_FLAGS  = --target=$(TARGET_ARCH)
@@ -74,7 +68,7 @@ HALVM_GHC_CONFIGURE_FLAGS += --with-nm=$(NM)
 HALVM_GHC_CONFIGURE_FLAGS += --with-objdump=$(OBJDUMP)
 
 halvm-ghc/mk/config.mk: CONFIGURE_FLAGS=$(HALVM_GHC_CONFIGURE_FLAGS)
-halvm-ghc/mk/config.mk: mk/autoconf.mk .submodule.init halvm-ghc/configure
+halvm-ghc/mk/config.mk: mk/autoconf.mk halvm-ghc/configure
 halvm-ghc/mk/config.mk: halvm-ghc/libraries/base/base.cabal
 	$(call label,CONFIGURE GHC)(cd halvm-ghc && \
 		./configure $(CONFIGURE_FLAGS) )
