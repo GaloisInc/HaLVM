@@ -312,6 +312,9 @@ dnl                    libraries/communication/communication.buildinfo
 dnl                    libIVC/Makefile
 dnl                    libm/Makefile])
   AC_OUTPUT
+
+  chmod +x static-bits/bin/halvm-ghc
+  chmod +x static-bits/bin/halvm-ghc-pkg
 fi
 
 dnl ------------------------------------------------------------------------
