@@ -1,7 +1,6 @@
 ifneq ($(V),1)
 Q         := @
 quiet     := quiet_
-MAKEFLAGS += -s
 else
 Q         :=
 quiet     :=

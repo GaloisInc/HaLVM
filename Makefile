@@ -79,7 +79,7 @@ halvm-ghc/mk/build.mk: mk/build.mk
 all: halvm-ghc/inplace/bin/ghc-stage1
 
 halvm-ghc/inplace/bin/ghc-stage1: halvm-ghc/mk/config.mk
-	$(MAKE) -C halvm-ghc
+	(cd halvm-ghc && $(MAKE))
 
 clean::
-	$(MAKE) -C halvm-ghc clean
+	(cd halvm-ghc && $(MAKE) clean)
