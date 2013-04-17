@@ -302,7 +302,9 @@ else
   echo
   AC_CONFIG_FILES([mk/autoconf.mk mk/build.mk
                    static-bits/bin/halvm-ghc
-                   static-bits/bin/halvm-ghc-pkg])
+                   static-bits/bin/halvm-ghc-pkg
+                   static-bits/bin/halvm-cabal
+                  ])
 dnl                    static-bits/examples/mk/tests.mk
 dnl                    static-bits/examples/mk/rules.mk
 dnl                    libraries/HALVMCore/HALVMCore.buildinfo
