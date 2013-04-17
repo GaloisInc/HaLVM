@@ -1,13 +1,198 @@
-# These are always true of HaLVM versions of GHC
-DYNAMIC_GHC_PROGRAMS := NO
-Stage1Only           := YES
-SplitObjs            := YES
-GhcLibWays           := v
-GhcRTSWays           := thr
+# -----------------------------------------------------------------------------
+# A Sample build.mk
+#
+# Uncomment one of the following BuildFlavour settings to get the desired
+# overall build type, and then tweak the options in the relevant section
+# below.
 
-# These are dependent on configure options
-INTEGER_LIBARY       := @INTEGER_LIBRARY@
-HADDOCK_DOCS         := @ENABLE_DOCS@
-BUILD_DOCBOOK_HTML   := @ENABLE_DOCS@
-BUILD_DOCBOOK_PS     := @ENABLE_DOCS@
-BUILD_DOCBOOK_PDF    := @ENABLE_DOCS@
+# Uncomment one of these to select a build profile below:
+
+# Full build with max optimisation and everything enabled (very slow build)
+#BuildFlavour = perf
+
+# As above but build GHC using the LLVM backend
+#BuildFlavour = perf-llvm
+
+# Fast build with optimised libraries, no profiling (RECOMMENDED):
+Stage1Only           := YES
+BuildFlavour         := quick
+DYNAMIC_GHC_PROGRAMS := NO
+
+# Fast build with optimised libraries, no profiling, with LLVM:
+#BuildFlavour = quick-llvm
+
+# Even faster build.  NOT RECOMMENDED: the libraries will be
+# completely unoptimised, so any code built with this compiler
+# (including stage2) will run very slowly:
+#BuildFlavour = quickest
+
+# Profile the stage2 compiler:
+#BuildFlavour = prof
+
+# A development build, working on the stage 1 compiler:
+#BuildFlavour = devel1
+
+# A development build, working on the stage 2 compiler:
+#BuildFlavour = devel2
+
+GhcLibWays = $(if $(filter $(DYNAMIC_GHC_PROGRAMS),YES),v dyn,v)
+
+# Uncomment this to get prettier build output.
+# Please use V = 1 when reporting GHC bugs.
+# V = 0
+
+# -------- 1. A Performance/Distribution build--------------------------------
+
+ifeq "$(BuildFlavour)" "perf"
+
+# perf matches the default settings, repeated here for comparison:
+
+SRC_HC_OPTS     = -O -H64m
+GhcStage1HcOpts = -O -fasm
+GhcStage2HcOpts = -O2 -fasm
+GhcHcOpts       = -Rghc-timing
+GhcLibHcOpts    = -O2
+GhcLibWays     += p
+
+ifeq "$(PlatformSupportsSharedLibs)" "YES"
+GhcLibWays += dyn
+endif
+
+endif
+
+# ---------------- Perf build using LLVM -------------------------------------
+
+ifeq "$(BuildFlavour)" "perf-llvm"
+
+SRC_HC_OPTS     = -O -H64m -fllvm
+GhcStage1HcOpts = -O -fllvm
+GhcStage2HcOpts = -O2 -fllvm
+GhcHcOpts       = -Rghc-timing
+GhcLibHcOpts    = -O2
+GhcLibWays     += p
+
+ifeq "$(PlatformSupportsSharedLibs)" "YES"
+GhcLibWays += dyn
+endif
+
+endif
+
+# -------- A Fast build ------------------------------------------------------
+
+ifeq "$(BuildFlavour)" "quickest"
+
+SRC_HC_OPTS        = -H64m -O0 -fasm
+GhcStage1HcOpts    = -O -fasm
+GhcStage2HcOpts    = -O0 -fasm
+GhcLibHcOpts       = -O0 -fasm
+SplitObjs          = NO
+HADDOCK_DOCS       = NO
+BUILD_DOCBOOK_HTML = NO
+BUILD_DOCBOOK_PS   = NO
+BUILD_DOCBOOK_PDF  = NO
+
+endif
+
+# -------- A Fast build with optimised libs ----------------------------------
+
+ifeq "$(BuildFlavour)" "quick"
+
+SRC_HC_OPTS        = -H64m -O0 -fasm
+GhcStage1HcOpts    = -O -fasm
+GhcStage2HcOpts    = -O0 -fasm
+GhcLibHcOpts       = -O -fasm
+SplitObjs          = NO
+HADDOCK_DOCS       = NO
+BUILD_DOCBOOK_HTML = NO
+BUILD_DOCBOOK_PS   = NO
+BUILD_DOCBOOK_PDF  = NO
+
+endif
+
+# -------- A Fast build with optimised libs using LLVM -----------------------
+
+ifeq "$(BuildFlavour)" "quick-llvm"
+
+SRC_HC_OPTS        = -H64m -O0 -fllvm
+GhcStage1HcOpts    = -O -fllvm
+GhcStage2HcOpts    = -O0 -fllvm
+GhcLibHcOpts       = -O -fllvm
+SplitObjs          = NO
+HADDOCK_DOCS       = NO
+BUILD_DOCBOOK_HTML = NO
+BUILD_DOCBOOK_PS   = NO
+BUILD_DOCBOOK_PDF  = NO
+
+endif
+
+# -------- Profile the stage2 compiler ---------------------------------------
+
+ifeq "$(BuildFlavour)" "prof"
+
+SRC_HC_OPTS        = -H64m -O0 -fasm
+GhcStage1HcOpts    = -O -fasm
+GhcStage2HcOpts    = -O -fasm
+GhcLibHcOpts       = -O -fasm
+
+GhcLibWays         += p
+GhcProfiled        = YES
+
+SplitObjs          = NO
+HADDOCK_DOCS       = NO
+BUILD_DOCBOOK_HTML = NO
+BUILD_DOCBOOK_PS   = NO
+BUILD_DOCBOOK_PDF  = NO
+
+endif
+
+
+# -------- A Development build (stage 1) -------------------------------------
+
+ifeq "$(BuildFlavour)" "devel1"
+
+SRC_HC_OPTS        = -H64m -O -fasm
+GhcLibHcOpts       = -O -dcore-lint
+GhcStage1HcOpts    = -Rghc-timing -O0 -DDEBUG
+GhcStage2HcOpts    = -Rghc-timing -O -fasm
+SplitObjs          = NO
+HADDOCK_DOCS       = NO
+BUILD_DOCBOOK_HTML = NO
+BUILD_DOCBOOK_PS   = NO
+BUILD_DOCBOOK_PDF  = NO
+LAX_DEPENDENCIES   = YES
+
+endif
+
+# -------- A Development build (stage 2) -------------------------------------
+
+ifeq "$(BuildFlavour)" "devel2"
+
+SRC_HC_OPTS        = -H64m -O -fasm
+GhcLibHcOpts       = -O -dcore-lint
+GhcStage1HcOpts    = -Rghc-timing -O -fasm
+GhcStage2HcOpts    = -Rghc-timing -O0 -DDEBUG
+SplitObjs          = NO
+HADDOCK_DOCS       = NO
+BUILD_DOCBOOK_HTML = NO
+BUILD_DOCBOOK_PS   = NO
+BUILD_DOCBOOK_PDF  = NO
+LAX_DEPENDENCIES   = YES
+
+# After stage 1 and the libraries have been built, you can uncomment this line:
+
+# stage=2
+
+# Then stage 1 will not be touched by the build system, until
+# you comment the line again.  This is a useful trick for when you're
+# working on stage 2 and want to freeze stage 1 and the libraries for
+# a while.
+
+endif
+
+# -----------------------------------------------------------------------------
+# Other settings that might be useful
+
+# NoFib settings
+NoFibWays =
+STRIP_CMD = :
+
