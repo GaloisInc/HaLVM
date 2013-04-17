@@ -6,15 +6,10 @@
 # - terms and conditions.
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
-BINDIR=`echo $0 | sed 's/[^/]*$//g'`
-LIBDIR_REL="${BINDIR}../lib/HaLVM-HALVM_VER"
+prefix=@prefix@
+exec_prefix=@exec_prefix@
 
-CURDIR=`pwd`
-cd ${LIBDIR_REL}
-LIBDIR=`pwd`
-cd ${CURDIR}
-
-GHCPKGBIN="${LIBDIR}/ghc-pkg.bin"
-GLOBFILEOPT="--global-conf ${LIBDIR}/package.conf.d"
+GHCPKGBIN="@libdir@/ghc-pkg.bin"
+GLOBFILEOPT="--global-conf @libdir@/package.conf.d"
 
 ${GHCPKGBIN} ${GLOBFILEOPT} ${1+"$@"}

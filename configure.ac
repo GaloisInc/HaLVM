@@ -300,7 +300,9 @@ if test "${FAILED}" == "Yes"; then
 else
   echo "  HaLVM Memory Model: ${MEMMODEL_STR}"
   echo
-  AC_CONFIG_FILES([mk/autoconf.mk mk/build.mk])
+  AC_CONFIG_FILES([mk/autoconf.mk mk/build.mk
+                   static-bits/bin/halvm-ghc
+                   static-bits/bin/halvm-ghc-pkg])
 dnl                    static-bits/examples/mk/tests.mk
 dnl                    static-bits/examples/mk/rules.mk
 dnl                    libraries/HALVMCore/HALVMCore.buildinfo
