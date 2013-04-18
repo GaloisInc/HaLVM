@@ -19,7 +19,7 @@ exec_prefix := @exec_prefix@
 bindir      := @bindir@
 libdir      := @libdir@
 
-halvm-prefix := $(libdir)/HaLVM/$(HaLVM_VERSION)
+halvm-dir   := $(libdir)/HaLVM/$(HaLVM_VERSION)
 
 # Should we build with GMP?
 USE_GMP                 := @USE_GMP@

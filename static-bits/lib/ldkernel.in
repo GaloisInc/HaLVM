@@ -26,13 +26,18 @@
 #  shift
 #done
 
+prefix="@prefix@"
+exec_prefix="@exec_prefix@"
+libdir="@libdir@"
+halvm_dir="@libdir@/HaLVM/@PACKAGE_VERSION@"
+
 ARGS=""
 LIBS=""
 LIBDIR=`echo $0 | sed 's/[^/]*$//g'`
-START_FILE="${LIBDIR}/start.o"
-LIBM_FILE="${LIBDIR}/libm.a"
-GMP_FILE="@LIBGMP@"
-LINKER_SCRIPT="-T ${LIBDIR}/kernel.lds"
+START_FILE="${halvm_dir}/start.o"
+LIBM_FILE="${halvm_dir}/libm.a"
+#GMP_FILE="@LIBGMP@"
+LINKER_SCRIPT="-T ${halvm_dir}/kernel.lds"
 while [ $# != 0 ] ; do
   case "$1" in
     "-DDONT_WANT_WIN32_DLL_SUPPORT") dead=$1; shift;;

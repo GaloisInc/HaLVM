@@ -306,6 +306,7 @@ else
                    static-bits/bin/halvm-config
                    static-bits/bin/halvm-ghc
                    static-bits/bin/halvm-ghc-pkg
+                   static-bits/lib/ldkernel
                   ])
   AC_OUTPUT
 
@@ -313,6 +314,7 @@ else
   chmod +x static-bits/bin/halvm-config
   chmod +x static-bits/bin/halvm-ghc
   chmod +x static-bits/bin/halvm-ghc-pkg
+  chmod +x static-bits/lib/ldkernel
 fi
 
 dnl ------------------------------------------------------------------------

@@ -94,15 +94,27 @@ mrproper::
 
 # Installation #################################################################
 
+quiet_cmd_install = INSTALL   $@
+      cmd_install = install -D $< $@
+
 programs := $(bindir)/halvm-ghc $(bindir)/halvm-ghc-pkg  \
             $(bindir)/halvm-cabal $(bindir)/halvm-config \
             $(bindir)/make_halvm_dir.py
 
 $(programs): $(bindir)/%: $(TOPDIR)/static-bits/bin/%
-	install -D $< $@
-
-install: $(programs) install-ghc
+	$(call cmd,install)
 
 .PHONY: install-ghc
 install-ghc:
-	$(MAKE) -C halvm-ghc install
+	$(call label,halvm-ghc install)$(MAKE) -C halvm-ghc install
+
+# linker script
+$(halvm-dir)/ldkernel: static-bits/lib/ldkernel
+	$(call cmd,install)
+
+$(halvm-dir)/kernel.lds: static-bits/lib/kernel-$(ARCH).lds
+	$(call cmd,install)
+
+
+install: $(programs) $(halvm-dir)/ldkernel $(halvm-dir)/kernel.lds
+install: | install-ghc
