@@ -20,5 +20,10 @@ libm/libm.a: $(O_FILES)
 
 all: libm/libm.a
 
+install: $(halvm-dir)/libm.a
+
+$(halvm-dir)/libm.a: libm/libm.a
+	$(call cmd,install)
+
 clean::
 	$(RM) -f $(O_FILES) libm/libm.a
