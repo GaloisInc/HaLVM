@@ -12,8 +12,8 @@ exec_prefix=@exec_prefix@
 bindir=@bindir@
 libdir=@libdir@/HaLVM/@PACKAGE_VERSION@
 
-GHCBIN="${libdir}/ghc/bin/@target_prefix@ghc
-LIBDIROPT="-B${libdir}"
+GHCBIN="${libdir}/bin/@target_prefix@ghc"
+#LIBDIROPT="-B${libdir}"
 LINKSCRIPTOPT="-pgml ${libdir}/ldkernel"
 LIBDIROPT2="-L${libdir}"
 

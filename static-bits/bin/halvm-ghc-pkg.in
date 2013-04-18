@@ -10,7 +10,7 @@ prefix=@prefix@
 exec_prefix=@exec_prefix@
 libdir=@libdir@/HaLVM/@PACKAGE_VERSION@
 
-GHCPKGBIN="${libdir}/ghc/bin/@target_prefix@ghc-pkg"
+GHCPKGBIN="${libdir}/bin/@target_prefix@ghc-pkg"
 GLOBFILEOPT="--global-conf ${libdir}/package.conf.d"
 
 ${GHCPKGBIN} ${GLOBFILEOPT} ${1+"$@"}
