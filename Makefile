@@ -22,6 +22,8 @@ mrproper:: clean
 .PHONY: install
 install:
 
+include libm/build.mk
+
 #############################################################################
 #
 # Basic Tree and Makefile contruction

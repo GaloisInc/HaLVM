@@ -14,3 +14,12 @@ label    = $(if $(findstring $(V),1),,@echo '  $1';)
 
 quiet_cmd_cp = CP       $@
       cmd_cp = cp $< $@
+
+quiet_cmd_cc_o_c = CC      $@
+      cmd_cc_o_c = $(CC) -o $@ $(CFLAGS) -c $<
+
+quiet_cmd_cc_o_S = AS      $@
+      cmd_cc_o_S = $(CC) -o $@ $(ASFLAGS) -c $<
+
+quiet_cmd_ar = AR       $@
+      cmd_ar = $(AR) rcs $@ $(OBJECTS)

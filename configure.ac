@@ -302,6 +302,7 @@ else
   echo "  HaLVM Memory Model: ${MEMMODEL_STR}"
   echo
   AC_CONFIG_FILES([mk/autoconf.mk mk/build.mk
+                   libm/build.mk
                    static-bits/bin/halvm-cabal
                    static-bits/bin/halvm-config
                    static-bits/bin/halvm-ghc
