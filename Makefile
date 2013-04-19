@@ -71,6 +71,10 @@ HALVM_GHC_CONFIGURE_FLAGS += --with-nm=$(NM)
 HALVM_GHC_CONFIGURE_FLAGS += --with-objdump=$(OBJDUMP)
 HALVM_GHC_CONFIGURE_FLAGS += --prefix=$(halvm-dir)
 
+ifeq "$(USE_GMP)" "yes"
+HALVM_GHC_CONFIGURE_FLAGS += --with-gmp-libraries=$(GMP_LIB_PATH)
+endif
+
 halvm-ghc/mk/config.mk: mk/autoconf.mk halvm-ghc/configure
 halvm-ghc/mk/config.mk: halvm-ghc/libraries/base/base.cabal
 	$(call label,CONFIGURE GHC)(cd halvm-ghc && \

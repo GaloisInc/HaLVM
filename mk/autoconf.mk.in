@@ -23,6 +23,7 @@ halvm-dir   := $(libdir)/HaLVM/$(HaLVM_VERSION)
 
 # Should we build with GMP?
 USE_GMP                 := @USE_GMP@
+GMP_LIB_PATH            := @GMP_LIB_PATH@
 GMP_ABI                 := @ABI@
 INTEGER_LIBRARY         := @INTEGER_LIBRARY@
 

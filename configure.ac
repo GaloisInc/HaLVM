@@ -193,6 +193,11 @@ AC_ARG_ENABLE([gmp],
   [int_library=integer-gmp])
 AC_SUBST(INTEGER_LIBRARY, [$int_library])
 
+AC_ARG_WITH([gmp],
+  [AS_HELP_STRING([--with-gmp=ARG], [the path to libgmp.a])],
+  [gmp_path="$withval"]
+  [gmp_path=""])
+
 if test "$int_library" = "integer-gmp"; then
   AC_SUBST(USE_GMP, [yes])
 else
@@ -254,6 +259,15 @@ AC_SUBST(ARCHITECTURE, "$arch")
 AC_SUBST(ABI, "$abi")
 AC_SUBST(target,"${arch}-unknown-HaLVM")
 AC_SUBST(target_prefix,"${arch}-unknown-HaLVM-")
+
+if test "$gmp_path" = ""; then
+  if test "$arch" = "x86_64"; then
+    gmp_path="/usr/lib64"
+  else
+    gmp_path="/usr/lib"
+  fi
+fi
+AC_SUBST(GMP_LIB_PATH, "$gmp_path")
 
 if test "$memory_model" != "64"; then
   AC_ARG_ENABLE(pae,
