@@ -23,6 +23,7 @@ mrproper:: clean
 install:
 
 include libm/build.mk
+include rts/build.mk
 
 #############################################################################
 #
