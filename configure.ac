@@ -108,7 +108,7 @@ AC_FORCE_EXIST(LD,ld)
 AC_FORCE_EXIST(NM,nm)
 AC_FORCE_EXIST(RM,rm)
 dnl AC_FORCE_EXIST(CP,cp)
-dnl AC_FORCE_EXIST(MV,mv)
+AC_FORCE_EXIST(MV,mv)
 dnl AC_FORCE_EXIST(LN,ln)
 dnl AC_FORCE_EXIST(AR,ar)
 dnl AC_FORCE_EXIST(CAT,cat)
@@ -116,7 +116,7 @@ dnl AC_FORCE_EXIST(CPP,cpp)
 AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [[789].*],
                   LOG_FAILURE("The HaLVM requires GHC 7 or higher."))
 AC_FORCE_EXIST(GIT,git)
-dnl AC_FORCE_EXIST(TAR,tar)
+AC_FORCE_EXIST(TAR,tar)
 AC_CHECK_PROG_VER(ALEX, alex, --version, [version \([0-9.]*\)],
                   [3.[0-9]* | 2.3[0-9.]*],
                   LOG_FAILURE("The HaLVM requires alex 2.2+."))

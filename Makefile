@@ -98,6 +98,22 @@ mrproper::
 	$(RM) static-bits/bin/halvm-ghc
 	$(RM) static-bits/bin/halvm-ghc-pkg
 
+# GMP ##########################################################################
+
+GMP_TAR = halvm-ghc/libraries/integer-gmp/gmp/tarball/gmp-5.0.3-nodoc-patched.tar.bz2
+GMP_ABI = 64
+GMP_CFLAGS = -O2 -fno-stack-protector
+
+gmp/configure: halvm-ghc/mk/config.mk $(GMP_TAR)
+	$(TAR) jxf $(GMP_TAR)
+	$(MV) gmp-5.0.3 gmp
+
+gmp/Makefile: gmp/configure
+	(cd gmp && ABI="$(GMP_ABI)" CFLAGS="$(CFLAGS)" \
+		./configure --disable-shared --enable-static )
+
+gmp/.libs/libgmp.a: gmp/Makefile
+	$(MAKE) -C gmp
 
 # Installation #################################################################
 
@@ -122,6 +138,9 @@ $(halvm-dir)/ldkernel: static-bits/lib/ldkernel
 $(halvm-dir)/kernel.lds: static-bits/lib/kernel-$(ARCH).lds
 	$(call cmd,install)
 
+$(halvm-dir)/libgmp.a: gmp/.libs/libgmp.a
+	$(call cmd,install)
 
 install: $(programs) $(halvm-dir)/ldkernel $(halvm-dir)/kernel.lds
+install: $(halvm-dir)/libgmp.a
 install: | install-ghc
