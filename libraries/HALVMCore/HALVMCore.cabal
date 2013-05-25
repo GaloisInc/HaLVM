@@ -34,7 +34,7 @@ library
   extensions:       CPP, MultiParamTypeClasses, FunctionalDependencies,
                     FlexibleInstances, GeneralizedNewtypeDeriving, 
                     Rank2Types, FlexibleContexts, UndecidableInstances,
-                    OverlappingInstances, Generics, ForeignFunctionInterface
+                    OverlappingInstances, ForeignFunctionInterface
   hs-source-dirs:   .
   ghc-options:      -O2 -Wall -optc-mno-red-zone
   include-dirs:     cbits/include

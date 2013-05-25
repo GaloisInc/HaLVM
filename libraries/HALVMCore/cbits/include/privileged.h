@@ -9,7 +9,7 @@
 #define HBM_XEN_PRIVILEGED_H
 
 #define __XEN__
-#include <types.h>
+#include <sys/types.h>
 #include <xen/xen.h>
 
 #if __XEN_INTERFACE_VERSION__ > 0x00030101

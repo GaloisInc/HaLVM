@@ -18,7 +18,7 @@ module Hypervisor.Kernel(DeviceDriver(..),
 import Control.Concurrent
 import Control.Exception
 import Control.Monad
-import GHC.IOBase(unsafePerformIO)
+import System.IO.Unsafe(unsafePerformIO)
 import Hypervisor.Debug(writeDebugConsole)
 import System.Environment
 import System.Exit
