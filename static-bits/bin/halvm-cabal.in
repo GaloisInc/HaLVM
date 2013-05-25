@@ -1,13 +1,31 @@
 #!/bin/sh
-
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 bindir=@bindir@
 libdir=@libdir@/HaLVM/@PACKAGE_VERSION@
 
-CABALBIN=${libdir}/cabal
-CABALCONF=${libdir}/cabal.conf
-HSC2HS=""
+CABALBIN=@CABAL@
 CABALCMD=${1+"$@"}
+BUILD_FLAGS="--with-compiler=${bindir}/halvm-ghc --with-hc-pkg=${bindir}/halvm-ghc-pkg"
 
-exec ${CABALBIN} --config-file ${CABALCONF} ${HSC2HS} ${CABALCMD}
+HSC2HS=`which hsc2hs`
+if [ -f ${HSC2HS} ]; then
+  BUILD_FLAGS="${BUILD_FLAGS} --with-hsc2hs=${HSC2HS}"
+fi
+
+INSTALL_FLAGS="--ghc ${BUILD_FLAGS}"
+CONFIGURE_FLAGS="--ghc ${BUILD_FLAGS}"
+INCLUDE_FLAGS=
+
+for opt in ${CABALCMD}; do
+  echo "option: $opt" ;
+  case "$opt" in
+    configure) INCLUDE_FLAGS=${CONFIGURE_FLAGS} ;;
+    build)     INCLUDE_FLAGS=${BUILD_FLAGS}     ;;
+    install)   INCLUDE_FLAGS=${INSTALL_FLAGS}   ;;
+  esac
+done
+
+echo "Flags: ${INCLUDE_FLAGS}"
+
+exec ${CABALBIN} ${INCLUDE_FLAGS} ${CABALCMD}
