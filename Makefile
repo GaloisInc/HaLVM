@@ -121,11 +121,20 @@ gmp/.libs/libgmp.a: gmp/Makefile
 quiet_cmd_install = INSTALL   $@
       cmd_install = install -D $< $@
 
+quiet_cmd_ln      = LN        $@
+      cmd_ln      = ln -sf $< $@
+
 programs := $(bindir)/halvm-ghc $(bindir)/halvm-ghc-pkg  \
             $(bindir)/halvm-cabal $(bindir)/halvm-config \
             $(bindir)/make_halvm_dir.py
 
+rts_incls := $(shell find halvm-ghc/rts/xen/include -name '*.h')
+incl_targs := $(patsubst halvm-ghc/rts/xen/%,$(halvm-dir)/%,$(rts_incls))
+
 $(programs): $(bindir)/%: $(TOPDIR)/static-bits/bin/%
+	$(call cmd,install)
+
+$(incl_targs): $(halvm-dir)/%: $(TOPDIR)/halvm-ghc/rts/xen/%
 	$(call cmd,install)
 
 .PHONY: install-ghc
@@ -142,6 +151,10 @@ $(halvm-dir)/kernel.lds: static-bits/lib/kernel-$(ARCH).lds
 $(halvm-dir)/libgmp.a: gmp/.libs/libgmp.a
 	$(call cmd,install)
 
-install: $(programs) $(halvm-dir)/ldkernel $(halvm-dir)/kernel.lds
+$(halvm-dir)/include/xen: $(XEN_INCLUDE_DIR)/xen
+	$(call cmd,ln)
+
+install: $(programs) $(incl_targs) $(halvm-dir)/ldkernel $(halvm-dir)/kernel.lds
+install: $(halvm-dir)/include/xen
 install: $(halvm-dir)/libgmp.a
 install: | install-ghc
