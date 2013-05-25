@@ -130,6 +130,7 @@ dnl AC_FORCE_EXIST(TAIL,tail)
 dnl AC_FORCE_EXIST(CHMOD,chmod)
 dnl AC_FORCE_EXIST(MKDIR,mkdir)
 dnl AC_FORCE_EXIST(PATCH,patch)
+AC_FORCE_EXIST(CABAL,cabal)
 AC_CHECK_PROG_VER(HAPPY, happy, --version, [Version \([0-9.]*\)], [1.1[89].*],
                   LOG_FAILURE("The HaLVM requires Happy 1.16+."))
 AC_FORCE_EXIST(TOUCH,touch)

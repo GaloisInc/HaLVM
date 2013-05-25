@@ -105,6 +105,7 @@ GMP_ABI = 64
 GMP_CFLAGS = -O2 -fno-stack-protector
 
 gmp/configure: halvm-ghc/mk/config.mk $(GMP_TAR)
+	$(RM) -rf gmp gmp-5.0.3
 	$(TAR) jxf $(GMP_TAR)
 	$(MV) gmp-5.0.3 gmp
 

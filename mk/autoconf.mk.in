@@ -52,6 +52,7 @@ ECHO                    := @ECHO@
 #PERL                    := @PERL@
 #TAIL                    := @TAIL@
 #WGET                    := @WGET@
+CABAL                   := @CABAL@
 #CHMOD                   := @CHMOD@
 #MKDIR                   := @MKDIR@
 #PATCH                   := @PATCH@
