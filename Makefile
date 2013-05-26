@@ -48,9 +48,10 @@ SYNC_ALL_FLAGS           += http://darcs.haskell.org/
 halvm-ghc/libraries/base/base.cabal:
 	$(call label,halvm-ghc/sync-all)(cd halvm-ghc \
 	  && ./sync-all $(SYNC_ALL_FLAGS) get \
-	  && rm -rf libraries/base \
-	  && $(GIT) clone $(GIT_LIBRARIES_URL)/halvm-base.git --branch halvm libraries/base
-	  && $(LN) -sf $(XEN_INCLUDE_DIR)/xen halvm-ghc/rts/xen/include/xen)
+	  && $(RM) -rf libraries/base \
+	  && $(GIT) clone $(GIT_LIBRARIES_URL)/halvm-base.git --branch halvm libraries/base \
+	  && $(RM) rts/xen/include/xen \
+	  && $(LN) -sf $(XEN_INCLUDE_DIR)/xen rts/xen/include/xen)
 
 clean::
 	$(RM) -f halvm-ghc/mk/build.mk halvm-ghc/mk/config.mk
