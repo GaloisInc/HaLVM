@@ -6,15 +6,17 @@
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
 #
-all: Hello
 
-Hello: Hello.hs
-	halvm-ghc --make -o Hello Hello.hs
+HALVM_SRCS=Hello.hs
+TEST_SUBJECTS=Hello
+TEST_VMS=Hello
 
-run: Hello
-	sudo xm dmesg -c > /dev/null
-	sudo xm create Hello.config -c
-	sudo xm dmesg
+all: test
 
-clean:
-	rm -f Hello.{hi,o} Hello
+include ../../mk/tests.mk
+
+run: $(TEST_SUBJECTS)
+	@$(XM) dmesg -c > /dev/null
+	@$(XM) create ${TEST_VMS}.config -c
+	@$(XM) dmesg
+

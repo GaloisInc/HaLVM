@@ -109,7 +109,49 @@ DIST_DIR_TREE=$(TOPDIR)/dist/README
 HALVM_INCLUDE_DIR=$(HALVM_LIBDIR)/include/ghcconfig.h
 
 # Useful flags
-RTS_FLAGS=-optc-fno-delete-null-pointer-checks -optc-mno-red-zone -optc-nostdinc -optc-Dxen_HOST_OS -optc-DRtsWay=\"rts_v\" -optc-Wall -optc-Wextra -optc-Wstrict-prototypes -optc-Wmissing-prototypes -optc-Wmissing-declarations -optc-Winline -optc-Waggregate-return -optc-Wpointer-arith -optc-Wmissing-noreturn -optc-Wnested-externs -optc-Wredundant-decls -optc-I$(TOPDIR)/xen-ghc/rts -optc-I$(HALVM_LIBDIR)/include -optc-DCOMPILING_RTS -optc-fno-strict-aliasing -optc-fno-common -optc-I$(HALVM_LIBDIR)/include/ffi -optc-fomit-frame-pointer -O -package-name rts -static -dcmm-lint -optc-O2 -optc-DProjectVersion=\"$(GHC_VER)\" -optc-DHostPlatform=\"$(ARCH)-unknown-xen\" -optc-DHostArch=\"$(ARCH)\" -optc-DHostOS=\"xen\" -optc-DHostVendor=\"unknown\" -optc-DBuildPlatform=\"$(ARCH)-unknown-linux\" -optc-DBuildArch=\"$(ARCH)\" -optc-DBuildOS=\"linux\" -optc-DBuildVendor=\"unknown\" -optc-DTargetPlatform=\"$(ARCH)-unknown-xen\" -optc-DTargetArch=\"$(ARCH)\" -optc-DTargetOS=\"xen\" -optc-DTargetVendor=\"unknown\" -optc-DGhcUnregisterised=\"NO\" -optc-DGhcEnableTablesNextToCode=\"YES\" -I$(TOPDIR)/xen-ghc/rts/xen/include -I$(TOPDIR)/xen-ghc/rts/xen/include/sys -I$(TOPDIR)/xen-ghc/includes/rts $(GHC_ARCH_OPT) $(GHC_ARCH_FLAGS)
+RTS_FLAGS=-optc-fno-delete-null-pointer-checks \
+  -optc-mno-red-zone \
+  -optc-nostdinc \
+  -optc-Dxen_HOST_OS \
+  -optc-DRtsWay=\"rts_v\" \
+  -optc-Wall \
+  -optc-Wextra \
+  -optc-Wstrict-prototypes \
+  -optc-Wmissing-prototypes \
+  -optc-Wmissing-declarations \
+  -optc-Winline \
+  -optc-Waggregate-return \
+  -optc-Wpointer-arith \
+  -optc-Wmissing-noreturn \
+  -optc-Wnested-externs \
+  -optc-Wredundant-decls \
+  -optc-I$(TOPDIR)/xen-ghc/rts \
+  -optc-I$(HALVM_LIBDIR)/include \
+  -optc-DCOMPILING_RTS \
+  -optc-fno-strict-aliasing \
+  -optc-fno-common \
+  -optc-I$(HALVM_LIBDIR)/include/ffi \
+  -optc-fomit-frame-pointer \
+  -O -package-name rts -static -dcmm-lint \
+  -optc-O2 -optc-DProjectVersion=\"$(GHC_VER)\" \
+  -optc-DHostPlatform=\"$(ARCH)-unknown-xen\" \
+  -optc-DHostArch=\"$(ARCH)\" \
+  -optc-DHostOS=\"xen\" \
+  -optc-DHostVendor=\"unknown\" \
+  -optc-DBuildPlatform=\"$(ARCH)-unknown-linux\" \
+  -optc-DBuildArch=\"$(ARCH)\" \
+  -optc-DBuildOS=\"linux\" \
+  -optc-DBuildVendor=\"unknown\" \
+  -optc-DTargetPlatform=\"$(ARCH)-unknown-xen\" \
+  -optc-DTargetArch=\"$(ARCH)\" \
+  -optc-DTargetOS=\"xen\" \
+  -optc-DTargetVendor=\"unknown\" \
+  -optc-DGhcUnregisterised=\"NO\" \
+  -optc-DGhcEnableTablesNextToCode=\"YES\" \
+  -optc-fno-stack-protector \
+  -I$(TOPDIR)/xen-ghc/rts/xen/include \
+  -I$(TOPDIR)/xen-ghc/rts/xen/include/sys \
+  -I$(TOPDIR)/xen-ghc/includes/rts $(GHC_ARCH_OPT) $(GHC_ARCH_FLAGS)
 
 CONF_FLAGS=-Dxen_HOST_OS -I$(TOPDIR)/xen-ghc/includes -I$(HALVM_LIBDIR)/include -DTOP=$(TOPDIR)/dist -DINSTALLING -DLIB_DIR=$(HALVM_LIBDIR) -DPAPI_LIB_DIR= -DINCLUDE_DIR=$(HALVM_LIBDIR)/include -DPAPI_INCLUDE_DIR= $(ARCH_OPT) $(ARCH_FLAGS)
 
