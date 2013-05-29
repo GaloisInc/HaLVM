@@ -11,6 +11,7 @@
 import sys
 
 sys.path.append("/usr/lib/python")
+sys.path.append("/usr/lib/xen-4.1/lib/python")
 from xen.xend.xenstore.xstransact import xstransact
 
 xstransact.Remove("/halvm")
