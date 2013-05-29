@@ -50,8 +50,10 @@ halvm-ghc/libraries/base/base.cabal:
 	  && ./sync-all $(SYNC_ALL_FLAGS) get \
 	  && $(RM) -rf libraries/base \
 	  && $(GIT) clone $(GIT_LIBRARIES_URL)/halvm-base.git --branch halvm libraries/base \
-	  && $(RM) rts/xen/include/xen \
-	  && $(LN) -sf $(XEN_INCLUDE_DIR)/xen rts/xen/include/xen)
+	  && $(RM) -f rts/xen/include/xen \
+	  && $(LN) -sf $(XEN_INCLUDE_DIR)/xen rts/xen/include/xen \
+	  && $(RM) -f libraries/base/include/rts \
+	  && $(LN) -sf rts/xen/include libraries/base/include/rts)
 
 clean::
 	$(RM) -f halvm-ghc/mk/build.mk halvm-ghc/mk/config.mk
