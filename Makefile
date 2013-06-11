@@ -45,7 +45,7 @@ SYNC_ALL_FLAGS            = --no-dph
 SYNC_ALL_FLAGS           += -r
 SYNC_ALL_FLAGS           += http://darcs.haskell.org/
 
-halvm-ghc/libraries/base/base.cabal: gmp/.libs/libgmp.a
+halvm-ghc/libraries/base/base.cabal:
 	$(call label,halvm-ghc/sync-all)(cd halvm-ghc \
 	  && ./sync-all $(SYNC_ALL_FLAGS) get \
 	  && $(RM) -rf libraries/base \

@@ -1,4 +1,3 @@
-{-# OPTIONS -fglasgow-exts -cpp #-}
 -- BANNERSTART
 -- - Copyright 2006-2008, Galois, Inc.
 -- - This software is distributed under a standard, three-clause BSD license.
@@ -67,7 +66,6 @@ import Data.Int
 import Data.IORef
 import Data.Word
 import Foreign.Ptr
-import Foreign.C.Types (CSize)
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
 import Foreign.Storable
@@ -113,8 +111,10 @@ instance Bits MFN where
   complement (MFN x)        = MFN $ complement x
   bit x                     = MFN $ bit x
   (MFN x) `testBit` y       = testBit x y
-  bitSize _                 = bitSize (0 :: Word)
+  bitSize _                 = 32
   isSigned _                = False
+  bitSizeMaybe _            = Just 32
+  popCount (MFN x)          = popCount x
 
 -- NOTE: we could derive this
 instance Storable MFN where
@@ -660,15 +660,17 @@ addressMapped addr = (/= 0) `fmap` address_mapped addr
 
 #if defined(CONFIG_X86_64) || defined(CONFIG_X86_PAE)
 # define C_MADDR_T Word64
+# define C_SIZE_T  Word64
 #else
 # define C_MADDR_T Word32
+# define C_SIZE_T  Word32
 #endif
 #define C_PADDR_T Word32
 #define C_VADDR_T (VPtr a)
 
 -- Functions from mm.h
 foreign import ccall unsafe "mm.h claim_vspace" 
-  claim_vspace :: C_VADDR_T -> CSize -> IO C_VADDR_T
+  claim_vspace :: C_VADDR_T -> C_SIZE_T -> IO C_VADDR_T
 foreign import ccall unsafe "mm.h disclaim_vspace" 
   disclaim_vspace :: C_VADDR_T -> C_VADDR_T -> IO ()
 foreign import ccall unsafe "mm.h alloc_page" 

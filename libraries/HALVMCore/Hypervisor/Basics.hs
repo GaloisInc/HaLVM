@@ -1,4 +1,3 @@
-{-# OPTIONS -fglasgow-exts #-}
 -- BANNERSTART
 -- - Copyright 2006-2008, Galois, Inc.
 -- - This software is distributed under a standard, three-clause BSD license.
@@ -27,7 +26,6 @@ import Control.Exception
 import Data.Word
 import Data.Generics(Data, Typeable)
 import Foreign.Storable(Storable)
-import Prelude hiding (catch)
 
 -- |A type for running Xen hypercall, or near-hypercall, functions and
 -- returning the result or error.

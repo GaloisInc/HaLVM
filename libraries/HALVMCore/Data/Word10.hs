@@ -1,4 +1,3 @@
-{-# OPTIONS -fglasgow-exts #-}
 -- BANNERSTART
 -- - Copyright 2006-2008, Galois, Inc.
 -- - This software is distributed under a standard, three-clause BSD license.
@@ -136,17 +135,20 @@ instance Integral Word10 where
   toInteger x = toInteger (unwrap x)
 
 instance Bits Word10 where
-  x .&. y = wrap (unwrap x .&. unwrap y)
-  x .|. y = wrap (unwrap x .|. unwrap y)
-  x `xor` y = wrap (unwrap x `xor`  unwrap y)
-  complement x = wrap (unwrap x `xor` maxVal)
-  x `shift` i = wrap (narrow (unwrap x `shift` i))
+  x .&. y        = wrap (unwrap x .&. unwrap y)
+  x .|. y        = wrap (unwrap x .|. unwrap y)
+  x `xor` y      = wrap (unwrap x `xor`  unwrap y)
+  complement x   = wrap (unwrap x `xor` maxVal)
+  x `shift` i    = wrap (narrow (unwrap x `shift` i))
   x `rotate` i 
      | i == 0    = x
-     | otherwise = wrap (narrow ((x' `shiftL` i') .|. (x' `shiftR` (bits - i'))))
+     | otherwise =
+        wrap (narrow ((x' `shiftL` i') .|. (x' `shiftR` (bits - i'))))
      where x' = unwrap x
            i' = i `mod` bits -- always positive
   bitSize  _               = bits
   isSigned _               = False
-  
-
+  bit x          = if (x < 0) || (x >= 10) then 0 else wrap (bit x)
+  testBit x n    = (bit n .&. x) /= 0
+  bitSizeMaybe _ = Just 10
+  popCount x     = popCount (unwrap x)

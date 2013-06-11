@@ -32,9 +32,10 @@ library
                     Hypervisor.StartInfo,
                     Hypervisor.Virqs
   extensions:       CPP, MultiParamTypeClasses, FunctionalDependencies,
-                    FlexibleInstances, GeneralizedNewtypeDeriving, 
+                    FlexibleInstances, GeneralizedNewtypeDeriving,
                     Rank2Types, FlexibleContexts, UndecidableInstances,
-                    OverlappingInstances, ForeignFunctionInterface
+                    OverlappingInstances, ForeignFunctionInterface,
+                    DeriveDataTypeable, RecordWildCards
   hs-source-dirs:   .
   ghc-options:      -O2 -Wall -optc-mno-red-zone
   include-dirs:     cbits/include

@@ -28,4 +28,5 @@ writeDebugConsole :: String -> IO ()
 writeDebugConsole str =
     withCString str $ \ cstr -> econsoleMsg (length str) cstr
 
-foreign import ccall unsafe "econsole.h emergency_console_msg" econsoleMsg :: Int -> Ptr a -> IO ()
+foreign import ccall unsafe "econsole.h emergency_console_msg"
+  econsoleMsg :: Int -> Ptr a -> IO ()

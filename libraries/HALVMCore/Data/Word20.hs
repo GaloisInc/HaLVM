@@ -1,4 +1,3 @@
-{-# OPTIONS -fglasgow-exts #-}
 -- BANNERSTART
 -- - Copyright 2006-2008, Galois, Inc.
 -- - This software is distributed under a standard, three-clause BSD license.
@@ -25,7 +24,7 @@ newtype Word20 = Word20 {unWord20 :: Word32}
 
 -- for other bit lengths, just change these definitions
 type T = Word20
-bits :: Int  
+bits :: Int
 bits = 20
 wrap :: Word32 -> Word20
 wrap = Word20
@@ -128,26 +127,30 @@ instance Read Word20 where
   readsPrec p s = [(fromInteger x, r) | (x, r) <- readsPrec p s] 
 
 instance Integral Word20 where
-  x `quot` y = wrap(unwrap x `quot` unwrap y)
-  x `rem` y = wrap(unwrap x `rem` unwrap y)
-  x `div` y = wrap(unwrap x `div` unwrap y)
-  x `mod` y = wrap(unwrap x `mod` unwrap y)
+  x `quot` y  = wrap(unwrap x `quot` unwrap y)
+  x `rem` y   = wrap(unwrap x `rem` unwrap y)
+  x `div` y   = wrap(unwrap x `div` unwrap y)
+  x `mod` y   = wrap(unwrap x `mod` unwrap y)
   quotRem x y = (wrap q,wrap r) where (q,r) = quotRem (unwrap x) (unwrap y)
-  divMod x y = (wrap d,wrap m) where (d,m) = divMod (unwrap x) (unwrap y)
+  divMod x y  = (wrap d,wrap m) where (d,m) = divMod (unwrap x) (unwrap y)
   toInteger x = toInteger (unwrap x)
 
 instance Bits Word20 where
-  x .&. y = wrap (unwrap x .&. unwrap y)
-  x .|. y = wrap (unwrap x .|. unwrap y)
-  x `xor` y = wrap (unwrap x `xor`  unwrap y)
-  complement x = wrap (unwrap x `xor` maxVal)
-  x `shift` i = wrap (narrow (unwrap x `shift` i))
-  x `rotate` i 
+  x .&. y        = wrap (unwrap x .&. unwrap y)
+  x .|. y        = wrap (unwrap x .|. unwrap y)
+  x `xor` y      = wrap (unwrap x `xor`  unwrap y)
+  complement x   = wrap (unwrap x `xor` maxVal)
+  x `shift` i    = wrap (narrow (unwrap x `shift` i))
+  x `rotate` i
      | i == 0    = x
-     | otherwise = wrap (narrow ((x' `shiftL` i') .|. (x' `shiftR` (bits - i'))))
+     | otherwise =
+        wrap (narrow ((x' `shiftL` i') .|. (x' `shiftR` (bits - i'))))
      where x' = unwrap x
            i' = i `mod` bits -- always positive
-  bitSize  _               = bits
-  isSigned _               = False
-  
+  bitSize  _     = bits
+  isSigned _     = False
+  bit x          = if (x < 0) || (x >= 20) then 0 else wrap (bit x)
+  testBit x n    = (bit n .&. x) /= 0
+  bitSizeMaybe _ = Just 20
+  popCount x     = popCount (unwrap x)
 

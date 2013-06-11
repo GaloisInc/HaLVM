@@ -1,4 +1,3 @@
-{-# OPTIONS -fglasgow-exts #-}
 -- BANNERSTART
 -- - Copyright 2006-2008, Galois, Inc.
 -- - This software is distributed under a standard, three-clause BSD license.
@@ -60,9 +59,9 @@ toPort x
 -- |Install a function that will be invoked whenever the HALVM receives
 -- an event on the given channel.
 setPortHandler :: Port -> IO () -> IO ()
-setPortHandler p h = do 
+setPortHandler (Port p) h = do
   sptr <- newStablePtr h
-  set_port_handler p sptr
+  set_port_handler (fromIntegral p) sptr
 
 -- |Remove the current event handler on an event channel, returning it.
 -- This can be particularly useful when black-boxed components may need
@@ -70,8 +69,8 @@ setPortHandler p h = do
 -- safe even if no previous handler has been assigned to the port; in
 -- that case, the return value will be a noop.
 unsetPortHandler :: Port -> IO (IO ())
-unsetPortHandler p = do 
-  sptr <- unset_port_handler p
+unsetPortHandler (Port p) = do
+  sptr <- unset_port_handler (fromIntegral p)
   if castStablePtrToPtr sptr == nullPtr
      then return (return ())
      else do retval <- deRefStablePtr sptr
@@ -110,7 +109,7 @@ bindVirq virq vcpu = do
 -- |Close an open port.
 closePort :: Port -> Xen ()
 closePort (Port p) = do
-  res <- evtchn_close p
+  res <- evtchn_close (fromIntegral p)
   case res of
              0 -> return $ ()
              _ -> toError res
@@ -131,7 +130,7 @@ allocUnboundPort (DomId fromDom) (DomId toDom) = do
 -- |Send an event on the given port.
 sendOnPort :: Port -> Xen ()
 sendOnPort (Port p) = do
-  res <- evtchn_send p
+  res <- evtchn_send (fromIntegral p)
   case () of
              () | res == 0  -> return $ ()
                 | otherwise -> toError res
@@ -177,10 +176,10 @@ irqShared irq = do
 --
 
 foreign import ccall unsafe "events.h set_port_handler" 
-  set_port_handler :: Port -> StablePtr(IO()) -> IO ()
+  set_port_handler :: Word32 -> StablePtr(IO()) -> IO ()
 
 foreign import ccall unsafe "events.h unset_port_handler" 
-  unset_port_handler :: Port -> IO (StablePtr(IO ()))
+  unset_port_handler :: Word32 -> IO (StablePtr(IO ()))
 
 foreign import ccall unsafe "events.h evtchn_alloc_unbound" 
   evtchn_alloc_unbound :: Word32 -> Word32 -> IO Int32
@@ -192,10 +191,10 @@ foreign import ccall unsafe "events.h evtchn_bind_interdomain"
   evtchn_bind_interdomain :: Word32 -> Word32 -> IO Int32
 
 foreign import ccall unsafe "events.h evtchn_close" 
-  evtchn_close :: Word10 -> IO Int32
+  evtchn_close :: Word32 -> IO Int32
 
 foreign import ccall unsafe "events.h evtchn_send" 
-  evtchn_send :: Word10 -> IO Int32
+  evtchn_send :: Word32 -> IO Int32
 
 foreign import ccall unsafe "events.h mask_evtchn" 
   mask_evtchn :: Word32 -> IO ()

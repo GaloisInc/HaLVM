@@ -29,7 +29,7 @@ generalMkReader :: IO (c a) -> (c a -> [a] -> IO ()) ->
                    IO (c a)
 generalMkReader makeChannel writeList doRead canRead waitSet notifyPort = do
   readerChan <- makeChannel
-  forkIO $ forever $ do
+  forkIO_ $ forever $ do
     wait waitSet canRead
     s <- doRead
     sendOnPort notifyPort
@@ -68,9 +68,9 @@ generalMkWriter makeChannel readChan doWrite canWrite waitSet notifyPort = do
         if (i < length nexts)
           then outputThread (drop i nexts)
           else outputThread []
-  forkIO (outputThread [])
+  forkIO_ (outputThread [])
   return writerChan
-        
+
 -- |The expected counterpoint to mkReaderChan. Takes a function for writing
 -- an array of values, a computation determining whether we can write or not,
 -- an event wait set and an event channel. Returns a Haskell channel the
@@ -88,3 +88,5 @@ mkBoundedWriterChan :: Int ->
                        IO (BoundedChan [a])
 mkBoundedWriterChan x = generalMkWriter (newBoundedChan x) B.readChan
 
+forkIO_ :: IO () -> IO ()
+forkIO_ m = forkIO m >> return ()

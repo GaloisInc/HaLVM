@@ -90,7 +90,7 @@ halvm_kernel_daemon ddrivers fun = run_kernel ddrivers fun uffish_thought
 -- any clean-ups in other threads this won't work for you.
 halvm_shutdown :: IO ()
 halvm_shutdown = do ddrivers <- takeMVar deviceDrivers
-                    sequence $ map shutdown (reverse ddrivers)
+                    sequence_ $ map shutdown (reverse ddrivers)
                     writeDebugConsole "Immediate exit by halvm_shutdown.\n"
                     do_exit
 
@@ -118,9 +118,9 @@ run_kernel ddrivers first after = catches startupMachine [
   --
   startupMachine = do
     setXenPutStr writeDebugConsole
-    takeMVar deviceDrivers
+    _ <- takeMVar deviceDrivers
     let orderedDeviceDrivers = generateDDriverInitOrdering ddrivers
-    sequence $ map initialize orderedDeviceDrivers
+    sequence_ $ map initialize orderedDeviceDrivers
     putMVar deviceDrivers orderedDeviceDrivers
     main0 first
     after

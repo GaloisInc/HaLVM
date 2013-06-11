@@ -13,8 +13,8 @@
 #include <sys/mman.h>
 #include <string.h>
 #include <mm.h>
-#include <strings.h>
-#include <errno.h>
+#include <sys/strings.h>
+#include <sys/errno.h>
 #include <xen/xen.h>
 
 #define IO_PORT_NUM 65536

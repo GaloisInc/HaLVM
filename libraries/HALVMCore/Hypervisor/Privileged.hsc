@@ -19,9 +19,6 @@
 -- Xen internals, and they change pretty often. Use at your own risk, etc.,
 -- etc..
 --
-
-{-# LANGUAGE RecordWildCards #-}
-
 module Hypervisor.Privileged(
          createDomain, destroyDomain
        , pauseDomain, unpauseDomain
@@ -54,11 +51,9 @@ module Hypervisor.Privileged(
        )
  where
 
-import Control.Exception(assert)
 import Data.Bits
 import Data.Maybe(fromMaybe)
 import Data.Word
-import Data.Word10
 import Foreign.C.String
 import Foreign.C.Types(CChar, CULong)
 import Foreign.Marshal.Alloc
@@ -80,7 +75,7 @@ data DomainInfo = DomainInfo { domain                   :: DomId
                              , paused                   :: Bool
                              , blocked                  :: Bool
                              , running                  :: Bool
-#if defined(XEN_DOMINF_cpumask) || #defined(DOMFLAGS_CPUSHIFT)
+#if defined(XEN_DOMINF_cpumask) || defined(DOMFLAGS_CPUSHIFT)
                              , cpu                      :: Word8
 #endif
                              , shutdown_code            :: Word8
@@ -1066,7 +1061,7 @@ allocPortForDomain (DomId forDom) (DomId remoteDom) = do
 -- --------------------------------------------------------------------------
 --
 
-bbit :: Bits a => Bool -> a -> a
+bbit :: Num a => Bool -> a -> a
 bbit True a = a
 bbit False _ = 0
 
@@ -1126,9 +1121,6 @@ instance Storable RegisterContext where
     return RegisterContext {..}
 
   poke ptr gc = do 
-    () <- assert ((length (fpu_ctxt gc)) <= 512) $ return ()
-    () <- assert ((length (trap_ctxt gc)) <= 256) $ return ()
-    () <- assert ((length (gdt_frames gc)) <= 16) $ return ()
     pokeArchSpecific ptr (arch_specific gc)
     pokeArray ((#ptr vcpu_guest_context_t, fpu_ctxt) ptr)
               (fpu_ctxt gc)
@@ -1373,7 +1365,7 @@ foreign import ccall unsafe "privileged.h get_my_domid"
   get_my_domid :: IO Int
 
 foreign import ccall unsafe "events.h evtchn_alloc_unbound" 
-  evtchn_alloc_unbound :: Word16 -> Word16 -> IO Word10
+  evtchn_alloc_unbound :: Word16 -> Word16 -> IO Word32
 
 #ifdef SPLIT_PRIVILEGED
 foreign import ccall unsafe "privileged.h do_domctl_op" 
