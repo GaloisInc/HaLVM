@@ -52,14 +52,13 @@ import Hypervisor.Port (Port, allocPort, bindRemotePort, closePort,
                         sendOnPort, setPortHandler, unsetPortHandler)
 import Control.Concurrent.MVar (putMVar, takeMVar, MVar,
                                 newEmptyMVar, newMVar)
-import Control.Monad (Monad(..), Functor(..), MonadPlus(..),
-                      forM, forM_, guard, unless, when)
+import Control.Monad (MonadPlus(..), forM, forM_, guard, unless, when)
 import Data.Bits(Bits (shiftL, shiftR, (.&.)))
 import Data.Maybe (fromMaybe)
 import Data.Word (Word8, Word32)
 import Foreign.Ptr (Ptr, castPtr, plusPtr)
 import Foreign.Storable (Storable(pokeByteOff, peekByteOff))
-import Data.Traversable (Traversable, sequenceA)
+import Data.Traversable (sequenceA)
 import qualified Data.Map as Map
 
 

@@ -257,7 +257,7 @@ nextWatchId =
 initXenbus :: IO ()
 initXenbus =
   do page <- mfnToVPtr =<< getStoreMfn
-     port <- get_store_evtchn
+     port <- toPort `fmap` get_store_evtchn
      initXenbus' page port
 
 initXenbus' :: VPtr a -> Port -> IO ()
@@ -310,13 +310,15 @@ getStoreMfn :: IO MFN
 getStoreMfn = (toMFN . fromIntegral) `fmap` get_store_mfn
 
 getStoreEvtChn :: IO Port
-getStoreEvtChn = get_store_evtchn
+getStoreEvtChn = toPort `fmap` get_store_evtchn
 
 forkIO_ :: IO () -> IO ()
 forkIO_ body =
     do _ <- forkIO body
        return ()
 
-foreign import ccall unsafe "xenbus.h get_store_evtchn" get_store_evtchn :: IO Port
-foreign import ccall unsafe "xenbus.h get_store_mfn" get_store_mfn :: IO Word
+foreign import ccall unsafe "xenbus.h get_store_evtchn"
+  get_store_evtchn :: IO Word32
+foreign import ccall unsafe "xenbus.h get_store_mfn"
+  get_store_mfn :: IO Word
 

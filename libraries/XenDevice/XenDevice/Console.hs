@@ -29,14 +29,16 @@ import Foreign.Ptr
 import Hypervisor.Basics
 import Hypervisor.BufferChan
 import Hypervisor.Kernel
+import Hypervisor.Memory
 import Hypervisor.Port
 import qualified XenDevice.ConsoleAux as Aux
 import qualified XenDevice.ConsoleInterface as I
 import XenDevice.ConsoleInterface(Interface(..),IdxPtr)
-import Hypervisor.Memory(mfnToVPtr)
 import Foreign.C.Types(CChar)
 import System.IO (setXenPutStr,setXenGetChar)
 import System.IO.Unsafe (unsafePerformIO)
+
+import Hypervisor.Debug
 
 -- |The definition of the Console device driver. If you intent to use any of the
 -- other exported functions, you should include this in the list of drivers passed
@@ -49,8 +51,10 @@ dConsole = DeviceDriver { devName = "XenDeviceInternalConsole"
                         }
 
 initConsole :: IO ()
-initConsole = 
-    do intf <- ignoreErrors $ mfnToVPtr =<< I.getConsoleMFN
+initConsole =
+    do intMFN <- I.getConsoleMFN
+       intf   <- mfnToVPtr intMFN `xCatch` (\ _ -> do
+                   mapForeignMachineFrames domidSelf [intMFN])
        consolePort <- I.getConsolePort
        i <- I.interface intf consolePort
        (r, w) <- mkConsoleChannels i

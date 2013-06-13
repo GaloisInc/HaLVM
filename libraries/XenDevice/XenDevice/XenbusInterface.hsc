@@ -15,7 +15,7 @@ import Data.Word(Word32)
 import Foreign.C.Types(CChar)
 import Hypervisor.EventWaitSet(EventWaitSet,newWaitSet)
 import Hypervisor.Memory(VPtr)
-import Hypervisor.Port(Port)
+import Hypervisor.Port(Port,fromPort)
 
 #include <errno.h>
 #include "types.h"
@@ -56,14 +56,23 @@ canRead = xb_can_read
 xbWrite :: IdxPtr -> IdxPtr -> Ptr CChar ->
            Port -> Ptr CChar -> Int ->
            IO Int
-xbWrite = xb_write
+xbWrite i1 i2 s1 p s2 x = xb_write i1 i2 s1 (fromPort p) s2 x
 
 xbRead :: IdxPtr -> IdxPtr -> Ptr CChar ->
           Port -> Ptr CChar -> Int ->
           IO Int
-xbRead = xb_read
+xbRead i1 i2 s1 p s2 x = xb_read i1 i2 s1 (fromPort p) s2 x
 
-foreign import ccall unsafe "xenbus.h xb_write" xb_write ::  IdxPtr -> IdxPtr -> Ptr CChar -> Port -> Ptr CChar -> Int -> IO Int
-foreign import ccall unsafe "xenbus.h xb_read" xb_read  :: IdxPtr -> IdxPtr -> Ptr CChar -> Port -> Ptr CChar -> Int -> IO Int
-foreign import ccall unsafe "xenbus.h xb_can_write" xb_can_write  :: IdxPtr -> IdxPtr -> IO Bool
-foreign import ccall unsafe "xenbus.h xb_can_read" xb_can_read :: IdxPtr -> IdxPtr -> IO Bool
+foreign import ccall unsafe "xenbus.h xb_write"
+  xb_write      ::  IdxPtr -> IdxPtr ->
+                    Ptr CChar -> Word32 -> Ptr CChar -> Int ->
+                    IO Int
+foreign import ccall unsafe "xenbus.h xb_read"
+  xb_read       :: IdxPtr -> IdxPtr ->
+                   Ptr CChar -> Word32 -> Ptr CChar -> Int ->
+                   IO Int
+foreign import ccall unsafe "xenbus.h xb_can_write"
+  xb_can_write  :: IdxPtr -> IdxPtr -> IO Bool
+foreign import ccall unsafe "xenbus.h xb_can_read"
+  xb_can_read   :: IdxPtr -> IdxPtr -> IO Bool
+

@@ -51,7 +51,6 @@ import Data.Word
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import Foreign.Storable
-import Foreign.C.Types (CSize)
 import GHC.IO(unsafePerformIO)
 import Hypervisor.Basics
 import Hypervisor.Debug
@@ -225,15 +224,11 @@ probeNIC dev resMV rxBufSize = withRingBuffers finishProbe
                               IO ())
                              -> IO ()
           withRingBuffers k = do
-            (txrb, (GrantRef txGRef), port) <- frbCreate (potBackendDom dev) `catch` \e ->
-                                                  fail $ "Couldn't create tx ring buffer: " ++ show e
-         
-            (rxrb, (GrantRef rxGRef), _) <- frbCreateWithEC (potBackendDom dev) port `catch` \e -> do
-                                              frbShutdown txrb
-                                              fail $ "Couldn't create rx ring buffer: " ++ show e
+            (txrb, (GrantRef txGRef), port) <- frbCreate (potBackendDom dev)
+            (rxrb, (GrantRef rxGRef), _) <- frbCreateWithEC (potBackendDom dev) port
 
             k txrb rxrb txGRef rxGRef (drop 1 $ dropWhile (/= ' ') $ show port)
-            
+
           -- ----------------------------------------------------------------
           finishProbe :: TxRingBuffer -> RxRingBuffer ->
                          Word16 -> Word16 -> String -> IO ()
@@ -593,7 +588,7 @@ runCallbacks ref val =
     readIORef ref >>= mapM_ (\ f -> f val)
 
 foreign import ccall unsafe "strings.h bzero"
-  bzero :: Ptr a -> CSize -> IO ()
+  bzero :: Ptr a -> Word -> IO ()
 
 foreign import ccall unsafe "string.h memcpy"
-  memcpy :: Ptr a -> Ptr a -> CSize -> IO ()
+  memcpy :: Ptr a -> Ptr a -> Word -> IO ()

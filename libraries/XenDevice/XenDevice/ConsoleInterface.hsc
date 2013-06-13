@@ -22,7 +22,7 @@ import Foreign.C.String(CString)
 import Foreign.Ptr(Ptr,plusPtr)
 import Hypervisor.EventWaitSet(EventWaitSet,newWaitSet)
 import Hypervisor.Memory(MFN, VPtr, toMFN)
-import Hypervisor.Port(Port)
+import Hypervisor.Port(Port,fromPort,toPort)
 
 #include <xen/io/console.h>
 
@@ -85,15 +85,15 @@ canReadConsole = xencons_can_receive
 writeConsole :: IdxPtr -> IdxPtr -> Ptr CChar -> 
                 Port -> Int -> CString -> Int -> 
                 IO Int
-writeConsole = xencons_ring_send
+writeConsole i1 i2 s p c x = xencons_ring_send i1 i2 s (fromPort p) c x
 
 readConsole :: IdxPtr -> IdxPtr -> Ptr CChar -> 
                Port -> Int -> CString -> Int -> 
                IO Int
-readConsole = xencons_ring_receive
+readConsole i1 i2 s1 p a s2 b= xencons_ring_receive i1 i2 s1 (fromPort p) a s2 b
 
 getConsolePort :: IO Port
-getConsolePort = get_console_evtchn
+getConsolePort = toPort `fmap` get_console_evtchn
 
 getConsoleMFN :: IO MFN
 getConsoleMFN = (toMFN . fromIntegral) `fmap` get_console_mfn
@@ -110,14 +110,14 @@ outbufSize = #const ({ struct xencons_interface s; sizeof s.out; })
 
 foreign import ccall unsafe "console.h xencons_ring_send" 
   xencons_ring_send :: IdxPtr -> IdxPtr -> Ptr CChar -> 
-                       Port -> Int -> CString -> Int -> 
+                       Word32 -> Int -> CString -> Int -> 
                        IO Int
 foreign import ccall unsafe "console.h xencons_ring_receive" 
   xencons_ring_receive :: IdxPtr -> IdxPtr -> Ptr CChar -> 
-                          Port -> Int -> CString -> Int -> 
+                          Word32 -> Int -> CString -> Int -> 
                           IO Int
 foreign import ccall unsafe "console.h get_console_evtchn" 
-  get_console_evtchn :: IO Port
+  get_console_evtchn :: IO Word32
 foreign import ccall unsafe "console.h get_console_mfn" 
   get_console_mfn :: IO Word
 foreign import ccall unsafe "console.h xencons_can_send" 
