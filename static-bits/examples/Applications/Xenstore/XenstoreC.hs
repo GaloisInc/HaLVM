@@ -23,7 +23,7 @@ main' _ = loop
   where 
    loop =
     do s <- query "xenbus-ls? "
-       xenbus_printkey s `catch` errorLog
+       xenbus_printkey s
        loop
 
 errorLog :: Show a => a -> IO ()

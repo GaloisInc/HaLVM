@@ -14,6 +14,6 @@ import XenDevice.Xenbus
 main :: IO ()
 main = halvm_kernel_daemon [dConsole,dXenbus] $ const $ do
   writeConsole "Getting ID ...\n"
-  me <- myDomId 
+  me <- myDomId
   writeConsole $ "Got ID = " ++ show me ++ ".\n"
 

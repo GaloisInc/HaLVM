@@ -5,25 +5,5 @@
 # - terms and conditions.
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
-#
-
-NO_HARNESS=y
-HALVM_SRCS=TestLogger.hs
-CSRCS=$(CSRCDIR)/halvm_logger.c
-CEXE=./halvm_logger
-TEST_SUBJECTS=TestLogger $(CEXE)
-TEST_VMS=TestLogger
-
-VERBOSE_TEST=--verbose
-
-all: $(TEST_SUBJECTS)
-
-include ../../mk/tests.mk
-
-run: $(TEST_SUBJECTS)
-	@$(MAKE) --no-print-directory runC &
-	@$(XM) create TestLogger.config -c
-
-runC: $(CEXE)
-	$(SUDO) $(CEXE)
-
+BINARIES=TestLogger halvm_logger
+include ../../standard.mk

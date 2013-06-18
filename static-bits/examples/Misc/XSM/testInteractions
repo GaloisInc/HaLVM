@@ -1,8 +1,0 @@
-Interactions
-  [ Expect (Just 2) StdOut "avc:  denied  \\{ stat \\}" 
-  , Expect (Just 2) StdOut "done."
-  , Feed "Hejsan\n"
-  , Expect (Just 2) StdOut "HEJSAN"
-  , Feed "Tjosan\n"
-  , Expect (Just 2) StdOut "TJOSAN"
-  ]

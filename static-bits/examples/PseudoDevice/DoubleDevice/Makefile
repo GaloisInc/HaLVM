@@ -6,23 +6,5 @@
 # Author: Magnus Carlsson <magnus@galois.com>
 # BANNEREND
 #
-
-HARNESS_DIR=Harness
-HALVM_SRCS=DoubleDevice.hs DoubleTest.hs DoubleCommon.hs
-TEST_VMS=DoubleDevice DoubleTest
-TEST_SUBJECTS=DoubleDevice DoubleTest
-TEST_CABAL=DoubleDevice.cabal
-VERBOSE_TEST=--verbose
-
-all: test
-
-include ../../mk/tests.mk
-
-rundevice: DoubleDevice
-	@-$(XM) destroy DoubleDevice
-	@$(XM) create DoubleDevice.config -c
-
-runtest: DoubleTest
-	@-$(XM) destroy DoubleTest
-	@$(XM) create DoubleTest.config -c
-
+BINARIES=DoubleTest DoubleDevice
+include ../../standard.mk

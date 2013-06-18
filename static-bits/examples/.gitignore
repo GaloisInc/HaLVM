@@ -4,3 +4,5 @@ test_report
 bin
 mk/rules.mk
 mk/tests.mk
+*/*/*.hi
+*/*/*.o

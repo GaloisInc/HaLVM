@@ -9,9 +9,13 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <libIVC.h>
+#include <xen/xen.h>
 #include <xen/io/ring.h>
+#include <xen/event_channel.h>
+#include <xenctrl.h>
 #include <sys/mman.h>
 #include <openssl/aes.h>
 #include <openssl/sha.h>
@@ -23,28 +27,28 @@
 #define PROT_RW (PROT_READ | PROT_WRITE)
 
 typedef struct {
-  u_int32_t kind;
-  u_int32_t id;
-  u_int32_t gref;
-  u_int32_t size;
-  u_int8_t  aes_key[16];
+  uint32_t kind;
+  uint32_t id;
+  uint32_t gref;
+  uint32_t size;
+  uint8_t  aes_key[16];
 } cryptdev_request_t;
 
 typedef struct {
-  u_int32_t kind;
-  u_int32_t id;
-  int32_t   resp;
-  u_int8_t  sha1_hash[20];
+  uint32_t kind;
+  uint32_t id;
+  int32_t  resp;
+  uint8_t  sha1_hash[20];
 } cryptdev_response_t;
 
 struct client_data {
-  unsigned long dom;
+  uint32_t dom;
   evtchn_port_t port;
-  void *page;  
+  void *page;
 };
 
 void do_cryption_request(struct client_data *cdata,
-                         cryptdev_request_t *req, 
+                         cryptdev_request_t *req,
                          cryptdev_response_t *resp,
                          int enc)
 {
@@ -205,7 +209,8 @@ int main(int argc, char **argv)
     }
 
     printf("DEV: waiting for connection from client ...");
-    accept_connection(backend, &cdata->dom, &cdata->page, &cdata->port);
+    accept_connection(backend, (unsigned long*)&cdata->dom,
+                      &cdata->page, &cdata->port);
     printf("connected!\n");
     if(fork()) {
       // parent thread, run the backend handler.

@@ -5,28 +5,11 @@
 # - terms and conditions.
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
+BINARIES=VBDTest
+include ../../standard.mk
 
-HALVM_SRCS=VBDTest.hs TestOpts.hs
-TEST_VMS=VBDTest
-TEST_SUBJECTS=VBDTest $(DISK_FILE)
-TEST_CONFIGS=VBDTest.config
-VERBOSE_TEST=--verbose
-
-DISK_FILE=$(shell pwd)/disk.img
-
-all: $(TEST_SUBJECTS) test
-
-include ../../mk/tests.mk
-
-$(DISK_FILE):
-	dd if=/dev/zero of=$(DISK_FILE) bs=1M count=64
-
-VBDTest.config: VBDTest.config.in
-	cp VBDTest.config.in VBDTest.config
-	echo "disk    = ['file:$(DISK_FILE),ioemu:hda1,w']" >> VBDTest.config
-
-runX: VBDTest $(DISK_FILE) VBDTest.config
-	$(XM) create VBDTest.config -c
+disk.img:
+	dd if=/dev/zero of=$@ bs=1M count=64
 
 clean::
-	$(RM) $(DISK_FILE)
+	rm -f disk.img

@@ -6,24 +6,15 @@
 # Author: Magnus Carlsson <magnus@galois.com>
 # BANNEREND
 #
+BINARIES=Filter
+include ../../standard.mk
 
-HALVM_SRCS=Filter.hs Dirty.hs
-TEST_SUBJECTS=Filter
-TEST_VMS=PlayerA PlayerB PlayerC
-
-VERBOSE_TEST=--verbose
-
-all: test
-
-include ../../mk/tests.mk
-
-
-runA: Filter
-	$(XM) create Filter.config name="PlayerA" extra="player=A" -c
-
-runB: Filter
-	$(XM) create Filter.config name="PlayerB" extra="player=B" -c
-
-runC: Filter
-	$(XM) create Filter.config name="PlayerC" extra="player=C" -c
-
+# runA: Filter
+# 	$(XM) create Filter.config name="PlayerA" extra="player=A" -c
+# 
+# runB: Filter
+# 	$(XM) create Filter.config name="PlayerB" extra="player=B" -c
+# 
+# runC: Filter
+# 	$(XM) create Filter.config name="PlayerC" extra="player=C" -c
+# 

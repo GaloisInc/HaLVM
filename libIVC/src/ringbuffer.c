@@ -9,7 +9,7 @@
 #include <xenctrl.h>
 #include "libIVC.h"
 #include "ivc_private.h"
-#include <xs.h>
+#include <xenstore.h>
 #include <xen/io/xs_wire.h>
 #include <string.h>
 #include <stdio.h>
@@ -19,9 +19,6 @@
 struct xbackend {
   // Turns out we don't need anything here.
 };
-
-extern EVTCHN_INTERFACE_TYPE xce;
-extern XC_HANDLE_TYPE        xcg;
 
 #define PROT_READWRITE (PROT_READ | PROT_WRITE)
 

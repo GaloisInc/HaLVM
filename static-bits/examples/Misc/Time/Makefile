@@ -6,18 +6,5 @@
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
 #
-
-HARNESS_DIR=Harness
-HALVM_SRCS=Main.hs
-TEST_SUBJECTS=TimeTest
-TEST_VMS=TimeTest
-TEST_CABAL=Time.cabal
-
-all: test
-
-include ../../mk/tests.mk
-
-runX: $(TEST_SUBJECTS)
-	-sudo xm destroy TimeTest
-	sudo xm create TimeTest.config -c
-
+BINARIES=Time
+include ../../standard.mk

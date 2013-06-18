@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 -- A utility module for reading/writing entries from the "double device"
 --
 -- BANNERSTART

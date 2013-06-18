@@ -81,8 +81,7 @@ int main(int argc, char **argv)
     input_line = rot13string(input_line);
     printf("rot13: %s\n", input_line);
     output_line = c_to_haskell_string(input_line);
-    res = write_chan(chan, output_line, strlen(output_line));
-    printf("res: %d\n", res);
+    write_chan(chan, output_line, strlen(output_line));
     free(input_line); free(output_line);
   }
 }

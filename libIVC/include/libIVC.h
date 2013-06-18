@@ -8,26 +8,26 @@
 #ifndef HALVM_LIBIVC_H
 #define HALVM_LIBIVC_H
 
-//#include <xenctrl.h>
+#include <xenctrl.h>
 #include <stdlib.h>
 
-#ifdef XENCTRL_HAS_XC_INTERFACE
-#define XC_HANDLE_TYPE xc_gnttab *
-#define EVTCHN_INTERFACE_TYPE xc_evtchn *
-#define XC_OPEN_ARGS NULL, XC_OPENFLAG_NON_REENTRANT
-#else
-#define XC_HANDLE_TYPE int
-#define EVTCHN_INTERFACE_TYPE int
-#define XC_OPEN_ARGS
-#endif
+// #ifdef XENCTRL_HAS_XC_INTERFACE
+// #define XC_HANDLE_TYPE xc_gnttab *
+// #define EVTCHN_INTERFACE_TYPE xc_evtchn *
+// #define XC_OPEN_ARGS NULL, XC_OPENFLAG_NON_REENTRANT
+// #else
+// #define XC_HANDLE_TYPE int
+// #define EVTCHN_INTERFACE_TYPE int
+// #define XC_OPEN_ARGS
+// #endif
 
 typedef struct unidir_chan in_chan;
 typedef struct unidir_chan out_chan;
 typedef struct bidir_chan inout_chan;
 typedef struct xbackend xen_backend;
 
-extern EVTCHN_INTERFACE_TYPE xce;
-extern XC_HANDLE_TYPE xcg;
+extern xc_evtchn *xce;
+extern xc_gnttab *xcg;
 
 void            initialize_libIVC_library(void);
 in_chan        *connect_one_way_in(char *name);

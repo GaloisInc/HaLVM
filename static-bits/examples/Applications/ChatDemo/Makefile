@@ -6,26 +6,6 @@
 # Author: Magnus Carlsson <magnus@galois.com>
 # BANNEREND
 #
-
-HALVM_SRCS=ChatDemo.hs ChatDemoBi.hs
-TEST_SUBJECTS=ChatDemo ChatDemoBi
-TEST_VMS=Server Andy Zebra
-
-VERBOSE_TEST=--verbose
-
-all: test
-
-include ../../mk/tests.mk
-
-runServer: ChatDemo
-	$(XM) create ChatDemo.config extra="mode=server" -c
-
-runClient: ChatDemo
-	$(XM) create ChatDemo.config extra="mode=client" name=$(NAME) -c
-
-runServerBi: ChatDemoBi
-	$(XM) create ChatDemoBi.config extra="mode=server" -c
-
-runClientBi: ChatDemoBi
-	$(XM) create ChatDemoBi.config extra="mode=client" name=$(NAME) -c
+BINARIES=ChatDemo ChatDemoBi
+include ../../standard.mk
 

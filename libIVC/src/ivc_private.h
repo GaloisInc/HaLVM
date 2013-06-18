@@ -10,7 +10,7 @@
 #define HALVM_IVC_PRIVATE_H
 
 #include <xenctrl.h>
-#include <xs.h>
+#include <xenstore.h>
 #include <stdint.h>
 
 extern struct xs_handle *xsd;
@@ -29,7 +29,7 @@ struct channel_core {
   // ring_size + sizeof(ivc_shared_page)
   int ring_size;
   evtchn_port_t port;
-  EVTCHN_INTERFACE_TYPE xce;
+  xc_evtchn *xce;
 };
 
 void initialize_libIVC_library(void);

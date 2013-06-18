@@ -6,15 +6,5 @@
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
 #
-all: Hello
-
-Hello: Hello.hs
-	halvm-ghc --make -o Hello Hello.hs
-
-run: Hello
-	sudo xm dmesg -c > /dev/null
-	sudo xm create Hello.config -c
-	sudo xm dmesg
-
-clean:
-	rm -f Hello.{hi,o} Hello
+BINARIES=LoopThreads
+include ../../standard.mk

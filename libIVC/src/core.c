@@ -14,13 +14,14 @@
 #include "ivc_private.h"
 #include <stdio.h>
 #include <arpa/inet.h>
-#include <xs.h>
+#include <xenstore.h>
 #include <errno.h>
 
 #define PROT_READWRITE (PROT_READ | PROT_WRITE)
 
 struct xs_handle *xsd = 0;
-XC_HANDLE_TYPE xcg = NULL;
+xc_evtchn *xce = NULL;
+xc_gnttab *xcg = NULL;
 
 extern int asprintf (char **__restrict __ptr,
                      __const char *__restrict __fmt, ...);
@@ -28,7 +29,7 @@ extern int asprintf (char **__restrict __ptr,
 void initialize_libIVC_library(void)
 {
   xsd = xs_domain_open();
-  xcg = xc_gnttab_open(XC_OPEN_ARGS);
+  xcg = xc_gnttab_open(NULL, XC_OPENFLAG_NON_REENTRANT);
 }
 
 // Count the number of grant references that are likely to be present in a
@@ -119,7 +120,7 @@ int bind_memory_and_port(char *name, unsigned long *otherDom,
   unsigned int *grefs = NULL;
   int  grefs_len = 0;
 
-  chan->xce = xc_evtchn_open(XC_OPEN_ARGS);
+  chan->xce = xc_evtchn_open(NULL, XC_OPENFLAG_NON_REENTRANT);
   if((long)chan->xce == -1) {
     fprintf(stderr, "Failed to open evtchn handle\n");
     return 0;
@@ -347,7 +348,7 @@ void internal_write(struct channel_core *chan, void *buffer, int size)
   unsigned long buflen = chan->ring_size;
 
   while(size > 0) {
-    void *start_cpy, *end_cpy, *end_page;
+    void *start_cpy;
     int write_amt = 0;
 
     // Wait for space to write.
@@ -368,8 +369,6 @@ void internal_write(struct channel_core *chan, void *buffer, int size)
 
     // Copy the data to the buffer
     start_cpy = chan->mem + prod;
-    end_cpy = start_cpy + write_amt;
-    end_page = chan->mem + buflen;
 
     rmb();
     if(prod + write_amt > buflen) {

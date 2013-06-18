@@ -23,8 +23,9 @@ import Hypervisor.Basics
 import Hypervisor.Debug
 import XenDevice.Codecs 
 import Hypervisor.Port
-import Hypervisor.Memory(mfnToVPtr, VPtr, MFN, toMFN)
+import Hypervisor.Memory(mfnToVPtr, VPtr, MFN, toMFN, mapForeignMachineFrames)
 import Foreign.C.Types(CChar)
+import Foreign.Marshal.Alloc(free,mallocBytes)
 import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.ForeignPtr
@@ -256,7 +257,9 @@ nextWatchId =
 
 initXenbus :: IO ()
 initXenbus =
-  do page <- mfnToVPtr =<< getStoreMfn
+  do storeMFN <- getStoreMfn
+     page <- mfnToVPtr storeMFN `xCatch` (\ _ -> do
+               mapForeignMachineFrames domidSelf [storeMFN])
      port <- toPort `fmap` get_store_evtchn
      initXenbus' page port
 
@@ -297,10 +300,18 @@ readRaw chan buff len =
   sequence (replicate len (readChan chan)) >>= pokeArray buff
 
 readRaw' :: IdxPtr -> IdxPtr -> Ptr CChar -> Port -> IO [CChar]
-readRaw' prodp consp shdata port =
-  allocaArray (#const XENSTORE_RING_SIZE)
-  (\a -> do len <- xbRead prodp consp shdata port a  (#const XENSTORE_RING_SIZE)
-            peekArray len a)
+readRaw' prodp consp shdata port = do
+  writeDebugConsole "Starting readRaw'\n"
+  let maxSize = (#const XENSTORE_RING_SIZE)
+--  writeDebugConsole ("Allocating array with max size: " ++ show maxSize ++ "\n")
+--  arr <- mallocArray maxSize
+  base <- mallocBytes 16384
+  let arr = castPtr (base `plusPtr` 4096)
+  len <- xbRead prodp consp shdata port arr maxSize
+  res <- peekArray len arr
+  free base
+  writeDebugConsole "Ending readRaw'\n"
+  return res
 
 writeRaw' :: IdxPtr -> IdxPtr -> Ptr CChar -> Port -> [CChar] -> IO Int
 writeRaw' prodp consp shdata port s =

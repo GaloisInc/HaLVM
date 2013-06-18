@@ -6,19 +6,5 @@
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
 #
-
-NO_HARNESS=y
-
-HALVM_SRCS=Null.hs
-TEST_SUBJECTS=Null
-TEST_VMS=Null
-
-all: $(TEST_SUBJECTS)
-
-include ../../mk/tests.mk
-
-run: $(TEST_SUBJECTS)
-	@$(XM) dmesg -c > /dev/null
-	@$(XM) create Null.config
-	@$(XM) dmesg > $(TEST_RESULTS)
-
+BINARIES=Null
+include ../../standard.mk

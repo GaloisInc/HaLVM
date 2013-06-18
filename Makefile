@@ -122,6 +122,20 @@ gmp/Makefile: gmp/configure
 gmp/.libs/libgmp.a: gmp/Makefile
 	$(MAKE) -C gmp
 
+# libIVC #######################################################################
+
+LIBIVC_SRC = $(wildcard libIVC/src/*.c)
+LIBIVC_OBJ = $(patsubst %.c,%.o,$(LIBIVC_SRC))
+
+libIVC/src/%.o: CFLAGS += -IlibIVC/include
+libIVC/src/%.o: libIVC/src/ivc_private.h
+libIVC/src/%.o: libIVC/include/libIVC.h
+libIVC/src/%.o: libIVC/src/%.c
+	$(CC) $(CFLAGS) -c -o $@ $^
+
+libIVC/libIVC.a: $(LIBIVC_OBJ)
+	$(AR) cqs $@ $^
+
 # Installation #################################################################
 
 quiet_cmd_install = INSTALL   $@
@@ -163,4 +177,15 @@ $(halvm-dir)/include/xen: $(XEN_INCLUDE_DIR)/xen
 install: $(programs) $(incl_targs) $(halvm-dir)/ldkernel $(halvm-dir)/kernel.lds
 install: $(halvm-dir)/include/xen
 install: $(halvm-dir)/libgmp.a
+install: $(halvm-dir)/lib/ghc-7.7/include/libIVC.h
+install: $(halvm-dir)/lib/ghc-7.7/libIVC.a
 install: | install-ghc
+
+$(halvm-dir)/lib/ghc-7.7/libIVC.a: libIVC/libIVC.a
+	cp $^ $@
+
+$(halvm-dir)/lib/ghc-7.7/include/libIVC.h: libIVC/include/libIVC.h
+	cp $^ $@
+
+foo:
+	echo $(halvm-dir)

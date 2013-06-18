@@ -10,7 +10,7 @@
 #include "libIVC.h"
 #include "ivc_private.h"
 #include <arpa/inet.h>
-#include <xs.h>
+#include <xenstore.h>
 #include <stdlib.h>
 #include <stdio.h>
 

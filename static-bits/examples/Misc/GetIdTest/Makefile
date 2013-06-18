@@ -5,17 +5,5 @@
 # - terms and conditions.
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
-
-HALVM_SRCS=GetId.hs
-TEST_SUBJECTS=GetId
-TEST_VMS=GetId
-
-all: test
-
-include ../../mk/tests.mk
-
-runX: $(TEST_SUBJECTS)
-	@$(XM) dmesg -c > /dev/null
-	@$(XM) create GetId.config -c
-	@$(XM) dmesg
-
+BINARIES=GetId
+include ../../standard.mk
