@@ -85,8 +85,6 @@ import qualified Data.ByteString          as BS
 import qualified Data.ByteString.Internal as BSI
 import qualified Data.ByteString.Unsafe   as USBS
 
-import Hypervisor.Debug
-
 newtype PageCount = PageCount Word32
   deriving (Eq, Num, Ord, Show, Bounded, Enum, Real, Integral)
 

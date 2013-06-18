@@ -1,3 +1,0 @@
-kernel /boot/xen.gz noreboot com1=auto,8n1 console=com1
-module /boot/testminios
-module /boot/mini-os

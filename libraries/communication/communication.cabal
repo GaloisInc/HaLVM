@@ -1,5 +1,5 @@
 name:           communication
-version:        1.1.0
+version:        1.2.0
 license:        BSD3
 author:         Galois, Inc.
 maintainer:     Galois, Inc.
@@ -10,7 +10,7 @@ cabal-version:  >= 1.2
 
 library
   build-depends:        HALVMCore == 1.1.0, base == 4.*, cereal >= 0.3.5.0,
-                        bytestring == 0.9.*, containers == 0.3.*, syb == 0.1.*,
+                        bytestring == 0.10.*, containers == 0.5.*, syb == 0.4.*,
                         XenDevice == 1.1.0
   exposed-modules:      Communication.IVC
   other-modules:        Data.HeadTail

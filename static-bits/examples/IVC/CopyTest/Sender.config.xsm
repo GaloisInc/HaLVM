@@ -1,8 +1,0 @@
-from os import getcwd
-
-name    = "Sender"
-kernel  = getcwd() + "/dist/build/Sender/Sender"
-memory  = 8
-disk    = []
-vif     = []
-access_control = ["policy=,label=system_u:system_r:copytest_sender_t"]

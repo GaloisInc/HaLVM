@@ -1,3 +1,0 @@
-Interactions
-  [ Expect (Just 60) StdOut "Got back again: \"HELLO KIDDO AGAIN\""
-  ]

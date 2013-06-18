@@ -1,3 +1,0 @@
-Interactions
-  [ Expect (Just 120) StdOut "Hello world!"
-  ]

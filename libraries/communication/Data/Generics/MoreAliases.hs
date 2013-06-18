@@ -8,21 +8,22 @@
 -- Author: Magnus Carlsson <magnus@galois.com>
 -- BANNEREND
 
--- | This adds some 'Typeable2' generics combinators, 
+-- | This adds some 'Typeable' generics combinators, 
 -- which ought to be in Data.Generics.
 module Data.Generics.MoreAliases ( ext2Q, ext2R ) where
 
-import Data.Generics(Data, dataCast2, Typeable2)
+import Data.Data(Data,dataCast2)
+import Data.Typeable(Typeable)
 
 -- | Flexible type extension
-ext2 :: (Data a, Typeable2 t)
+ext2 :: (Data a, Typeable t)
      => c a
      -> (forall d b. (Data d, Data b) => c (t d b))
      -> c a
 ext2 def ext = maybe def id (dataCast2 ext)
 
 -- | Type extension of queries for type constructors
-ext2Q :: (Data d, Typeable2 t)
+ext2Q :: (Data d, Typeable t)
       => (d -> q)
       -> (forall f e. (Data f, Data e) => t f e -> q)
       -> d -> q
@@ -30,7 +31,7 @@ ext2Q def ext = unQ ((Q def) `ext2` (Q ext))
 
 
 -- | Type extension of readers for type constructors
-ext2R :: (Monad m, Data d, Typeable2 t)
+ext2R :: (Monad m, Data d, Typeable t)
       => m d
       -> (forall g e. (Data g, Data e) => m (t g e))
       -> m d
