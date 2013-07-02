@@ -1,12 +1,11 @@
 import Control.Concurrent
 import Control.Monad
 import Hypervisor.Debug
-import Hypervisor.Kernel
 import System.CPUTime
 import System.Locale
 
 main :: IO ()
-main = halvm_kernel [] $ const $ showTime 32
+main = showTime 32
 
 showTime :: Int -> IO ()
 showTime 0 = return ()

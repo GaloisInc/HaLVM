@@ -1,5 +1,5 @@
 name:           HALVMCore
-version:        1.1.0
+version:        2.0.0
 license:        BSD3
 author:         Adam Wick <awick@galois.com>, Andrew Tolmach <apt@galois.com>
 maintainer:     Adam Wick <awick@galois.com>
@@ -13,32 +13,50 @@ category:       HaLVM, System
 stability:      experimental
 build-type:     Configure
 cabal-version:  >= 1.2
-tested-with:    GHC ==6.8.0
+tested-with:    GHC ==7.7.0
 
 library
-  build-depends:    base >=4, bytestring >=0.9, syb, mtl, BoundedChan
-  exposed-modules:  Data.Word10,
-                    Data.Word20,
-                    Util.WaitSet,
-                    Hypervisor.Basics,
-                    Hypervisor.Port,
-                    Hypervisor.EventWaitSet,
-                    Hypervisor.BufferChan,
+  build-depends:    base >= 4.7,
+                    bytestring >=0.10.3,
+                    containers, syb, mtl, BoundedChan, cereal
+  exposed-modules:
+                    Hypervisor.Console,
+                    Hypervisor.Control,
                     Hypervisor.Debug,
-                    Hypervisor.Memory,
+                    Hypervisor.DomainInfo,
+                    Hypervisor.ErrorCodes,
                     Hypervisor.IOPorts,
-                    Hypervisor.Kernel,
-                    Hypervisor.Privileged,
-                    Hypervisor.StartInfo,
-                    Hypervisor.Virqs
-  extensions:       CPP, MultiParamTypeClasses, FunctionalDependencies,
-                    FlexibleInstances, GeneralizedNewtypeDeriving,
-                    Rank2Types, FlexibleContexts, UndecidableInstances,
-                    OverlappingInstances, ForeignFunctionInterface,
-                    DeriveDataTypeable, RecordWildCards
-  hs-source-dirs:   .
-  ghc-options:      -O2 -Wall -optc-mno-red-zone
+                    Hypervisor.Memory,
+                    Hypervisor.OtherDomain,
+                    Hypervisor.Platform,
+                    Hypervisor.Port,
+                    Hypervisor.Structures.CPUMap,
+                    Hypervisor.Structures.DomainInfo,
+                    Hypervisor.Structures.PhysicalInfo,
+                    Hypervisor.Structures.VCPUContext,
+                    Hypervisor.Virqs,
+                    Hypervisor.XenStore
+  other-modules:
+                    Hypervisor.Hypercalls,
+                    Hypervisor.Hypercalls.DomainControl,
+                    Hypervisor.Hypercalls.PhysicalDevice,
+                    Hypervisor.Hypercalls.SystemControl
+  extensions:       DeriveDataTypeable, ForeignFunctionInterface, CPP,
+                    GeneralizedNewtypeDeriving, FlexibleInstances
+  ghc-options:      -Wall -fno-warn-orphans
+  cc-options:       -nostdinc
   include-dirs:     cbits/include
-  c-sources:        cbits/io.c,
-                    cbits/start_info.c,
-                    cbits/privileged.c
+  c-sources:        cbits/domain_info.c cbits/io.c cbits/core-hypercalls.c
+--                     Util.WaitSet,
+--                     Hypervisor.EventWaitSet,
+--                     Hypervisor.BufferChan,
+--  extensions:       CPP, MultiParamTypeClasses, FunctionalDependencies,
+--                    FlexibleInstances, GeneralizedNewtypeDeriving,
+--                    Rank2Types, FlexibleContexts, UndecidableInstances,
+--                    OverlappingInstances, ForeignFunctionInterface,
+--                    DeriveDataTypeable, RecordWildCards
+--  hs-source-dirs:   .
+--  include-dirs:     cbits/include
+--  c-sources:        cbits/io.c,
+--                    cbits/start_info.c,
+--                    cbits/privileged.c

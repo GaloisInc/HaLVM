@@ -6,14 +6,15 @@
 -- Author: Adam Wick <awick@galois.com>
 -- BANNEREND
 --
-
-import Hypervisor.Kernel
-import XenDevice.Console
-import XenDevice.Xenbus
+import Control.Concurrent
+import Hypervisor.Console
+import Hypervisor.XenStore
 
 main :: IO ()
-main = halvm_kernel_daemon [dConsole,dXenbus] $ const $ do
-  writeConsole "Getting ID ...\n"
-  me <- myDomId
-  writeConsole $ "Got ID = " ++ show me ++ ".\n"
-
+main = do
+  con <- initXenConsole
+  xs  <- initXenStore
+  writeConsole con "Getting ID ...\n"
+  me <- xsGetDomId xs
+  writeConsole con $ "Got ID = " ++ show me ++ ".\n"
+  threadDelay (2 * 1000 * 1000)

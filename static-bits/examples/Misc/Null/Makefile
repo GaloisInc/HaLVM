@@ -8,3 +8,8 @@
 #
 BINARIES=Null
 include ../../standard.mk
+
+run: Null
+	sudo xl create Null.config
+	sleep 1
+	sudo xl dmesg -c

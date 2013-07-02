@@ -8,3 +8,8 @@
 #
 BINARIES=LoopThreads
 include ../../standard.mk
+
+run: LoopThreads
+	sudo xl create LoopThreads.config
+	sleep 5
+	sudo xl dmesg -c

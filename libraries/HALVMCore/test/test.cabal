@@ -1,0 +1,34 @@
+name: HaLVMCoreTests
+version: 2.0.0
+license: BSD3
+author: Adam Wick <awick@galois.com>
+maintainer: Adam Wick <awick@galois.com>
+description: Tests (mostly marshalling) for HALVMCore that can be run on
+             the build machine.
+category: HaLVM
+stability: experimental
+build-type: Simple
+cabal-version: >= 1.2
+tested-with: GHC ==7.4
+
+executable runtests
+  main-is: test.hs
+  hs-source-dirs: ..,.
+  extensions:    DeriveDataTypeable, ForeignFunctionInterface, CPP,
+                 GeneralizedNewtypeDeriving, FlexibleInstances
+  build-depends: base, QuickCheck, syb
+  other-modules:
+                 Hypervisor.DomainInfo,
+                 Hypervisor.Control,
+                 Hypervisor.Hypercalls,
+                 Hypervisor.Hypercalls.DomainControl,
+                 Hypervisor.Hypercalls.SystemControl,
+                 Hypervisor.Hypercalls.PhysicalDevice,
+                 Hypervisor.OtherDomain,
+                 Hypervisor.Structures.CPUMap,
+                 Hypervisor.Structures.DomainInfo,
+                 Hypervisor.Structures.PhysicalInfo,
+                 Hypervisor.Structures.VCPUContext
+  c-sources:     stubs.c
+  cpp-options:   -DTESTING
+

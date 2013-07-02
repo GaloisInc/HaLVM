@@ -5,10 +5,8 @@
 -- - terms and conditions.
 -- Author: Adam Wick <awick@galois.com>
 -- BANNEREND
-
-import Hypervisor.Kernel
 import Hypervisor.Debug
 
-main = halvm_kernel [] $ const $ writeDebugConsole "Hello\n"
+main = writeDebugConsole "Hello\n"
 
 

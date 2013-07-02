@@ -7,3 +7,6 @@
 # BANNEREND
 BINARIES=GetId
 include ../../standard.mk
+
+run: GetId
+	sudo xl create GetId.config -c

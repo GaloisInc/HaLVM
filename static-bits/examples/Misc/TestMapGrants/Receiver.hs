@@ -21,16 +21,21 @@ import XenDevice.Xenbus
 import Common
 import Numeric
 
-main = halvm_kernel [dXenbus] start
-start _ = do
+main = do
+  xs <- initXenStore
+  writeDebugConsole $ "RCV: Starting offer.\n"
   c <- offer
   let dom = peer c
+  writeDebugConsole $ "RCV: Allocating references.\n"
   refs <- forM [0..9] $ const allocRef
   writeDebugConsole $ "RCV: Generated " ++ show (length refs) ++ " refs.\n"
   badptr <- mallocBytes $ 4096 + (4096 * length refs)
   let ptr = alignPtr badptr 4096
+  writeDebugConsole $ "RCV: Granting buffer access.\n"
   grantBufferAccess ptr dom refs
+  writeDebugConsole $ "RCV: Filling buffer.\n"
   fillBuffer ptr (4096 * length refs)
+  writeDebugConsole $ "RCV: Sending refs.\n"
   put c refs
   writeDebugConsole $ "RCV: Starting to spin!\n"
   loop (ptr `plusPtr` (4096 * (length refs - 1)))

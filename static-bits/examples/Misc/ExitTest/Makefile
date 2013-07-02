@@ -8,3 +8,8 @@
 #
 BINARIES=ExitTest
 include ../../standard.mk
+
+run: ExitTest
+	sudo xl create ExitTest.config
+	sleep 4
+	sudo xl dmesg -c

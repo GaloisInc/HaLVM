@@ -6,12 +6,15 @@
 -- Author: Adam Wick <awick@galois.com>
 -- BANNEREND
 
-import Hypervisor.Kernel
 import Hypervisor.Debug
 import Control.Concurrent
 
-main = halvm_kernel [] $ const $ forkIO (say "AAAAAA\n") >> say "BBBBBBB\n"
+main = do
+  forkIO (say 30 "AAAAAA\n")
+  say 30 "BBBBBBB\n"
 
-say x = do writeDebugConsole x
-           threadDelay 10000
-           say x
+say :: Int -> String -> IO ()
+say 0 s = return ()
+say x s = do writeDebugConsole s
+             threadDelay 10000
+             say (x - 1) s

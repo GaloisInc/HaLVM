@@ -323,6 +323,7 @@ else
                    static-bits/bin/halvm-ghc
                    static-bits/bin/halvm-ghc-pkg
                    static-bits/lib/ldkernel
+                   libraries/HALVMCore/HALVMCore.buildinfo
                   ])
   AC_OUTPUT
 

@@ -6,7 +6,5 @@
 -- Author: Adam Wick <awick@galois.com>
 -- BANNEREND
 --
-import Hypervisor.Kernel
-
 main :: IO ()
-main = halvm_kernel [] $ const $ return ()
+main = return ()

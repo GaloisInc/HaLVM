@@ -8,3 +8,7 @@
 #
 BINARIES=Time
 include ../../standard.mk
+
+run: Time
+	sudo xl create Time.config -c 'extra="count=10"'
+

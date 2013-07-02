@@ -26,19 +26,29 @@ module Hypervisor.Port(
        )
  where
 
+import Control.Exception
 import Data.Bits (Bits(testBit))
 import Data.Generics(Typeable, Data)
 import Data.Int
 import Data.Word
-import Data.Word10
 import Foreign.Ptr
 import Foreign.StablePtr
-import Foreign.Storable(Storable)
-import Hypervisor.Basics
+
+import Hypervisor.ErrorCodes
+import Hypervisor.DomainInfo
 
 -- |Communication Channel Endpoint
-newtype Port = Port Word10 -- ^ allows 1024 channel endpoints per domain
-  deriving (Eq, Ord, Show, Read, Storable, Typeable, Data)
+newtype Port = Port Word16
+  deriving (Eq, Ord, Typeable, Data)
+
+instance Show Port where
+  show (Port x) = "echan:" ++ show x
+
+instance Read Port where
+  readsPrec d str =
+    case splitAt 6 str of
+      ("echan:",x) -> map (\ (p,rest) -> (Port p, rest)) (readsPrec d x)
+      _            -> []
 
 -- |Convert a port into its identifying number.
 fromPort :: Integral a => Port -> a
@@ -48,13 +58,12 @@ fromPort (Port p) = fromIntegral p
 -- series of values, and that manufacturing your own port is a really bad
 -- idea.
 toPort :: Integral a => a -> Port
-toPort x 
+toPort x
   | fromIntegral x < (0::Integer) =
       error "ERROR: Tried to manufacture port with negative identifier."
   | fromIntegral x >= (1024::Integer) =
-      error "ERROR: Tried to manufacture port with too-high identifier."
-  | otherwise =
-      Port (fromIntegral x)
+      error "ERROR: Tried to manufacture port with too large of an identifier."
+  | otherwise = Port (fromIntegral x)
 
 -- |Install a function that will be invoked whenever the HALVM receives
 -- an event on the given channel.
@@ -78,95 +87,83 @@ unsetPortHandler (Port p) = do
              return retval
 
 -- |Allocate a fresh event channel that will be connected to by the given
--- domain.
-allocPort :: DomId -> Xen Port
-allocPort (DomId remoteDomain) = do 
-  let (DomId domSelf) = domidSelf
-  res <- evtchn_alloc_unbound (fromIntegral domSelf) (fromIntegral remoteDomain)
-  case () of
-             () | res < 0    -> toError res
-                | res < 1024 -> return $ Port (fromIntegral res)
-                | otherwise  -> error "INTERNAL ERROR: Bad port! (allocPort)"
+-- domain. May throw an ErrorCode on failure
+allocPort :: DomId -> IO Port
+allocPort remoteDomain = evtchn_alloc_unbound us them >>= standardPortReturn
+ where
+  us   = fromDomId domidSelf
+  them = fromDomId remoteDomain
 
 -- |Bind another domain's port, which they've shared with us.
-bindRemotePort :: DomId -> Port -> Xen Port
-bindRemotePort (DomId remoteDomain) (Port remotePort) = do 
-  res <- evtchn_bind_interdomain (fromIntegral remoteDomain) (fromIntegral remotePort)
-  case () of
-             () | res < 0    -> toError res
-                | res < 1024 -> return $ Port (fromIntegral res)
-                | otherwise  -> error $ "INTERNAL ERROR: Bad port! (bindRemote)"
+bindRemotePort :: DomId -> Port -> IO Port
+bindRemotePort d p = evtchn_bind_interdomain dom port >>= standardPortReturn
+ where
+  dom  = fromDomId d
+  port = fromPort p
 
 -- |Bind virtual IRQ  on virtual cpu to a port.
-bindVirq :: Word32 -> Word32 -> Xen Port
-bindVirq virq vcpu = do
-  res <- bind_virq virq vcpu
-  case () of
-             () | res < 0    -> toError res
-                | res < 1024 -> return $ Port (fromIntegral res)
-                | otherwise  -> error "INTERNAL ERROR: Bad port! (bindVirq)"
+bindVirq :: Word32 -> Word32 -> IO Port
+bindVirq virq vcpu = bind_virq virq vcpu >>= standardPortReturn
 
 -- |Close an open port.
-closePort :: Port -> Xen ()
-closePort (Port p) = do
-  res <- evtchn_close (fromIntegral p)
-  case res of
-             0 -> return $ ()
-             _ -> toError res
+closePort :: Port -> IO ()
+closePort (Port p) = evtchn_close (fromIntegral p) >>= standardUnitReturn
 
 -- |Allocate a port on behalf of another domain, without causing the other
 -- end to bind it. This is a privileged operation, and should only be called
 -- if the underlying version of Xen has had the privilege check turned off.
 -- The first argument is the domain this allocation is acting on behalf of.
 -- The second is the domain it's allocating a port to.
-allocUnboundPort :: DomId -> DomId -> Xen Port
-allocUnboundPort (DomId fromDom) (DomId toDom) = do
-  res <- evtchn_alloc_unbound (fromIntegral fromDom) (fromIntegral toDom)
-  case () of
-             () | res < 0    -> toError res
-                | res < 1024 -> return $ Port (fromIntegral res)
-                | otherwise  -> error "INTERNAL ERROR: Bad port! (allocUnbound)"
-	  
+allocUnboundPort :: DomId -> DomId -> IO Port
+allocUnboundPort f t = evtchn_alloc_unbound from to >>= standardPortReturn
+ where
+  from = fromDomId f
+  to   = fromDomId t
+
 -- |Send an event on the given port.
-sendOnPort :: Port -> Xen ()
-sendOnPort (Port p) = do
-  res <- evtchn_send (fromIntegral p)
-  case () of
-             () | res == 0  -> return $ ()
-                | otherwise -> toError res
+sendOnPort :: Port -> IO ()
+sendOnPort (Port p) = evtchn_send (fromIntegral p) >>= standardUnitReturn
 
 -- |Perform the given operation within the IO monad with events on the
 -- given port disabled.
 withPortMasked :: Port -> IO a -> IO a
-withPortMasked (Port p) a = 
-    do mask_evtchn (fromIntegral p)
-       r <- a
-       unmask_evtchn (fromIntegral p)
-       return r
+withPortMasked (Port p) a = do
+  mask_evtchn (fromIntegral p)
+  r <- a
+  unmask_evtchn (fromIntegral p)
+  return r
 
 -- |Bind a physical IRQ to an event channel. The arguments are the IRQ to
 -- map and a boolean stating whether or not the IRQ will be shared.
-bindPhysicalIRQ :: Word32 -> Bool -> Xen Port
-bindPhysicalIRQ pirq_num share = do
-  res <- bind_pirq pirq_num share
-  case () of
-             () | res < 0    -> toError res
-                | res < 1024 -> return $ Port (fromIntegral res)
-                | otherwise  -> error "INTERNAL ERROR: Bad port! (bindPhysIRQ)"
+bindPhysicalIRQ :: Word32 -> Bool -> IO Port
+bindPhysicalIRQ pirq_num share = bind_pirq pirq_num share >>= standardPortReturn
 
+standardUnitReturn :: Integral a => a -> IO ()
+standardUnitReturn x
+  | x < 0     = throwXenError x
+  | otherwise = return ()
 
-toError :: Integral a => a -> IO b
-toError x = xThrow $ toEnum $ fromIntegral (-x)
+standardPortReturn :: Integral a => a -> IO Port
+standardPortReturn x
+  | x < 0     = throwXenError x
+  | x >= 1024 = throw ENOBUFS
+  | otherwise = return (Port (fromIntegral x))
 
-irqSendEoi :: Word32 -> Xen ()
+throwXenError :: Integral a => a -> IO b
+throwXenError x = throw errorCode
+  where
+   errorCode :: ErrorCode
+   errorCode = toEnum (fromIntegral (-x))
+
+irqSendEoi :: Word32 -> IO ()
 irqSendEoi irq = irq_send_eoi irq
 
-irqNeedsEoi :: Word32 -> Xen Bool
+irqNeedsEoi :: Word32 -> IO Bool
 irqNeedsEoi irq = do
   status <- irq_get_status irq
   return (testBit status 0)
 
-irqShared :: Word32 -> Xen Bool
+irqShared :: Word32 -> IO Bool
 irqShared irq = do
   status <- irq_get_status irq
   return (testBit status 1)

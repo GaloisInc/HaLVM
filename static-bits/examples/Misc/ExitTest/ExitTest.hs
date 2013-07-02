@@ -8,24 +8,27 @@
 --
 import Control.Concurrent
 import Control.Monad
-import Hypervisor.Kernel
-import XenDevice.Console
+import Hypervisor.Console
 import Hypervisor.Debug
+import System.Exit
 
 main :: IO ()
-main = halvm_kernel [dConsole] $ \ _ -> do
-  forkIO exitThread
-  forever $ do
-    writeDebugConsole "Tick!\n"
-    threadDelay 1000000
+main = do
+  forkIO tickThread
+  exitThread
+
+tickThread :: IO ()
+tickThread = do
+  writeDebugConsole "Tick!\n"
+  threadDelay 1000000
 
 exitThread :: IO ()
 exitThread = do
+  con <- initXenConsole
   writeDebugConsole "Entering exitThread\n"
   threadDelay 1000000
   writeDebugConsole "Writing console message\n"
-  writeConsole "Shutting down now!\n"
+  writeConsole con "Shutting down now!\n"
   threadDelay 1000
   writeDebugConsole "Calling shutdown\n"
-  halvm_shutdown
-
+  exitSuccess

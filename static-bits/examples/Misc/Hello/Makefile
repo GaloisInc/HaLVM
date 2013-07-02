@@ -7,3 +7,8 @@
 # BANNEREND
 BINARIES=Hello
 include ../../standard.mk
+
+run: Hello
+	sudo xl create Hello.config
+	sleep 1
+	sudo xl dmesg -c

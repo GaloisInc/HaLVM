@@ -26,7 +26,7 @@ import Foreign.Ptr
 -- |Write on the Xen emergency console.
 writeDebugConsole :: String -> IO ()
 writeDebugConsole str =
-    withCString str $ \ cstr -> econsoleMsg (length str) cstr
+  withCString str $ \ cstr -> econsoleMsg (length str) cstr
 
 foreign import ccall unsafe "econsole.h emergency_console_msg"
   econsoleMsg :: Int -> Ptr a -> IO ()
