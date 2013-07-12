@@ -18,7 +18,8 @@ tested-with:    GHC ==7.7.0
 library
   build-depends:    base >= 4.7,
                     bytestring >=0.10.3,
-                    containers, syb, mtl, BoundedChan, cereal
+                    binary >= 0.7.0.0,
+                    containers >= 0.5.0.0
   exposed-modules:
                     Hypervisor.Console,
                     Hypervisor.Control,
@@ -41,8 +42,16 @@ library
                     Hypervisor.Hypercalls.DomainControl,
                     Hypervisor.Hypercalls.PhysicalDevice,
                     Hypervisor.Hypercalls.SystemControl
-  extensions:       DeriveDataTypeable, ForeignFunctionInterface, CPP,
-                    GeneralizedNewtypeDeriving, FlexibleInstances
+  extensions:
+                    CPP,
+                    DeriveDataTypeable,
+                    DeriveGeneric,
+                    ForeignFunctionInterface,
+                    FunctionalDependencies,
+                    GeneralizedNewtypeDeriving,
+                    FlexibleInstances,
+                    MultiParamTypeClasses,
+                    ScopedTypeVariables
   ghc-options:      -Wall -fno-warn-orphans
   cc-options:       -nostdinc
   include-dirs:     cbits/include
