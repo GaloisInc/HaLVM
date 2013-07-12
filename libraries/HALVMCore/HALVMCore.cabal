@@ -21,6 +21,8 @@ library
                     binary >= 0.7.0.0,
                     containers >= 0.5.0.0
   exposed-modules:
+                    Communication.IVC,
+                    Communication.Rendezvous,
                     Hypervisor.Console,
                     Hypervisor.Control,
                     Hypervisor.Debug,
