@@ -20,14 +20,10 @@ module Hypervisor.Port(
        , withPortMasked
        , bindVirq
        , bindPhysicalIRQ
-       , irqSendEoi
-       , irqNeedsEoi
-       , irqShared
        )
  where
 
 import Control.Exception
-import Data.Bits (Bits(testBit))
 import Data.Int
 import Data.Word
 import Foreign.Ptr
@@ -115,10 +111,10 @@ closePort (Port p) = evtchn_close (fromIntegral p) >>= standardUnitReturn
 -- The first argument is the domain this allocation is acting on behalf of.
 -- The second is the domain it's allocating a port to.
 allocUnboundPort :: DomId -> DomId -> IO Port
-allocUnboundPort f t = evtchn_alloc_unbound from to >>= standardPortReturn
+allocUnboundPort f t = evtchn_alloc_unbound fromp top >>= standardPortReturn
  where
-  from = fromDomId f
-  to   = fromDomId t
+  fromp = fromDomId f
+  top   = fromDomId t
 
 -- |Send an event on the given port.
 sendOnPort :: Port -> IO ()
@@ -155,19 +151,6 @@ throwXenError x = throw errorCode
    errorCode :: ErrorCode
    errorCode = toEnum (fromIntegral (-x))
 
-irqSendEoi :: Word32 -> IO ()
-irqSendEoi irq = irq_send_eoi irq
-
-irqNeedsEoi :: Word32 -> IO Bool
-irqNeedsEoi irq = do
-  status <- irq_get_status irq
-  return (testBit status 0)
-
-irqShared :: Word32 -> IO Bool
-irqShared irq = do
-  status <- irq_get_status irq
-  return (testBit status 1)
-
 --
 -- --------------------------------------------------------------------------
 --
@@ -201,9 +184,3 @@ foreign import ccall unsafe "events.h unmask_evtchn"
 
 foreign import ccall unsafe "events.h bind_pirq" 
   bind_pirq :: Word32 -> Bool -> IO Int32
-
-foreign import ccall unsafe "events.h irq_get_status"
-  irq_get_status :: Word32 -> IO Word32
-
-foreign import ccall unsafe "events.h irq_send_eoi"
-  irq_send_eoi :: Word32 -> IO ()
