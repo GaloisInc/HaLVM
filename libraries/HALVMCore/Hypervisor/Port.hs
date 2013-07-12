@@ -28,18 +28,18 @@ module Hypervisor.Port(
 
 import Control.Exception
 import Data.Bits (Bits(testBit))
-import Data.Generics(Typeable, Data)
 import Data.Int
 import Data.Word
 import Foreign.Ptr
 import Foreign.StablePtr
+import GHC.Generics
 
 import Hypervisor.ErrorCodes
 import Hypervisor.DomainInfo
 
 -- |Communication Channel Endpoint
 newtype Port = Port Word16
-  deriving (Eq, Ord, Typeable, Data)
+  deriving (Eq, Ord, Generic)
 
 instance Show Port where
   show (Port x) = "echan:" ++ show x

@@ -9,10 +9,10 @@ module Hypervisor.Structures.DomainInfo(
  where
 
 import Data.Bits
-import Data.Data
 import Data.Word
 import Foreign.Ptr
 import Foreign.Storable
+import GHC.Generics
 import {-# SOURCE #-} Hypervisor.DomainInfo(DomId,SID,DomainHandle)
 import {-# SOURCE #-} Hypervisor.DomainInfo(toDomId,fromDomId)
 import {-# SOURCE #-} Hypervisor.Memory(fromMFN,toMFN,MFN)
@@ -26,7 +26,7 @@ import {-# SOURCE #-} Hypervisor.Memory(fromMFN,toMFN,MFN)
 data DomainInfoFlag = DomainDying    | DomainHVM     | DomainShutdown
                     | DomainPaused   | DomainBlocked | DomainRunning
                     | DomainDebugged
-  deriving (Eq, Ord, Typeable, Data, Show)
+  deriving (Eq, Ord, Generic, Show)
 
 -- |Domain information
 data DomainInfo = DomainInfo {
@@ -78,7 +78,7 @@ instance Storable DomainInfo where
   peek p      = do
     dm <- (#peek xen_domctl_getdomaininfo_t,domain)            p :: IO Word16
     fl <- (#peek xen_domctl_getdomaininfo_t,flags)             p
-    to <- (#peek xen_domctl_getdomaininfo_t,tot_pages)         p
+    tp <- (#peek xen_domctl_getdomaininfo_t,tot_pages)         p
     mx <- (#peek xen_domctl_getdomaininfo_t,max_pages)         p
     sh <- (#peek xen_domctl_getdomaininfo_t,shr_pages)         p
     pa <- (#peek xen_domctl_getdomaininfo_t,paged_pages)       p
@@ -91,7 +91,7 @@ instance Storable DomainInfo where
     let handle_offset = (#offset xen_domctl_getdomaininfo_t,handle)
     ha <- peek (castPtr (p `plusPtr` handle_offset))
     return (DomainInfo (toDomId dm) fl
-                       to mx sh pa (toMFN (fromIntegral sf)) cp vc mv
+                       tp mx sh pa (toMFN (fromIntegral sf)) cp vc mv
                        ss ha po)
   poke p x    = do
     let d = fromDomId (diDomain x) :: Word16

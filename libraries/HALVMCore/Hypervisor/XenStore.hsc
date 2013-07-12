@@ -36,7 +36,6 @@ import Control.Exception
 import Control.Monad
 import Data.ByteString(ByteString,pack,unpack)
 import qualified Data.ByteString as BS
-import Data.Data
 import Data.Map(Map)
 import qualified Data.Map as Map
 import Data.Serialize.Get
@@ -46,6 +45,7 @@ import Foreign.C.String
 import Foreign.C.Types
 import Foreign.Ptr
 import Foreign.Storable
+import GHC.Generics
 import Hypervisor.DomainInfo
 import Hypervisor.ErrorCodes
 import Hypervisor.Memory
@@ -58,13 +58,13 @@ data XSPerm =
   | ReadPerm      DomId
   | ReadWritePerm DomId
   | NonePerm      DomId
- deriving (Eq, Show, Typeable, Data)
+ deriving (Eq, Show, Generic)
 
 newtype ReqId   = ReqId { unReqId :: Word32 }
  deriving (Eq, Ord, Show)
 
 newtype TransId = TransId { unTransId :: Word32 }
- deriving (Eq, Typeable, Data)
+ deriving (Eq, Generic, Show)
 
 emptyTransaction :: TransId
 emptyTransaction  = TransId 0

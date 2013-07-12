@@ -6,7 +6,8 @@
 module Hypervisor.ErrorCodes(ErrorCode(..)) where
 
 import Control.Exception
-import Data.Generics(Typeable)
+import Data.Typeable
+import GHC.Generics
 
 -- |Error codes returned from hypervisor calls. These errors are either returned
 -- directly or thrown as an exception.
@@ -140,6 +141,6 @@ data ErrorCode =
   | EDQUOT          -- ^ Quota exceeded
   | ENOMEDIUM       -- ^ No medium found
   | EMEDIUMTYPE     -- ^ Wrong medium type
- deriving (Show,Read,Enum,Eq,Typeable)
+ deriving (Show,Read,Enum,Eq,Generic,Typeable)
 
 instance Exception ErrorCode

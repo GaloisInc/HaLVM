@@ -17,6 +17,7 @@ import Data.Word
 import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
+import GHC.Generics
 
 #define __XEN__
 #include <stdint.h>
@@ -36,7 +37,7 @@ data HostPhysicalInfo = HostPhysicalInfo {
   , hpiHWCapabilities  :: [X86Capability]
   , hpiXenCapabilities :: [XenCapability]
   }
- deriving (Eq,Show)
+ deriving (Eq,Show,Generic)
 
 instance Storable HostPhysicalInfo where
   sizeOf _    = (#size xen_sysctl_physinfo_t)
@@ -78,7 +79,7 @@ instance Storable HostPhysicalInfo where
 -- ----------------------------------------------------------------------------
 
 data XenCapability = PlatformSupportsHVM | PlatformSupportsDirectIO
- deriving (Eq,Show)
+ deriving (Eq,Show,Generic)
 
 parseXenCapabilities :: Word32 -> [XenCapability]
 parseXenCapabilities x = hvm ++ dio
@@ -246,7 +247,7 @@ data X86Capability =
   | Feat_ERMS -- ^Enhanced REP MOVSB/STOSB
   | Feat_INVPCID -- ^Invalidate Process Context ID
   | Feat_RTM -- ^Restricted Transactional Memory
- deriving (Eq,Show)
+ deriving (Eq,Show,Generic)
 
 revFeatureMap :: [(Int, X86Capability)]
 revFeatureMap  = map swap featureMap

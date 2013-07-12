@@ -29,13 +29,13 @@ module Hypervisor.DomainInfo(
  where
 
 import Data.Bits
-import Data.Data
 import Data.Word
 import Foreign.C.String
 import Foreign.C.Types
 import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
+import GHC.Generics
 import Hypervisor.Hypercalls.DomainControl
 import {-# SOURCE #-} Hypervisor.Memory(PFN,toPFN,VPtr)
 import Hypervisor.Structures.DomainInfo
@@ -44,14 +44,20 @@ import Text.Printf
 
 -- |A domain identifier
 newtype DomId = DomId Word32
-  deriving (Eq, Ord, Typeable, Data)
+  deriving (Eq, Ord, Generic)
 
 instance Show DomId where
   show (DomId x) = "dom" ++ show x
 
+instance Read DomId where
+  readsPrec d r =
+    case r of
+      ('d':'o':'m':n) -> map (\ (a,b) -> (DomId a, b)) (readsPrec d n)
+      _               -> []
+
 -- |A domain handle
 newtype DomainHandle = DomHandle [Word8]
-  deriving (Eq, Ord, Typeable, Data)
+  deriving (Eq, Ord, Generic)
 
 instance Show DomainHandle where
   show (DomHandle xs) = concatMap (printf "%02x") xs
@@ -68,7 +74,7 @@ instance Storable DomainHandle where
 
 -- |A security identifier
 newtype SID = SID Word32
-  deriving (Eq, Ord, Typeable, Data, Show, Storable)
+  deriving (Eq, Ord, Generic, Show, Storable)
 
 #ifdef TESTING
 toSID :: Word32 -> SID
@@ -77,7 +83,7 @@ toSID x = SID x
 
 -- |A VCPU identifier
 newtype VCPU = VCPU Word
- deriving (Eq,Ord,Typeable,Data)
+ deriving (Eq, Ord, Generic)
 
 instance Show VCPU where
   show (VCPU x) = "vcpu:" ++ show x

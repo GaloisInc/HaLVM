@@ -14,11 +14,11 @@ module Hypervisor.Structures.VCPUContext(
 
 import Control.Monad
 import Data.Bits
-import Data.Data
 import Data.Word
 import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
+import GHC.Generics
 
 #include <stdint.h>
 #define __XEN_TOOLS__
@@ -45,14 +45,14 @@ data FPUContext = FPUContext {
   , fpuMMRegs     :: [[Word8]] -- ^Each MM variables, 80 bits each
   , fpuXMMRegs    :: [[Word8]] -- ^Each XMM variable, 128 bits each
   }
- deriving (Eq, Show, Typeable, Data)
+ deriving (Eq, Show, Generic)
 
 data ProcessorFlag = ProcessorI387
                    | ProcessorInKernel
                    | ProcessorFailsafeDisablesEvents
                    | ProcessorSyscallDisablesEvents
                    | ProcessorOnline
-  deriving (Eq, Show, Typeable, Data)
+  deriving (Eq, Show, Generic)
 
 #ifdef x86_64_TARGET_ARCH
 data ProcessorUserRegs = ProcessorUserRegs {
@@ -84,7 +84,7 @@ data ProcessorUserRegs = ProcessorUserRegs {
   , urGS              :: Word16
   , urSS              :: Word16
   }
- deriving (Eq, Show, Typeable, Data)
+ deriving (Eq, Show, Generic)
 #else
 data ProcessorUserRegs = ProcessorUserRegs {
     urEBX             :: Word32
@@ -107,7 +107,7 @@ data ProcessorUserRegs = ProcessorUserRegs {
   , urFS              :: Word16
   , urGS              :: Word16
   }
- deriving (Eq, Show, Typeable, Data)
+ deriving (Eq, Show, Generic)
 #endif
 
 data TrapInfo = TrapInfo {
@@ -116,13 +116,13 @@ data TrapInfo = TrapInfo {
   , tiCS        :: Word16
   , tiAddress   :: Word
   }
- deriving (Eq, Show, Typeable, Data)
+ deriving (Eq, Show, Generic)
 
 data VMAssistFlag = VMAssist4GBSegments
                   | VMAssist4GBSegmentsNotify
                   | VMAssistWritablePageTables
                   | VMAssistPAEExtendedCR3
- deriving (Eq, Show, Typeable, Data)
+ deriving (Eq, Show, Generic)
 
 data ProcessorContext = ProcessorContext {
     rcFPU                :: FPUContext
@@ -154,7 +154,7 @@ data ProcessorContext = ProcessorContext {
   , rcGSBaseUser         :: Word64
 #endif
   }
- deriving (Eq, Show, Typeable, Data)
+ deriving (Eq, Show, Generic)
 
 
 readSTAt :: Ptr a -> Int -> IO [Word8]

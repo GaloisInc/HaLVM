@@ -69,9 +69,8 @@ import Foreign.Ptr
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
 import Foreign.Storable
+import GHC.Generics
 import GHC.IO(unsafePerformIO)
-import Data.Generics.Instances()
-import Data.Generics.Basics(Data,Typeable)
 import Numeric
 
 #if __GLASGOW_HASKELL__ < 706
@@ -97,7 +96,7 @@ toPFN x = PFN (fromIntegral x)
 -- |Machine frame numbers. These frame numbers identify a phyical 4096-byte
 -- frame on the underlying hardware.
 newtype MFN = MFN Word
- deriving (Eq, Ord, Num, Read, Data, Typeable, Storable, Bits)
+ deriving (Eq, Ord, Num, Read, Generic, Storable, Bits)
 
 instance Show MFN where
   show (MFN x) = "MFN 0x" ++ showHex x ""
@@ -253,7 +252,7 @@ markAsPageTableMFN l mfn dom
 --
 
 newtype GrantRef = GrantRef Word16
- deriving (Eq, Ord, Show, Read, Typeable, Data)
+ deriving (Eq, Ord, Show, Read, Generic)
 
 num_grant_entries :: Num a => a
 num_grant_entries = 2048
