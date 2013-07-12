@@ -5,9 +5,14 @@
 # - terms and conditions.
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
-BINARIES=GetId
+#
+BINARIES=Peer1 Peer2
 include ../../standard.mk
 
-run: GetId
-	-sudo xl destroy GetId
-	sudo xl create GetId.config -c
+run: Peer1 Peer2
+	-sudo xl destroy Peer1
+	-sudo xl destroy Peer2
+	sudo xl create Peer1.config
+	sudo xl create Peer2.config
+	sleep 3
+	sudo xl dmesg -c

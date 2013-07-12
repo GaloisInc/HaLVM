@@ -5,9 +5,10 @@
 # - terms and conditions.
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
-BINARIES=GetId
+#
+BINARIES=Xenstore
 include ../../standard.mk
 
-run: GetId
-	-sudo xl destroy GetId
-	sudo xl create GetId.config -c
+run: Xenstore
+	-sudo xl destroy Xenstore
+	sudo xl create Xenstore.config -c
