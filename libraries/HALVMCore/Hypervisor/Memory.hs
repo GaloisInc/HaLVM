@@ -77,6 +77,7 @@ import Numeric
 import Prelude hiding (catch)
 #endif
 
+import Hypervisor.Debug
 import Hypervisor.DomainInfo
 import Hypervisor.ErrorCodes
 
@@ -378,9 +379,13 @@ mapGrant' :: VPtr a -> Word16 -> Word32 -> Bool -> IO (VPtr a, GrantHandle)
 mapGrant' vaddr dom gref writable = do
   res <- gnttab_map_grant_ref vaddr dom gref writable
   case res of
-    x | x < 0                 -> throw (toEnum (fromIntegral (-x)) :: ErrorCode)
-      | x < num_grant_entries -> return (vaddr, GrantHandle x)
-      | otherwise             -> throw EOK
+    x | x < 0                 ->
+          throw (toEnum (fromIntegral (-x)) :: GrantErrorCode)
+      | x < num_grant_entries ->
+          return (vaddr, GrantHandle (fromIntegral x))
+      | otherwise             -> do
+          writeDebugConsole ("weird result = " ++ show x ++ "\n")
+          throw EBADFD
 
 
 -- |Unmap the grant of another domain's page. Optionally, (if the
@@ -606,6 +611,6 @@ foreign import ccall unsafe "gnttab.h gnttab_transfer_page_to_dom"
 foreign import ccall unsafe "gnttab.h gnttab_address_of"
   gnttab_address_of :: Word16 -> IO (VPtr a)
 foreign import ccall unsafe "gnttab.h gnttab_map_grant_ref"
-  gnttab_map_grant_ref :: VPtr a -> Word16 -> Word32 -> Bool -> IO Word32
+  gnttab_map_grant_ref :: VPtr a -> Word16 -> Word32 -> Bool -> IO Int32
 foreign import ccall unsafe "gnttab.h gnttab_unmap_grant_ref"
   gnttab_unmap_grant_ref :: VPtr a -> Word32 -> IO Int32

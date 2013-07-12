@@ -3,7 +3,7 @@
 -- Please see the file LICENSE, distributed with this software, for specific
 -- terms and conditions.
 -- |Error codes / exceptions for various HaLVM functions.
-module Hypervisor.ErrorCodes(ErrorCode(..)) where
+module Hypervisor.ErrorCodes(ErrorCode(..), GrantErrorCode(..)) where
 
 import Control.Exception
 import Data.Typeable
@@ -144,3 +144,21 @@ data ErrorCode =
  deriving (Show,Read,Enum,Eq,Generic,Typeable)
 
 instance Exception ErrorCode
+
+data GrantErrorCode =
+    GrantOK
+  | GrantGeneralError
+  | GrantBadDomain
+  | GrantBadGrantRef
+  | GrantBadHandle
+  | GrantBadVirtualAddress
+  | GrantBadDeviceAddress
+  | GrantNoDeviceSpace
+  | GrantPermissionDenied
+  | GrantBadPage
+  | GrantBadCopyArgument
+  | GrantAddressTooBig
+  | GrantSendAgain
+ deriving (Show,Read,Enum,Eq,Generic,Typeable)
+
+instance Exception GrantErrorCode
