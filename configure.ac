@@ -103,48 +103,29 @@ dnl -------------------------------------------------------------------------
 
 dnl From this point on, we should use LOG_FAILURE instead of AC_FORCE_EXIST.
 AC_FORCE_EXIST(INSTALL,install)
+AC_FORCE_EXIST(AR,ar)
+AC_FORCE_EXIST(AUTORECONF,autoreconf)
+AC_FORCE_EXIST(CABAL,cabal)
+AC_FORCE_EXIST(CAT,cat)
 AC_FORCE_EXIST(CC,gcc)
+AC_FORCE_EXIST(CP,cp)
+AC_FORCE_EXIST(CPP,cpp)
+AC_FORCE_EXIST(GIT,git)
 AC_FORCE_EXIST(LD,ld)
+AC_FORCE_EXIST(LN,ln)
+AC_FORCE_EXIST(MV,mv)
 AC_FORCE_EXIST(NM,nm)
 AC_FORCE_EXIST(RM,rm)
-dnl AC_FORCE_EXIST(CP,cp)
-AC_FORCE_EXIST(MV,mv)
-AC_FORCE_EXIST(LN,ln)
-dnl AC_FORCE_EXIST(AR,ar)
-dnl AC_FORCE_EXIST(CAT,cat)
-dnl AC_FORCE_EXIST(CPP,cpp)
+AC_FORCE_EXIST(TAR,tar)
+AC_FORCE_EXIST(TOUCH,touch)
+
 AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [[789].*],
                   LOG_FAILURE("The HaLVM requires GHC 7 or higher."))
-AC_FORCE_EXIST(GIT,git)
-AC_FORCE_EXIST(TAR,tar)
 AC_CHECK_PROG_VER(ALEX, alex, --version, [version \([0-9.]*\)],
                   [3.[0-9]* | 2.3[0-9.]*],
                   LOG_FAILURE("The HaLVM requires alex 2.2+."))
-dnl                  [\(2.[23456789].*\)\|\([3456789].*\)],
-dnl AC_FORCE_EXIST(WGET,wget)
-dnl AC_FORCE_EXIST(FIND,find)
-dnl AC_FORCE_EXIST(GREP,grep)
-dnl AC_FORCE_EXIST(MAKE,make)
-dnl AC_FORCE_EXIST(PERL,perl)
-dnl AC_FORCE_EXIST(TAIL,tail)
-dnl AC_FORCE_EXIST(CHMOD,chmod)
-dnl AC_FORCE_EXIST(MKDIR,mkdir)
-dnl AC_FORCE_EXIST(PATCH,patch)
-AC_FORCE_EXIST(CABAL,cabal)
 AC_CHECK_PROG_VER(HAPPY, happy, --version, [Version \([0-9.]*\)], [1.1[89].*],
                   LOG_FAILURE("The HaLVM requires Happy 1.16+."))
-AC_FORCE_EXIST(TOUCH,touch)
-dnl AC_FORCE_EXIST(XARGS,xargs)
-AC_FORCE_EXIST(OBJDUMP,objdump)
-AC_FORCE_EXIST(AUTORECONF,autoreconf)
-dnl AC_FORCE_EXIST(AUTOCONF,autoconf)
-dnl 
-dnl AC_TESTS_WANT_EXIST(XM,xm)
-dnl AC_TESTS_WANT_EXIST(DIFF,diff)
-dnl AC_TESTS_WANT_EXIST(QEMU,qemu)
-dnl AC_TESTS_WANT_EXIST(SUDO,sudo)
-dnl AC_TESTS_WANT_EXIST(CABAL,cabal)
-dnl AC_TESTS_WANT_EXIST(KILLALL,killall)
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -199,13 +180,6 @@ AC_ARG_WITH([gmp],
   [gmp_path="$withval"]
   [gmp_path=""])
 
-if test "$int_library" = "integer-gmp"; then
-  AC_SUBST(USE_GMP, [yes])
-else
-  AC_SUBST(USE_GMP, [no])
-fi
-
-
 dnl -------------------------------------------------------------------------
 dnl
 dnl GHC Config
@@ -250,9 +224,9 @@ dnl Is this a 64-bit platform?
 if test `uname -m` = "x86_64"; then
   memory_model="64";
   arch="x86_64"
-  abi="32"
+  abi="64"
 else
-  arch="i368"
+  arch="i386"
   abi="32"
 fi
 
@@ -260,15 +234,6 @@ AC_SUBST(ARCHITECTURE, "$arch")
 AC_SUBST(ABI, "$abi")
 AC_SUBST(target,"${arch}-unknown-HaLVM")
 AC_SUBST(target_prefix,"${arch}-unknown-HaLVM-")
-
-if test "$gmp_path" = ""; then
-  if test "$arch" = "x86_64"; then
-    gmp_path="/usr/lib64"
-  else
-    gmp_path="/usr/lib"
-  fi
-fi
-AC_SUBST(GMP_LIB_PATH, "$gmp_path")
 
 if test "$memory_model" != "64"; then
   AC_ARG_ENABLE(pae,
@@ -316,20 +281,14 @@ if test "${FAILED}" == "Yes"; then
 else
   echo "  HaLVM Memory Model: ${MEMMODEL_STR}"
   echo
-  AC_CONFIG_FILES([mk/autoconf.mk mk/build.mk
-                   libm/build.mk
-                   static-bits/bin/halvm-cabal
-                   static-bits/bin/halvm-config
-                   static-bits/bin/halvm-ghc
-                   static-bits/bin/halvm-ghc-pkg
-                   static-bits/lib/ldkernel
+  AC_CONFIG_FILES([
                    libraries/HALVMCore/HALVMCore.buildinfo
+                   mk/autoconf.mk
+                   src/scripts/halvm-cabal
+                   src/scripts/halvm-config
+                   src/scripts/halvm-ghc
+                   src/scripts/halvm-ghc-pkg
+                   src/scripts/ldkernel
                   ])
   AC_OUTPUT
-
-  chmod +x static-bits/bin/halvm-cabal
-  chmod +x static-bits/bin/halvm-config
-  chmod +x static-bits/bin/halvm-ghc
-  chmod +x static-bits/bin/halvm-ghc-pkg
-  chmod +x static-bits/lib/ldkernel
 fi
