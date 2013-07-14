@@ -8,7 +8,7 @@
 
 HaLVM_VERSION           := @PACKAGE_VERSION@
 GHC_VER                 := 7.8.1
-GIT_LIBRARIES_URL       := git://github.com/GaloisInc
+GIT_LIB_URL             := git://github.com/GaloisInc
 
 # Top of the build system, set by auto[re]conf.  This allows any other makefile
 # to include common.mk and get a consistent variable environment.
@@ -33,7 +33,7 @@ INTEGER_LIBRARY         := @INTEGER_LIBRARY@
 INSTALL                 := @INSTALL@
 #AR                      := @AR@
 CC                      := @CC@
-#CP                      := @CP@
+CP                      := @CP@
 LD                      := @LD@
 LN                      := @LN@
 MV                      := @MV@

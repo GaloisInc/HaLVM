@@ -115,6 +115,7 @@ AC_FORCE_EXIST(LD,ld)
 AC_FORCE_EXIST(LN,ln)
 AC_FORCE_EXIST(MV,mv)
 AC_FORCE_EXIST(NM,nm)
+AC_FORCE_EXIST(OBJDUMP,objdump)
 AC_FORCE_EXIST(RM,rm)
 AC_FORCE_EXIST(TAR,tar)
 AC_FORCE_EXIST(TOUCH,touch)
@@ -282,8 +283,9 @@ else
   echo "  HaLVM Memory Model: ${MEMMODEL_STR}"
   echo
   AC_CONFIG_FILES([
-                   libraries/HALVMCore/HALVMCore.buildinfo
                    mk/autoconf.mk
+                   src/HALVMCore/HALVMCore.buildinfo
+                   src/misc/build.mk
                    src/scripts/halvm-cabal
                    src/scripts/halvm-config
                    src/scripts/halvm-ghc

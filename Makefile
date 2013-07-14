@@ -34,7 +34,7 @@ $(TOPDIR)/halvm-ghc/.sync: $(TOPDIR)/halvm-ghc/sync-all \
 $(TOPDIR)/halvm-ghc/.halvm-base: $(TOPDIR)/halvm-ghc/.sync
 	(cd halvm-ghc                                                               \
   && $(RM) -rf libraries/base                                                 \
-  && $(GIT) clone $(GIT_LIB_URL)/halvm-base.git --branch halvm lbiraries/base \
+  && $(GIT) clone $(GIT_LIB_URL)/halvm-base.git --branch halvm libraries/base \
   && $(TOUCH) $@)
 
 EVERYTHING_DOWNLOADED := $(TOPDIR)/halvm-ghc/.sync \
@@ -108,7 +108,7 @@ clean::
 	$(RM) -f $(LIBIVC_O_FILES) $(TOPDIR)/src/libIVC/libIVC.a
 
 ###############################################################################
-# LIBIVC ######################################################################
+# MK_REND_DIR #################################################################
 ###############################################################################
 
 MKREND_C_FILES := $(shell find $(TOPDIR)/src/mkrenddir -name '*.c')
@@ -127,7 +127,7 @@ clean::
 	$(RM) -f $(MKREND_O_FILES) $(TOPDIR)/src/mkrenddir/mkrenddir
 
 ###############################################################################
-# LIBIVC ######################################################################
+# BOOTLOADER ##################################################################
 ###############################################################################
 
 $(TOPDIR)/src/bootloader/start.o: $(TOPDIR)/src/bootloader/start.$(ARCH).S
@@ -138,6 +138,100 @@ all: $(TOPDIR)/src/bootloader/start.o
 clean::
 	rm -f $(TOPDIR)/src/bootloader/start.o
 
+###############################################################################
+# GHC BUILD PREP ##############################################################
+###############################################################################
+
+$(TOPDIR)/halvm-ghc/mk/build.mk: $(EVERYTHING_DOWNLOADED) \
+                                 $(TOPDIR)/src/misc/build.mk
+	$(CP) $(TOPDIR)/src/misc/build.mk $@
+
+$(TOPDIR)/halvm-ghc/.linked-xen: $(EVERYTHING_DOWNLOADED)
+	$(LN) -sf $(XEN_INCLUDE_DIR)/xen $(TOPDIR)/halvm-ghc/rts/xen/include/xen
+	$(TOUCH) $@
+
+$(TOPDIR)/halvm-ghc/.linked-rts: $(EVERYTHING_DOWNLOADED)
+	$(LN) -sf $(TOPDIR)/halvm-ghc/rts/xen/include \
+            $(TOPDIR)/halvm-ghc/libraries/base/include/rts
+	$(TOUCH) $@
+
+$(TOPDIR)/halvm-ghc/configure: $(EVERYTHING_DOWNLOADED)                       \
+                               $(TOPDIR)/halvm-ghc/configure.ac               \
+                               $(TOPDIR)/halvm-ghc/boot
+	(cd halvm-ghc && ./boot)
+
+EVERYTHING_PREPPED := $(TOPDIR)/halvm-ghc/mk/build.mk                         \
+                      $(TOPDIR)/halvm-ghc/.linked-xen                         \
+                      $(TOPDIR)/halvm-ghc/.linked-rts                         \
+                      $(TOPDIR)/halvm-ghc/configure
+
+ifeq ($(INTEGER_LIBRARY),integer-gmp)
+$(TOPDIR)/halvm-ghc/.linked-gmp: \
+                                         $(TOPDIR)/src/gmp/.libs/libgmp.a
+	$(LN) -sf $(TOPDIR)/src/gmp/gmp.h \
+            $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmp.h
+	$(LN) -sf $(TOPDIR)/src/gmp/gmp.h \
+            $(TOPDIR)/halvm-ghc/libraries/integer-gmp/cbits/gmp.h
+	$(TOUCH) $@
+
+$(TOPDIR)/halvm-ghc/.fixed-gmp: $(EVERYTHING_DOWNLOADED)
+	$(SED) -i 's/1/0/g' $(TOPDIR)/halvm-ghc/libraries/integer-gmp/mkGmpDerivedConstants/ghc.mk
+	$(TOUCH) $@
+
+EVERYTHING_PREPPED += $(TOPDIR)/halvm-ghc/.linked-gmp \
+                      $(TOPDIR)/halvm-ghc/.fixed-gmp
+endif
+
+clean::
+	$(RM) -f $(EVERYTHING_PREPPED) $(TOPDIR)/halvm-ghc/rts/xen/include/xen \
+           $(TOPDIR)/halvm-ghc/libraries/base/include/rts
+
+###############################################################################
+# GHC BUILD ###################################################################
+###############################################################################
+
+HALVM_GHC_CONFIGURE_FLAGS  = --target=$(TARGET_ARCH)
+HALVM_GHC_CONFIGURE_FLAGS += --with-gcc=$(CC)
+HALVM_GHC_CONFIGURE_FLAGS += --with-ld=$(LD)
+HALVM_GHC_CONFIGURE_FLAGS += --with-nm=$(NM)
+HALVM_GHC_CONFIGURE_FLAGS += --with-objdump=$(OBJDUMP)
+HALVM_GHC_CONFIGURE_FLAGS += --prefix=$(halvm-dir)
+
+COMPILER_SOURCES := $(shell find $(TOPDIR)/halvm-ghc/compiler     \
+                            -name '*hs' ! -path '*dist*')
+LIBRARY_SOURCES  := $(shell find $(TOPDIR)/halvm-ghc/libraries    \
+                            -name '*hs' ! -path '*dist*')
+RTS_SOURCES      := $(shell find $(TOPDIR)/halvm-ghc/rts          \
+                            -name '*.c')
+
+$(TOPDIR)/halvm-ghc/mk/config.mk: $(EVERYTHING_PREPPED)                        \
+                                  $(TOPDIR)/halvm-ghc/configure
+	(cd halvm-ghc                                                                \
+   && ./configure $(HALVM_GHC_CONFIGURE_FLAGS)                                 \
+   && $(TOUCH) $@)
+
+$(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1:                                    \
+         $(EVERYTHING_PREPPED)                                                 \
+         $(TOPDIR)/halvm-ghc/mk/config.mk                                      \
+         $(COMPILER_SOURCES) $(LIBRARY_SOURCES)
+	$(MAKE) -C halvm-ghc
+
+$(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts.a:                                 \
+         $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1                            \
+         $(RTS_SOURCES)
+	$(MAKE) -C halvm-ghc rts/dist/build/libHSrts.a
+
+$(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts_thr.a:                             \
+         $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1                            \
+         $(RTS_SOURCES)
+	$(MAKE) -C halvm-ghc rts/dist/build/libHSrts_thr.a
+
+all: $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1                                \
+     $(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts.a                             \
+     $(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts_thr.a
+
+clean::
+	$(MAKE) -C halvm-ghc clean
 
 # include libm/build.mk
 # include rts/build.mk
