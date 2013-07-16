@@ -23,7 +23,7 @@ libraries/communication/dist/
 libraries/libDomainBuilder/libDomainBuilder.buildinfo
 libraries/log4h/dist/
 libraries/stm-2.1.2.2/
-mk/autoconf.mk
+autoconf.mk
 platform_ghc/
 tarballs/
 xen-ghc/

@@ -102,21 +102,27 @@ dnl
 dnl -------------------------------------------------------------------------
 
 dnl From this point on, we should use LOG_FAILURE instead of AC_FORCE_EXIST.
-AC_FORCE_EXIST(INSTALL,install)
 AC_FORCE_EXIST(AR,ar)
 AC_FORCE_EXIST(AUTORECONF,autoreconf)
 AC_FORCE_EXIST(CABAL,cabal)
-AC_FORCE_EXIST(CAT,cat)
 AC_FORCE_EXIST(CC,gcc)
+AC_FORCE_EXIST(CHMOD,chmod)
 AC_FORCE_EXIST(CP,cp)
 AC_FORCE_EXIST(CPP,cpp)
+AC_FORCE_EXIST(ECHO,echo)
+AC_FORCE_EXIST(FIND,find)
 AC_FORCE_EXIST(GIT,git)
+AC_FORCE_EXIST(INSTALL,install)
 AC_FORCE_EXIST(LD,ld)
 AC_FORCE_EXIST(LN,ln)
+AC_FORCE_EXIST(MAKE,make)
+AC_FORCE_EXIST(MKDIR,mkdir)
 AC_FORCE_EXIST(MV,mv)
 AC_FORCE_EXIST(NM,nm)
 AC_FORCE_EXIST(OBJDUMP,objdump)
+AC_FORCE_EXIST(PERL,perl)
 AC_FORCE_EXIST(RM,rm)
+AC_FORCE_EXIST(SED,sed)
 AC_FORCE_EXIST(TAR,tar)
 AC_FORCE_EXIST(TOUCH,touch)
 
@@ -176,11 +182,6 @@ AC_ARG_ENABLE([gmp],
   [int_library=integer-gmp])
 AC_SUBST(INTEGER_LIBRARY, [$int_library])
 
-AC_ARG_WITH([gmp],
-  [AS_HELP_STRING([--with-gmp=ARG], [the path to libgmp.a])],
-  [gmp_path="$withval"]
-  [gmp_path=""])
-
 dnl -------------------------------------------------------------------------
 dnl
 dnl GHC Config
@@ -194,8 +195,42 @@ AC_ARG_ENABLE(docs,
    else
      enable_docs="no"
    fi
-  ], [enable_docs="no"])
-AC_SUBST(ENABLE_DOCS, [$enable_docs])
+  ], [enable_docs="maybe"])
+
+case "$enable_docs" in
+  "yes")
+           AC_FORCE_EXIST(HADDOCK,haddock)
+           AC_FORCE_EXIST(HSCOLOUR,HsColour)
+           AC_SUBST(ENABLE_DOCS,"YES")
+           ;;
+  "no")
+           AC_SUBST(ENABLE_DOCS,"NO")
+           ;;
+  "maybe")
+           AC_PATH_PROGS(HADDOCK,haddock,no)
+           AC_PATH_PROGS(HSCOLOUR,HsColour,no)
+           if test "${HADDOCK}" == "no"; then
+             HADDOCK_TEST="no"
+           else
+             HADDOCK_TEST="yes"
+           fi
+           if test "${HSCOLOUR}" == "no"; then
+             HSCOLOUR_TEST="no"
+           else
+             HSCOLOUR_TEST="yes"
+           fi
+           case "${HADDOCK_TEST}${HSCOLOUR_TEST}" in
+             "nono")   AC_SUBST(ENABLE_DOCS,"NO")
+                       doc_reason="(no haddock or hscolour)";;
+             "yesno")  AC_SUBST(ENABLE_DOCS,"NO")
+                       doc_reason="(no hscolour)";;
+             "noyes")  AC_SUBST(ENABLE_DOCS,"NO")
+                       doc_reason="(no haddock)";;
+             "yesyes") AC_SUBST(ENABLE_DOCS,"YES");;
+             *) echo "Fail: |${HADDOCK}${HSCOLOUR}|"
+           esac
+           ;;
+esac
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -280,10 +315,13 @@ fi
 if test "${FAILED}" == "Yes"; then
   echo "Fix these errors, and then try again."
 else
+  echo
   echo "  HaLVM Memory Model: ${MEMMODEL_STR}"
+  echo "  Integer library: ${INTEGER_LIBRARY}"
+  echo "  Building documentation: ${ENABLE_DOCS} ${doc_reason}"
   echo
   AC_CONFIG_FILES([
-                   mk/autoconf.mk
+                   autoconf.mk
                    src/HALVMCore/HALVMCore.buildinfo
                    src/misc/build.mk
                    src/scripts/halvm-cabal

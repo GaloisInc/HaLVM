@@ -1,0 +1,93 @@
+# BANNERSTART
+# - Copyright 2006-2008, Galois, Inc.
+# - This software is distributed under a standard, three-clause BSD license.
+# - Please see the file LICENSE, distributed with this software, for specific
+# - terms and conditions.
+# Author: Adam Wick <awick@galois.com>
+# BANNEREND
+
+HaLVM_VERSION           := @PACKAGE_VERSION@
+GIT_LIB_URL             := git://github.com/GaloisInc
+INTEGER_LIBRARY         := @INTEGER_LIBRARY@
+BUILD_DOCS              := @ENABLE_DOCS@
+ABI                     := @ABI@
+
+# Top of the build system, set by auto[re]conf.  This allows any other makefile
+# to include common.mk and get a consistent variable environment.
+TOPDIR      := @abs_top_builddir@
+
+prefix      := @prefix@
+exec_prefix := @exec_prefix@
+bindir      := @bindir@
+libdir      := @libdir@
+
+#
+# External programs of interest
+#
+ALEX                    := @ALEX@
+AR                      := @AR@
+AUTORECONF              := @AUTORECONF@
+CABAL                   := @CABAL@
+CC                      := @CC@
+CHMOD                   := @CHMOD@
+CP                      := @CP@
+CPP                     := @CPP@
+ECHO                    := @ECHO@
+FIND                    := @FIND@
+GHC                     := @GHC@
+GIT                     := @GIT@
+HADDOCK                 := @HADDOCK@
+HAPPY                   := @HAPPY@
+HSCOLOUR                := @HSCOLOUR@
+INSTALL                 := @INSTALL@
+LD                      := @LD@
+LN                      := @LN@
+MAKE                    := @MAKE@
+MKDIR                   := @MKDIR@
+MV                      := @MV@
+NM                      := @NM@
+OBJDUMP                 := @OBJDUMP@
+PERL                    := @PERL@
+RM                      := @RM@
+SED                     := @SED@
+TAR                     := @TAR@
+TOUCH                   := @TOUCH@
+
+#
+# Interesting flags from configure
+#
+
+NO_UNIT_AT_A_TIME_OPT  := @NO_UNIT_AT_A_TIME_OPT@
+NO_STACK_PROT_OPT      := @NO_STACK_PROT_OPT@
+NO_FRAME_PTR_OPT       := @NO_FRAME_PTR_OPT@
+NO_ASYNC_UNWIND_OPT    := @NO_ASYNC_UNWIND_OPT@
+NO_RED_ZONE_OPT        := @NO_RED_ZONE_OPT@
+NO_BUILTIN_OPT         := @NO_BUILTIN_OPT@
+ARCH_OPT               := @ARCH_OPTION@
+ARCH                   := @ARCHITECTURE@
+XEN_INCLUDE_DIR        := @XEN_INCLUDE_DIRECTORY@
+
+#
+# Derivations of the above.
+#
+
+BUILD_ARCH             := $(ARCH)-unknown-linux
+HOST_ARCH              := $(BUILD_ARCH)
+TARGET_ARCH            := $(ARCH)-unknown-HaLVM
+
+ARCH_CC_FLAGS         := $(NO_UNIT_AT_A_TIME_OPT)
+ARCH_CC_FLAGS         += $(NO_STACK_PROT_OPT)
+ARCH_CC_FLAGS         += $(NO_FRAME_PTR_OPT)
+ARCH_CC_FLAGS         += $(NO_ASYNC_UNWIND_OPT)
+ARCH_CC_FLAGS         += $(NO_RED_ZONE_OPT)
+ARCH_CC_FLAGS         += $(NO_BUILTIN_OPT)
+ARCH_CC_FLAGS         += $(ARCH_OPT)
+ARCH_GHC_FLAGS        := $(foreach f,$(ARCH_CC_FLAGS),-optc$f)
+ARCH_GHC_FLAGS        += $(ARCH_OPT)
+
+CFLAGS                := -O2 -Wall -Wno-unused-variable
+CFLAGS                += -I$(XEN_INCLUDE_DIR)
+CFLAGS                += $(ARCH_CC_FLAGS)
+
+GHCFLAGS              := -O2 -H32m
+GHCFLAGS              += $(ARCH_GHC_FLAGS)
