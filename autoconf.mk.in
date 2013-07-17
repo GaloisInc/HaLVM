@@ -20,6 +20,7 @@ prefix      := @prefix@
 exec_prefix := @exec_prefix@
 bindir      := @bindir@
 libdir      := @libdir@
+halvmlibdir := $(libdir)/HaLVM-$(HaLVM_VERSION)
 
 #
 # External programs of interest

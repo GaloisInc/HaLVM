@@ -18,14 +18,10 @@ CONFIGURE_FLAGS="--ghc ${BUILD_FLAGS}"
 INCLUDE_FLAGS=
 
 for opt in ${CABALCMD}; do
-  echo "option: $opt" ;
   case "$opt" in
     configure) INCLUDE_FLAGS=${CONFIGURE_FLAGS} ;;
-    build)     INCLUDE_FLAGS=${BUILD_FLAGS}     ;;
     install)   INCLUDE_FLAGS=${INSTALL_FLAGS}   ;;
   esac
 done
-
-echo "Flags: ${INCLUDE_FLAGS}"
 
 exec ${CABALBIN} ${INCLUDE_FLAGS} ${CABALCMD}

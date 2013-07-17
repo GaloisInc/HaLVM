@@ -24,7 +24,7 @@ fi
 
 case $1 in
   --libdir) echo ${HALVM_LIBDIR} ;;
-  --ivclib) echo ${HALVM_LIBDIR}/libIVC.a ;;
+  --ivclib) echo ${libdir}/libIVC.a ;;
   --cflags) echo -I${HALVM_LIBDIR}/include ;;
   --ghcflags) echo -I${HALVM_LIBDIR} -optP-I${HALVM_LIBDIR};;
   *) usage

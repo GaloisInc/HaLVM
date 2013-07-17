@@ -15,11 +15,8 @@ all:
 .PHONY: clean
 clean::
 
-.PHONY: mrproper
-mrproper:: clean
-
 .PHONY: install
-install:
+install::
 
 ###############################################################################
 # GHC Sub-library download / setup ############################################
@@ -60,6 +57,9 @@ all: $(TOPDIR)/src/gmp/.libs/libgmp.a
 clean::
 	$(RM) -rf src/gmp
 
+install:: $(TOPDIR)/src/gmp/.libs/libgmp.a
+	$(INSTALL) -D $(TOPDIR)/src/gmp/.libs/libgmp.a $(halvmlibdir)/rts-1.0/libgmp.a
+
 endif
 ###############################################################################
 # LIBM ########################################################################
@@ -87,6 +87,9 @@ all: $(TOPDIR)/src/libm/libm.a
 clean::
 	$(RM) -f $(LIBM_O_FILES) libm/libm.a
 
+install:: $(TOPDIR)/src/libm/libm.a
+	$(INSTALL) -D $(TOPDIR)/src/libm/libm.a $(halvmlibdir)/rts-1.0/libm.a
+
 ###############################################################################
 # LIBIVC ######################################################################
 ###############################################################################
@@ -105,6 +108,9 @@ all: $(TOPDIR)/src/libIVC/libIVC.a
 
 clean::
 	$(RM) -f $(LIBIVC_O_FILES) $(TOPDIR)/src/libIVC/libIVC.a
+
+install:: $(TOPDIR)/src/libIVC/libIVC.a
+	$(INTALL) -D $(TOPDIR)/src/libIVC/libIVC.a $(libdir)/libIVC.a
 
 ###############################################################################
 # MK_REND_DIR #################################################################
@@ -125,6 +131,9 @@ all: $(TOPDIR)/src/mkrenddir/mkrenddir
 clean::
 	$(RM) -f $(MKREND_O_FILES) $(TOPDIR)/src/mkrenddir/mkrenddir
 
+install:: $(TOPDIR)/src/mkrenddir/mkrenddir
+	$(INSTALL) -D $(TOPDIR)/src/mkrenddir/mkrenddir $(bindir)/mkrenddir
+
 ###############################################################################
 # BOOTLOADER ##################################################################
 ###############################################################################
@@ -136,6 +145,9 @@ all: $(TOPDIR)/src/bootloader/start.o
 
 clean::
 	rm -f $(TOPDIR)/src/bootloader/start.o
+
+install::$(TOPDIR)/src/bootloader/start.o
+	$(INSTALL) -D $(TOPDIR)/src/bootloader/start.o $(halvmlibdir)/rts-1.0/start.o
 
 ###############################################################################
 # GHC BUILD PREP ##############################################################
@@ -159,9 +171,13 @@ $(TOPDIR)/halvm-ghc/configure: $(EVERYTHING_DOWNLOADED)                       \
                                $(TOPDIR)/halvm-ghc/boot
 	(cd halvm-ghc && ./boot)
 
+$(TOPDIR)/halvm-ghc/libraries/HALVMCore: $(EVERYTHING_DOWNLOADED)
+	$(LN) -sf $(TOPDIR)/src/HALVMCore $(TOPDIR)/halvm-ghc/libraries/HALVMCore
+
 EVERYTHING_PREPPED := $(TOPDIR)/halvm-ghc/mk/build.mk                         \
                       $(TOPDIR)/halvm-ghc/.linked-xen                         \
                       $(TOPDIR)/halvm-ghc/.linked-rts                         \
+                      $(TOPDIR)/halvm-ghc/libraries/HALVMCore                 \
                       $(TOPDIR)/halvm-ghc/configure
 
 ifeq ($(INTEGER_LIBRARY),integer-gmp)
@@ -194,7 +210,7 @@ HALVM_GHC_CONFIGURE_FLAGS += --with-gcc=$(CC)
 HALVM_GHC_CONFIGURE_FLAGS += --with-ld=$(LD)
 HALVM_GHC_CONFIGURE_FLAGS += --with-nm=$(NM)
 HALVM_GHC_CONFIGURE_FLAGS += --with-objdump=$(OBJDUMP)
-HALVM_GHC_CONFIGURE_FLAGS += --prefix=$(halvm-dir)
+HALVM_GHC_CONFIGURE_FLAGS += --prefix=$(prefix)
 
 COMPILER_SOURCES := $(shell find $(TOPDIR)/halvm-ghc/compiler     \
                             -name '*hs' ! -path '*dist*')
@@ -213,17 +229,17 @@ $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1:                                    \
          $(EVERYTHING_PREPPED)                                                 \
          $(TOPDIR)/halvm-ghc/mk/config.mk                                      \
          $(COMPILER_SOURCES) $(LIBRARY_SOURCES)
-	$(MAKE) -C halvm-ghc
+	$(MAKE) -C halvm-ghc ghclibdir=$(halvmlibdir)
 
 $(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts.a:                                 \
          $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1                            \
          $(RTS_SOURCES)
-	$(MAKE) -C halvm-ghc rts/dist/build/libHSrts.a
+	$(MAKE) -C halvm-ghc rts/dist/build/libHSrts.a ghclibdir=$(halvmlibdir)
 
 $(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts_thr.a:                             \
          $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1                            \
          $(RTS_SOURCES)
-	$(MAKE) -C halvm-ghc rts/dist/build/libHSrts_thr.a
+	$(MAKE) -C halvm-ghc rts/dist/build/libHSrts_thr.a ghclibdir=$(halvmlibdir)
 
 all: $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1                                \
      $(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts.a                             \
@@ -231,3 +247,30 @@ all: $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1                                \
 
 clean::
 	$(MAKE) -C halvm-ghc clean
+
+install::
+	$(MAKE) -C halvm-ghc install ghclibdir=$(halvmlibdir)
+
+###############################################################################
+# HaLVM SCRIPTS ###############################################################
+###############################################################################
+
+install:: $(TOPDIR)/src/scripts/halvm-cabal
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-cabal $(bindir)/halvm-cabal
+
+install:: $(TOPDIR)/src/scripts/halvm-config
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-cabal $(bindir)/halvm-config
+
+install:: $(TOPDIR)/src/scripts/halvm-ghc
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-ghc $(bindir)/halvm-ghc
+
+install:: $(TOPDIR)/src/scripts/halvm-ghc-pkg
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-ghc-pkg $(bindir)/halvm-ghc-pkg
+
+install:: $(TOPDIR)/src/scripts/ldkernel
+	$(INSTALL) -D $(TOPDIR)/src/scripts/ldkernel $(halvmlibdir)/ldkernel
+
+install:: $(TOPDIR)/src/misc/kernel-$(ARCH).lds
+	$(INSTALL) -D $(TOPDIR)/src/misc/kernel-$(ARCH).lds $(halvmlibdir)/kernel.lds
+
+

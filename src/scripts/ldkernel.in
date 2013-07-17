@@ -29,13 +29,13 @@
 prefix="@prefix@"
 exec_prefix="@exec_prefix@"
 libdir="@libdir@"
-halvm_dir="@libdir@/HaLVM/@PACKAGE_VERSION@"
+halvm_dir="@libdir@/HaLVM-@PACKAGE_VERSION@"
 
 ARGS=""
 LIBS=""
 LIBDIR=`echo $0 | sed 's/[^/]*$//g'`
-START_FILE="${halvm_dir}/start.o"
-LIBM_FILE="${halvm_dir}/libm.a"
+START_FILE="${halvm_dir}/rts-1.0/start.o"
+LIBM_FILE="${halvm_dir}/rts-1.0/libm.a"
 #GMP_FILE="@LIBGMP@"
 LINKER_SCRIPT="-T ${halvm_dir}/kernel.lds"
 while [ $# != 0 ] ; do

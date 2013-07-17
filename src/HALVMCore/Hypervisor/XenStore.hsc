@@ -364,6 +364,12 @@ parseResponse = do
 
 -- ----------------------------------------------------------------------------
 
+#include <xen/io/xs_wire.h>
+
+#ifndef XENSTORE_RING_SIZE
+#error "BAD BAD BAD"
+#endif
+
 data ResponseType = RTRead     | RTWrite  | RTMkDir   | RTRm       | RTDir
                   | RTSetPerms | RTWatch  | RTUnwatch | RTReset    | RTTransSt
                   | RTTransEnd | RTIntro  | RTRelease | RTGetPath  | RTError
@@ -587,8 +593,6 @@ writeNewReqData ring bstr = do
     writeBytes r
 
 -- ----------------------------------------------------------------------------
-
-#include <xen/io/xs_wire.h>
 
 type XSRing = Ptr Word8
 
