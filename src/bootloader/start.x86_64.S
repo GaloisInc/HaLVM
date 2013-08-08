@@ -27,13 +27,11 @@
 _start:
         cld
         fldcw newfpucw(%rip)
-        movq stack_start(%rip),%rsp
         movq %rsi,%rdi
-        call c_start
+        movq %rsp,%rsi
+        call runtime_entry
 
 .data
-stack_start:
-        .quad initial_tos
 newfpucw:
         .word 0x037f
 xen_features:
@@ -296,11 +294,6 @@ ENTRY(page_fault)
 
     .data
     .align 0x1000
-    .global stack,initial_tos
-stack:
-    .fill HALVM_STACK_SIZE
-    .align 0x1000
-initial_tos:
 
 #if __XEN_LATEST_INTERFACE_VERSION__ >= 0x00030205
 	ELFNOTE(Xen, XEN_ELFNOTE_GUEST_OS,       .asciz, "HaLVM")	

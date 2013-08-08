@@ -35,13 +35,11 @@
 .text
 
 .globl _start, hypercall_page
-.extern c_start, do_hypervisor_callback
+.extern runtime_entry, do_hypervisor_callback
 	
 _start:
         cld
-        # Set this to our initial stack.
-    	lss stack_start, %esp
-	    fldcw newfpucw
+        fldcw newfpucw
 #        # Compute the values for the stack segment
 #
 #  This code doesn't work because Xen expects a flat address space, and
@@ -146,13 +144,10 @@ _start:
 #       mov (%edi), %ecx
 #       mov 4(%edi), %edx
        push %esi
-       call c_start
+       call runtime_entry
 fail_out_of_boot:
        xor %eax, %eax
        div %eax, %eax
-
-stack_start:	
-	.long initial_tos, __KERNEL_SS
 
 # Following cruft taken rom Xen mini-os (which in turn stole it from linux guests, I think)
 # (There was no copyright notice.)
@@ -449,11 +444,6 @@ gdt_base:
 
 
     .align 0x1000
-	.globl stack,initial_tos
-stack:	
-	.fill  HALVM_STACK_SIZE
-	.align 0x1000
-initial_tos:		
 #if __XEN_LATEST_INTERFACE_VERSION__ >= 0x00030205
 	ELFNOTE(Xen, XEN_ELFNOTE_GUEST_OS,       .asciz, "HaLVM")	
 	ELFNOTE(Xen, XEN_ELFNOTE_XEN_VERSION,    .asciz, "xen-3.0")

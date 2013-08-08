@@ -110,7 +110,7 @@ clean::
 	$(RM) -f $(LIBIVC_O_FILES) $(TOPDIR)/src/libIVC/libIVC.a
 
 install:: $(TOPDIR)/src/libIVC/libIVC.a
-	$(INTALL) -D $(TOPDIR)/src/libIVC/libIVC.a $(libdir)/libIVC.a
+	$(INSTALL) -D $(TOPDIR)/src/libIVC/libIVC.a $(libdir)/libIVC.a
 
 ###############################################################################
 # MK_REND_DIR #################################################################
@@ -138,7 +138,8 @@ install:: $(TOPDIR)/src/mkrenddir/mkrenddir
 # BOOTLOADER ##################################################################
 ###############################################################################
 
-$(TOPDIR)/src/bootloader/start.o: $(TOPDIR)/src/bootloader/start.$(ARCH).S
+$(TOPDIR)/src/bootloader/start.o: $(TOPDIR)/src/bootloader/start.$(ARCH).S    \
+                                  $(wildcard $(TOPDIR)/src/bootloader/*.h)
 	$(CC) -o $@ $(ASFLAGS) -I$(XEN_INCLUDE_DIR) -I$(TOPDIR)/src/bootloader -c $<
 
 all: $(TOPDIR)/src/bootloader/start.o
@@ -162,8 +163,8 @@ $(TOPDIR)/halvm-ghc/.linked-xen: $(EVERYTHING_DOWNLOADED)
 	$(TOUCH) $@
 
 $(TOPDIR)/halvm-ghc/.linked-rts: $(EVERYTHING_DOWNLOADED)
-	$(LN) -sf $(TOPDIR)/halvm-ghc/rts/xen/include \
-            $(TOPDIR)/halvm-ghc/libraries/base/include/rts
+	$(LN) -sf $(TOPDIR)/halvm-ghc/rts/minlibc/include \
+            $(TOPDIR)/halvm-ghc/libraries/base/libc-include
 	$(TOUCH) $@
 
 $(TOPDIR)/halvm-ghc/configure: $(EVERYTHING_DOWNLOADED)                       \
@@ -219,15 +220,15 @@ LIBRARY_SOURCES  := $(shell find $(TOPDIR)/halvm-ghc/libraries    \
 RTS_SOURCES      := $(shell find $(TOPDIR)/halvm-ghc/rts          \
                             -name '*.c')
 
-$(TOPDIR)/halvm-ghc/mk/config.mk: $(EVERYTHING_PREPPED)                        \
-                                  $(TOPDIR)/halvm-ghc/configure
+$(TOPDIR)/halvm-ghc/config.log: $(EVERYTHING_PREPPED)                          \
+                                $(TOPDIR)/halvm-ghc/configure
 	(cd halvm-ghc                                                                \
    && ./configure $(HALVM_GHC_CONFIGURE_FLAGS)                                 \
    && $(TOUCH) $@)
 
 $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1:                                    \
          $(EVERYTHING_PREPPED)                                                 \
-         $(TOPDIR)/halvm-ghc/mk/config.mk                                      \
+         $(TOPDIR)/halvm-ghc/config.log                                        \
          $(COMPILER_SOURCES) $(LIBRARY_SOURCES)
 	$(MAKE) -C halvm-ghc ghclibdir=$(halvmlibdir)
 
