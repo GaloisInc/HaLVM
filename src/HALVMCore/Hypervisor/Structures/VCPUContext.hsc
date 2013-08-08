@@ -21,6 +21,7 @@ import Foreign.Storable
 import GHC.Generics
 
 #include <stdint.h>
+#include <sys/types.h>
 #define __XEN_TOOLS__
 #include <xen/domctl.h>
 #include "ghcplatform.h"

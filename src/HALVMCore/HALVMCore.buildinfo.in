@@ -1,2 +1,4 @@
 ghc-options:  @ARCH_OPTION@
 cc-options:   @NO_UNIT_AT_A_TIME_OPT@ @NO_STACK_PROT_OPT@ @NO_FRAME_PTR_OPT@ @NO_ASYNC_UNWIND_OPT@ @NO_RED_ZONE_OPT@ @NO_BUILTIN_OPT@ @ARCH_OPTION@ -O2
+include-dirs: @abs_top_builddir@/halvm-ghc/rts/xen/include
+              @abs_top_builddir@/halvm-ghc/rts/minlibc/include

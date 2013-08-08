@@ -28,6 +28,7 @@ import Hypervisor.Structures.CPUMap
 import Hypervisor.Structures.VCPUContext
 
 #include <stdint.h>
+#include <sys/types.h>
 #define __XEN_TOOLS__
 #include <xen/domctl.h>
 #include "ghcplatform.h"
@@ -157,5 +158,6 @@ buildVCPUContextRequest v mContext reqp = do
 foreign import ccall unsafe "strings.h bzero"
   bzero :: Ptr a -> Word -> IO ()
 
-foreign import ccall unsafe "core-hypercalls.h do_domctl_op"
+foreign import ccall unsafe "hypercalls.h HYPERCALL_domctl"
   do_domctl_op :: Ptr a -> IO Int
+

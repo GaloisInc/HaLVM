@@ -43,6 +43,6 @@ physicalDeviceOp cmd setter getter =
 foreign import ccall unsafe "strings.h bzero"
   bzero :: Ptr a -> Word -> IO ()
 
-foreign import ccall unsafe "core-hypercalls.h do_physdev_op"
+foreign import ccall unsafe "hypercalls.h HYPERCALL_physdev_op"
   do_physdev_op :: Int -> Ptr a -> IO Int
 

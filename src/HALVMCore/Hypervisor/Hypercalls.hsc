@@ -29,6 +29,7 @@ import Hypervisor.Hypercalls.SystemControl
 import Hypervisor.Hypercalls.PhysicalDevice
 
 #include <stdint.h>
+#include <sys/types.h>
 #include <xen/xen.h>
 #include <xen/memory.h>
 
@@ -62,7 +63,7 @@ parseTLBEffect x
          | otherwise               = AllTLBs
 #endif
 
-updateVAMappingOtherDomain :: Word -> Word -> TLBEffect -> DomId -> IO ()
+updateVAMappingOtherDomain :: Word -> Word64 -> TLBEffect -> DomId -> IO ()
 updateVAMappingOtherDomain va newval flags dom = do
   res <- update_va_mapping_otherdomain va newval flags' dom'
   if res == 0
@@ -84,9 +85,11 @@ populatePhysmap dom num ptr = do
     then return ()
     else throw (toEnum (fromIntegral (-res)) :: ErrorCode)
 
-foreign import ccall unsafe "core-hypercalls.h update_va_mapping_otherdomain"
-  update_va_mapping_otherdomain :: Word -> Word -> Word -> Word16 -> IO Int
+foreign import ccall unsafe
+  "hypercalls.h HYPERCALL_update_va_mapping_otherdomain"
+  update_va_mapping_otherdomain :: Word -> Word64 -> Word -> Word16 -> IO Int
 
-foreign import ccall unsafe "core-hypercalls.h do_memory_op"
-  do_memory_op :: Int -> Ptr a -> IO Int
+foreign import ccall unsafe
+  "hypercalls.h HYPERCALL_memory_op"
+  do_memory_op :: Word -> Ptr a -> IO Int
 

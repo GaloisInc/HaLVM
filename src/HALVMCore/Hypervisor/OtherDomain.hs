@@ -57,7 +57,7 @@ allocForeignMachineFrames dom maxMemKB = do
   return res
 
 -- |Update the virtual address mapping of another domain.
-updateOthersVAMapping :: DomId -> VPtr a -> Word -> TLBEffect -> IO ()
+updateOthersVAMapping :: DomId -> VPtr a -> Word64 -> TLBEffect -> IO ()
 updateOthersVAMapping dom addr val tlbe =
   updateVAMappingOtherDomain (fromIntegral (ptrToWordPtr addr)) val tlbe dom
 

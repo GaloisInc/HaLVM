@@ -18,6 +18,7 @@ import {-# SOURCE #-} Hypervisor.DomainInfo(toDomId,fromDomId)
 import {-# SOURCE #-} Hypervisor.Memory(fromMFN,toMFN,MFN)
 
 #include <stdint.h>
+#include <sys/types.h>
 #define __XEN_TOOLS__
 #include <xen/domctl.h>
 #include "ghcplatform.h"

@@ -21,6 +21,7 @@ import Hypervisor.ErrorCodes
 import Hypervisor.Structures.DomainInfo
 
 #include <stdint.h>
+#include <sys/types.h>
 #define __XEN_TOOLS__
 #include <xen/sysctl.h>
 
@@ -83,6 +84,6 @@ readGetDomInfoListResp bufferp respp = do
 foreign import ccall unsafe "strings.h bzero"
   bzero :: Ptr a -> Word -> IO ()
 
-foreign import ccall unsafe "core-hypercalls.h do_sysctl_op"
+foreign import ccall unsafe "hypercalls.h HYPERCALL_sysctl"
   do_sysctl_op :: Ptr a -> IO Int
 

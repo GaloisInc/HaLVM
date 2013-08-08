@@ -364,6 +364,8 @@ parseResponse = do
 
 -- ----------------------------------------------------------------------------
 
+#include <stdint.h>
+#include <sys/types.h>
 #include <xen/io/xs_wire.h>
 
 #ifndef XENSTORE_RING_SIZE

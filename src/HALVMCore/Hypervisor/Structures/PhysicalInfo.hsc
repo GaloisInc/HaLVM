@@ -21,6 +21,7 @@ import GHC.Generics
 
 #define __XEN__
 #include <stdint.h>
+#include <sys/types.h>
 #include <xen/sysctl.h>
 
 data HostPhysicalInfo = HostPhysicalInfo {

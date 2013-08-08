@@ -23,6 +23,7 @@ module Hypervisor.Virqs where
 
 import Data.Word(Word32)
 
+#include <stdint.h>
 #include <xen/xen.h>
 
 -- | V. Timebase update, and\/or requested timeout.

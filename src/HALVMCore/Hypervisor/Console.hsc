@@ -163,6 +163,8 @@ addNewToDos rtodos wtodos (ReadString  n m) = (rtodos++[ReadToDo n "" m],wtodos)
 
 -- ----------------------------------------------------------------------------
 
+#include <stdint.h>
+#include <sys/types.h>
 #include <xen/io/console.h>
 
 inBufferSize :: Integral a => a
@@ -172,10 +174,10 @@ outBufferSize :: Integral a => a
 outBufferSize  = 2048
 
 inBuffer :: Ptr a -> Ptr Word8
-inBuffer p = castPtr p `plusPtr` (#offset struct xencons_interface,in)
+inBuffer p = (#ptr struct xencons_interface,in) p
 
 outBuffer :: Ptr a -> Ptr Word8
-outBuffer p = castPtr p `plusPtr` (#offset struct xencons_interface,out)
+outBuffer p = (#ptr struct xencons_interface,out) p
 
 inConsumed :: Ptr a -> IO Word32
 inConsumed p = (#peek struct xencons_interface,in_cons) p

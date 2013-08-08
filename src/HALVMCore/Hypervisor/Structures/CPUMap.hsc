@@ -31,6 +31,7 @@ import Foreign.Storable
 
 #define __XEN__
 #include <stdint.h>
+#include <sys/types.h>
 #include <xen/xen.h>
 
 data CPUMap = CPUMap Int Integer
