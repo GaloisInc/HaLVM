@@ -6,6 +6,8 @@ config.status
 configure
 dist
 
+src/gmp
+
 src/HALVMCore/dist-install
 
 src/libm/*/*.o
