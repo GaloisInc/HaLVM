@@ -155,31 +155,31 @@ throwXenError x = throw errorCode
 -- --------------------------------------------------------------------------
 --
 
-foreign import ccall unsafe "events.h set_port_handler" 
+foreign import ccall unsafe "events.h set_haskell_handler" 
   set_port_handler :: Word32 -> StablePtr(IO()) -> IO ()
 
-foreign import ccall unsafe "events.h unset_port_handler" 
+foreign import ccall unsafe "events.h clear_haskell_handler" 
   unset_port_handler :: Word32 -> IO (StablePtr(IO ()))
 
-foreign import ccall unsafe "events.h evtchn_alloc_unbound" 
+foreign import ccall unsafe "events.h channel_alloc" 
   evtchn_alloc_unbound :: Word32 -> Word32 -> IO Int32
 
 foreign import ccall unsafe "events.h bind_virq" 
   bind_virq :: Word32 -> Word32 -> IO Int32
 
-foreign import ccall unsafe "events.h evtchn_bind_interdomain" 
+foreign import ccall unsafe "events.h channel_bind" 
   evtchn_bind_interdomain :: Word32 -> Word32 -> IO Int32
 
-foreign import ccall unsafe "events.h evtchn_close" 
+foreign import ccall unsafe "events.h channel_close" 
   evtchn_close :: Word32 -> IO Int32
 
-foreign import ccall unsafe "events.h evtchn_send" 
+foreign import ccall unsafe "events.h channel_send" 
   evtchn_send :: Word32 -> IO Int32
 
-foreign import ccall unsafe "events.h mask_evtchn" 
+foreign import ccall unsafe "events.h mask_channel" 
   mask_evtchn :: Word32 -> IO ()
 
-foreign import ccall unsafe "events.h unmask_evtchn" 
+foreign import ccall unsafe "events.h unmask_channel" 
   unmask_evtchn :: Word32 -> IO ()
 
 foreign import ccall unsafe "events.h bind_pirq" 
