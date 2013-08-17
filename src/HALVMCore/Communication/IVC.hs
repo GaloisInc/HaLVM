@@ -129,18 +129,10 @@ makeNewChan :: DomId -> Word ->
                IO ([GrantRef], Port, a)
 makeNewChan target npages buildChan = do
   ptr  <- mallocBytes (fromIntegral npages * 4096)
-  refs <- makeRefs ptr npages
+  refs <- grantAccess target ptr (fromIntegral npages * 4096) True
   port <- allocPort target
   ichn <- buildChan True ptr ((npages * 4096) - bookkeepingOverhead) port
   return (refs, port, ichn)
- where
-  makeRefs :: Ptr Word8 -> Word -> IO [GrantRef]
-  makeRefs _ 0 = return []
-  makeRefs p n = do
-    assert (n > 0) $ return ()
-    r <- allocRef
-    grantAccess r target p True
-    (r:) `fmap` makeRefs (p `plusPtr` 4096) (n - 1)
 
 acceptNewChan :: DomId -> [GrantRef] -> Port ->
                  (Bool -> Ptr Word8 -> Word -> Port -> IO a) ->

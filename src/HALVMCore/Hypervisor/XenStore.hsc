@@ -92,7 +92,7 @@ initCustomXenStore xsMFN xsPort = do
   return (XenStore commChan)
  where
   mapMFN :: MFN -> ErrorCode -> IO (VPtr a)
-  mapMFN mfn _ = mapForeignMachineFrames domidSelf [mfn]
+  mapMFN mfn _ = mapFrames [mfn]
 
 xsGetDomId :: XenStore -> IO DomId
 xsGetDomId xs = do

@@ -47,7 +47,7 @@ initConsole conMFN conPort  = do
   return (Console commChan)
  where
   mapMFN :: MFN -> ErrorCode -> IO (VPtr a)
-  mapMFN mfn _ = mapForeignMachineFrames domidSelf [mfn]
+  mapMFN mfn _ = mapFrames [mfn]
 
 -- |Read data from the console, blocking until the given number of bytes
 -- are available.
