@@ -1,7 +1,8 @@
 BINARIES=SimplerTime
+TIMEOUT?=40
 include ../../standard.mk
 
 run: SimplerTime
 	sudo xl create SimplerTime.config
-	sleep 40
+	sleep $(TIMEOUT)
 	sudo xl dmesg -c
