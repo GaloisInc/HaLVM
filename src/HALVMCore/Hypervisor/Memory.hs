@@ -242,8 +242,17 @@ mapFrames mfns = withArray (map fromMFN mfns) $ \p -> mapFrames' p (length mfns)
 -- * Routines for creating or destroying grant references and grant handles.
 --
 
-newtype GrantRef = GrantRef { unGrantRef :: Word16 }
- deriving (Eq, Ord, Show, Read, Generic, Storable)
+newtype GrantRef = GrantRef { unGrantRef :: Word32 }
+ deriving (Eq, Ord, Generic, Storable)
+
+instance Show GrantRef where
+  show (GrantRef x) = "grant:" ++ show x
+
+instance Read GrantRef where
+  readsPrec d str =
+    case splitAt 6 str of
+      ("grant:",x) -> map (\ (g,rest) -> (GrantRef g, rest)) (readsPrec d x)
+      _            -> []
 
 -- |Grant access to a given domain to a given region of memory (starting at
 -- the pointer and extending for the given length). The boolean determines
@@ -451,11 +460,11 @@ foreign import ccall unsafe "runtime_reqs.h runtime_free"
 
 -- functions from grants.h
 foreign import ccall unsafe "grants.h alloc_grant"
-  allocGrant :: Word16 -> VPtr a -> Word16 -> Int -> VPtr Word16 -> IO Int
+  allocGrant :: Word16 -> VPtr a -> Word16 -> Int -> VPtr Word32 -> IO Int
 foreign import ccall unsafe "grants.h end_grant"
-  endGrant :: Word16 -> IO Int
+  endGrant :: Word32 -> IO Int
 foreign import ccall unsafe "grants.h map_grants"
-  mapGrants' :: Word16 -> Int -> VPtr Word16 -> Int ->
+  mapGrants' :: Word16 -> Int -> VPtr Word32 -> Int ->
                 VPtr (VPtr a) -> VPtr Word32 -> VPtr Word64 ->
                 IO Int
 foreign import ccall unsafe "grants.h unmap_grants"
@@ -464,9 +473,9 @@ foreign import ccall unsafe "grants.h unmap_grants"
 foreign import ccall unsafe "grants.h prepare_transfer"
   prepTransfer :: Word16 -> IO Int
 foreign import ccall unsafe "grants.h transfer_frame"
-  transferGrant :: Word16 -> Word16 -> Word -> IO Int
+  transferGrant :: Word16 -> Word32 -> Word -> IO Int
 foreign import ccall unsafe "grants.h complete_transfer"
-  compTransfer :: Word16 -> Bool -> IO Int
+  compTransfer :: Word32 -> Bool -> IO Int
 foreign import ccall unsafe "grants.h copy_frame"
   perform_grant_copy :: Word -> Bool -> Word16 -> Word16 ->
                         Word -> Bool -> Word16 -> Word16 ->
