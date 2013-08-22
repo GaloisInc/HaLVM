@@ -256,7 +256,7 @@ grantAccess dom ptr len writable = ga ptr (fromIntegral len)
   ga p l = do
     let pword   = ptrToWordPtr ptr
         offset  = pword .&. 4095
-        clength = minimum [4095, (4096 - offset), l]
+        clength = minimum [4096, (4096 - offset), l]
         ro      = if writable then 0 else 1
     rptr <- malloc
     res <- allocGrant (fromDomId dom) p (fromIntegral clength) ro rptr
