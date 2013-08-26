@@ -13,7 +13,10 @@ main = handle exceptionHandler $ do
   writeDebugConsole "LEFT: Starting rendezvous.\n"
   outch <- leftSide xs
   writeDebugConsole "LEFT: Completed rendezvous.\n"
-  forM_ [0..65536] $ put outch
+  forM_ [0..65536] $ \next -> do
+    when (next `mod` 100 == 0) $ do
+      writeDebugConsole $ "LEFT: Sent message " ++ show next ++ "\n"
+    put outch next
   writeDebugConsole "LEFT: Completed writes. Delaying.\n"
   threadDelay (2 * 1000 * 1000)
   writeDebugConsole "LEFT: Done.\n"

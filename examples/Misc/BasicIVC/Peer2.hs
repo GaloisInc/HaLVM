@@ -15,6 +15,8 @@ main = handle exceptionHandler $ do
   writeDebugConsole "RIGHT: Completed rendezvous.\n"
   forM_ [0..65536] $ \ x -> do
     next <- get inch
+    when (next `mod` 100 == 0) $ do
+      writeDebugConsole $ "RIGHT: Got message " ++ show next ++ "\n"
     unless (next == x) $ do
       writeDebugConsole $ "ERROR: Read " ++ show next ++ " expected "
                        ++ show x ++ "\n"
