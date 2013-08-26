@@ -336,10 +336,12 @@ buildRawInChan doClear buf size port = do
 runReadRequest :: InChan -> IO ByteString
 runReadRequest ich = do
   resMV <- newEmptyMVar
-  modifyMVar_ (icStateMV ich) $ \ istate ->
-    case istate of
-      NeedSize waiters -> return $! NeedSize (waiters ++ [resMV])
-      GotSize n acc waiters -> return $! GotSize n acc (waiters ++ [resMV])
+  istate <- takeMVar (icStateMV ich)
+  case istate of
+    NeedSize waiters ->
+      putMVar (icStateMV ich) $! NeedSize (waiters ++ [resMV])
+    GotSize n acc waiters ->
+      putMVar (icStateMV ich) $! GotSize n acc (waiters ++ [resMV])
   tryReadData ich
   takeMVar resMV
 
