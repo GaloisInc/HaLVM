@@ -35,7 +35,7 @@ runPrompt con xs here = do
     ("quit":_) -> return ()
     ("ls"  :_) -> do
       contents <- filter (/= "") `fmap` xsDirectory xs here
-      values   <- mapM (getValue xs) contents
+      values   <- mapM (getValue xs) (map (here </>) contents)
       let contents' = map (forceSize 25) contents
           values'   = map (forceSize 40) values
       forM_ (zip contents' values') $ \ (key, value) ->
@@ -45,6 +45,8 @@ runPrompt con xs here = do
       case x of
         ".." -> runPrompt con xs (takeDirectory here)
         d    -> runPrompt con xs (here </> d)
+    _ -> do writeConsole con "Unrecognized command.\n"
+            runPrompt con xs here
 
 getValue :: XenStore -> String -> IO String
 getValue xs key = handle handleException (emptify `fmap` xsRead xs key)
@@ -68,39 +70,3 @@ getLine con = do
     "\r" -> writeConsole con "\n" >> return ""
     [x]  -> (x:) `fmap` getLine con
     _    -> fail "More than one character back?"
-
--- main' :: [String] -> IO ()
--- main' _ = writeDebugConsole "Starting!\n" >> loop
---   where 
---    loop = do
---      s <- query "xenbus-ls? "
---      if s `elem` [ "q", "quit", "exit", "" ]
---         then do
---           writeConsole "Done.\n"
---           threadDelay 1000
---         else do
---           xenbus_printdir s 0
---           loop
--- 
--- xenbus_printdir :: String -> Int -> IO ()
--- xenbus_printdir path curDepth =
---   do r <- XB.xsDirectory path
---      case r of 
---       XB.XBOk es -> mapM_ printsubdir es
---       XB.XBError err -> writeConsole $ "Error: " ++ err ++ "\n"        
---   where printsubdir e =
---           do writeConsole (replicate curDepth ' ' ++ e)
---              let p' = path ++ "/" ++ e
---              printelem p'
---              xenbus_printdir p' (curDepth + 1)
---         printelem p =
--- 	  do r <- XB.xsRead p
---              case r of 
--- 	       XB.XBOk "" -> do writeConsole $  ":\n"
---                XB.XBOk v -> writeConsole $  " = " ++ v ++ "\n" 
--- 	       XB.XBError err -> writeConsole $  " Error: " ++ err ++ "\n" 
--- 
--- query :: String -> IO String
--- query s =
---    do writeConsole s
---       getLnConsole 
