@@ -5,40 +5,26 @@
 -- - terms and conditions.
 -- Author: Adam Wick <awick@galois.com>
 -- BANNEREND
-
-import Control.Exception
-import Hypervisor.Debug
-import Hypervisor.Basics
-import Communication.IVC
-import Hypervisor.Kernel
-import Hypervisor.Memory
-import XenDevice.Xenbus
-import XenDevice.Console
 import Common
+import Control.Concurrent
+import Hypervisor.Debug
+import Hypervisor.DomainInfo
+import Hypervisor.Memory
+import Hypervisor.XenStore
+import Communication.IVC
 
 main :: IO ()
-main = halvm_kernel_daemon [dXenbus,dConsole] start
-
-start :: [String] -> IO ()
-start args = do
-  c <- accept
-  writer "SND: Waiting for reference.\n"
+main = do
+  writeDebugConsole "SND: Initializing XenStore.\n"
+  xs <- initXenStore
+  writeDebugConsole "SND: Waiting for accept.\n"
+  c <- accept xs
+  writeDebugConsole "SND: Waiting for reference.\n"
   ref <- get c
-  writer "SND: Making page.\n"
-  let dom = peer c
-  page <- makePageData dom
-  writer "SND: Sending page.\n"
-  res <- xTry $ transferPageToForeignDomain page dom ref
-  writer "SND: Page sent.\n"
-  assert (isRight res) $ return ()
-  writer "SND: Done.\n"
- where
-  isRight (Left _) = False
-  isRight (Right _) = True
-
-  writer = case args of
-             ["writer=console"] -> \ s -> do
-                                      writeConsole s
-                                      writeDebugConsole s
-             _                  -> writeDebugConsole
-
+  writeDebugConsole ("SND: Making page. (Reference is " ++ show ref ++ ")\n")
+  page <- makePageData
+  writeDebugConsole ("SND: Transferring page " ++ show page ++ ".\n")
+  transferFrame (peer c) ref page
+  writeDebugConsole "SND: Page copied.\n"
+  writeDebugConsole "SND: Done.\n"
+  threadDelay 10000

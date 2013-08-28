@@ -8,3 +8,11 @@
 #
 BINARIES=Receiver Sender
 include ../../standard.mk
+
+run: $(BINARIES)
+	-sudo xl destroy Receiver
+	-sudo xl destroy Sender
+	sudo xl create Receiver.config
+	sudo xl create Sender.config
+	sleep 3
+	sudo xl dmesg -c

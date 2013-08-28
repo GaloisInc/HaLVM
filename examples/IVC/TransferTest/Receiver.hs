@@ -5,50 +5,29 @@
 -- - terms and conditions.
 -- Author: Adam Wick <awick@galois.com>
 -- BANNEREND
-import Control.Concurrent
 import Hypervisor.Debug
-import Hypervisor.Basics
-import Communication.IVC
-import Hypervisor.Kernel
 import Hypervisor.Memory
-import XenDevice.Xenbus
-import XenDevice.Console
+import Hypervisor.XenStore
+import Hypervisor.Console
+import Communication.IVC
 import Common
 
 main :: IO ()
-main = halvm_kernel_daemon [dXenbus,dConsole] start
-
-start :: [String] -> IO ()
-start args = do
-  writer "RCV: Making offer.\n"
-  c <- offer
-  writer "RCV: Creating reference & granting access.\n"
-  let dom = peer c
-  Right ref <- xTry $ allocRef
-  _ <- xTry $ grantForeignTransferRef ref dom
-  writer $ "RCV: Writing reference (" ++ (show ref) ++ ").\n"
-  put c ref
-  writer "RCV: Finishing foreign transfer.\n"
-  threadDelay $ 3 * 1000
-  page <- forceTransfer ref
-  writer "RCV: Completed transfer.\n"
-  check <- isRightPageData page
-  if check 
-     then writer "RCV: Page transfer succeeded.\n"
-     else writer "RCV: Page transferred incorrectly.\n"
- where
-   forceTransfer :: GrantRef -> IO (VPtr a)
-   forceTransfer ref = do
-     res <- xTry $ finishForeignTransferRef ref
-     case res of
-       Right page -> return page
-       Left _ -> do
-         writer $ "RCV: " ++ show res
-         forceTransfer ref
-
-   writer = case args of
-              ["writer=console"] -> \ s -> do
-                                      writeConsole s
-                                      writeDebugConsole s
-              _                  -> writeDebugConsole
+main = do
+  writeDebugConsole "RCV: Initializing XenStore.\n"
+  xs <- initXenStore
+  writeDebugConsole "RCV: Making offer.\n"
+  c <- offer xs
+  writeDebugConsole "RCV: Creating destination reference.\n"
+  r <- prepareTransfer (peer c)
+  writeDebugConsole ("RCV: Telling other side about reference "++show r++".\n")
+  put c r
+  writeDebugConsole "RCV: Waiting for completed transfer.\n"
+  mfn <- completeTransfer r True False
+  writeDebugConsole "RCV: Mapping and checking page.\n"
+  page <- mapFrames [mfn]
+  isOK <- isRightPageData page
+  if isOK
+    then writeDebugConsole "RCV: Got the right page!\n"
+    else writeDebugConsole "RCV: BAD BAD BAD WRONG PAGE RECEIVED!!!\n"
 
