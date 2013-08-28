@@ -45,6 +45,7 @@ library
                     Hypervisor.Hypercalls.PhysicalDevice,
                     Hypervisor.Hypercalls.SystemControl
   extensions:
+                    BangPatterns,
                     CPP,
                     DeriveDataTypeable,
                     DeriveGeneric,
