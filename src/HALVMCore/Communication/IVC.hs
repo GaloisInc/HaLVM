@@ -17,7 +17,7 @@ module Communication.IVC(
        , makeNewInChannel, acceptNewInChannel
        , makeNewOutChannel, acceptNewOutChannel
        , makeNewInOutChannel, acceptNewInOutChannel
-       , get, put
+       , get, put, peer
        )
  where
 
@@ -41,6 +41,7 @@ import Hypervisor.Port
 data InChannel a = InChannel {
     ichSetupData :: Maybe (DomId, [GrantRef], Port)
   , ichInChannel :: InChan
+  , ichPeer      :: DomId
   }
 
 -- |Make a new input channel, targetting the given domain. The second argument
@@ -50,7 +51,7 @@ data InChannel a = InChannel {
 makeNewInChannel :: Binary a => DomId -> Word -> IO (InChannel a)
 makeNewInChannel target npages = do
   (grefs, port, ichn) <- makeNewChan target npages buildRawInChan
-  return (InChannel (Just (target, grefs, port)) ichn)
+  return (InChannel (Just (target, grefs, port)) ichn target)
 
 -- |Accept a new input channel, given the input data.
 acceptNewInChannel :: Binary a =>
@@ -58,11 +59,12 @@ acceptNewInChannel :: Binary a =>
                       IO (InChannel a)
 acceptNewInChannel target grants port = do
   ichn <- acceptNewChan target grants port buildRawInChan
-  return (InChannel Nothing ichn)
+  return (InChannel Nothing ichn target)
 
 data OutChannel a = OutChannel {
     ochSetupData  :: Maybe (DomId, [GrantRef], Port)
   , ochOutChannel :: OutChan
+  , ochPeer       :: DomId
   }
 
 -- |Make a new output channel, targetting the given domain. The second argument
@@ -74,7 +76,7 @@ makeNewOutChannel :: Binary a =>
                      IO (OutChannel a)
 makeNewOutChannel target npages = do
   (grefs, port, ochn) <- makeNewChan target npages buildRawOutChan
-  return (OutChannel (Just (target, grefs, port)) ochn)
+  return (OutChannel (Just (target, grefs, port)) ochn target)
 
 -- |Accept a new output channel, given the input data
 acceptNewOutChannel :: Binary a =>
@@ -82,12 +84,13 @@ acceptNewOutChannel :: Binary a =>
                        IO (OutChannel a)
 acceptNewOutChannel target grants port = do
   ochn <- acceptNewChan target grants port buildRawOutChan
-  return (OutChannel Nothing ochn)
+  return (OutChannel Nothing ochn target)
 
 data InOutChannel a b = InOutChannel {
     bchSetupData  :: Maybe (DomId, [GrantRef], Port, Float)
   , bchInChannel  :: InChan
   , bchOutChannel :: OutChan
+  , bchPeer       :: DomId
   }
 
 -- |Make a new input / output channel targetting the given domain. The second
@@ -101,7 +104,7 @@ makeNewInOutChannel target npages perc
   | (perc < 0) || (perc > 1.0) = throw EINVAL
   | otherwise                  = do
      (grs, p, (ich,och)) <- makeNewChan target npages (buildIOChan perc npages)
-     return (InOutChannel (Just (target, grs, p, perc)) ich och)
+     return (InOutChannel (Just (target, grs, p, perc)) ich och target)
 
 -- |Accept a new input / out channel, given the input data
 acceptNewInOutChannel :: (Binary a, Binary b) =>
@@ -112,7 +115,7 @@ acceptNewInOutChannel target grants port perc
   | otherwise                  = do
      let npages = fromIntegral (length grants)
      (ichn, ochn) <- acceptNewChan target grants port (buildIOChan perc npages)
-     return (InOutChannel Nothing ichn ochn)
+     return (InOutChannel Nothing ichn ochn target)
 
 buildIOChan :: Float -> Word ->
                Bool -> Ptr Word8 -> Word -> Port ->
@@ -198,6 +201,19 @@ putBinary oc x = runWriteRequest oc (encode x)
 
 getBinary :: Binary a => InChan -> IO a
 getBinary ic = decode `fmap` runReadRequest ic
+
+class CommChan c where
+  peer :: c -> DomId
+
+instance CommChan (InChannel a) where
+  peer = ichPeer
+
+instance CommChan (OutChannel a) where
+  peer = ochPeer
+
+instance CommChan (InOutChannel a b) where
+  peer = bchPeer
+
 
 -- -----------------------------------------------------------------------------
 
