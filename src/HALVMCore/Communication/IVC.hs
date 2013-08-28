@@ -38,6 +38,8 @@ import Hypervisor.ErrorCodes
 import Hypervisor.Memory
 import Hypervisor.Port
 
+import Hypervisor.Debug
+
 data InChannel a = InChannel {
     ichSetupData :: Maybe (DomId, [GrantRef], Port)
   , ichInChannel :: InChan
@@ -266,23 +268,24 @@ buildRawOutChan doClear buf size port = do
   return res
 
 runWriteRequest :: OutChan -> ByteString -> IO ()
-runWriteRequest och bs = do
+runWriteRequest och !bs = do
   resMV <- newEmptyMVar
-  modifyMVar_ (ocWaiting och) $ \ waiters ->
-    return $! (msg, resMV) : waiters
+  waiters <- takeMVar (ocWaiting och)
+  putMVar (ocWaiting och) $! (msg, resMV) : waiters
   tryWriteData och
   takeMVar resMV
  where
-  msg = encode (fromIntegral (BS.length bs) :: Word) `BS.append` bs
+  !msg = encode (fromIntegral (BS.length bs) :: Word) `BS.append` bs
 
 tryWriteData :: OutChan -> IO ()
-tryWriteData och = modifyMVar_ (ocWaiting och) $ \ waiters -> do
+tryWriteData och = do
+  waiters           <- takeMVar (ocWaiting och)
   cons              <- bytesConsumed (ocBuffer och) (ocSize och)
   prod              <- bytesProduced (ocBuffer och) (ocSize och)
   (waiters', prod') <- doPossibleWrites prod cons waiters
   setBytesProduced (ocBuffer och) (ocSize och) prod'
   when (prod /= prod') $ sendOnPort (ocPort och)
-  return waiters'
+  putMVar (ocWaiting och) $! waiters'
  where
   bufferSize = fromIntegral (ocSize och)
   --
@@ -291,33 +294,30 @@ tryWriteData och = modifyMVar_ (ocWaiting och) $ \ waiters -> do
                       IO ([(ByteString, MVar())], Word32)
   doPossibleWrites prod _ [] = return ([], prod)
   doPossibleWrites prod cons ls@((bstr, resMV):rest) = do
-    let mprod64 = fromIntegral prod :: Word64
-        cons64  = fromIntegral cons :: Word64
-        -- check for the rollover case
-        prod64  = if mprod64 < cons64 then (mprod64 + 0x100000000) else mprod64
+    -- this is an awkward way to deal with rollver, but it should work.
+    let avail = if (prod < cons) then 0 else bufferSize - (prod - cons)
         bstrLn  = fromIntegral (BS.length bstr)
     case () of
       -- In this case, the buffer is full.
-      () | prod64 - cons64 == bufferSize ->
+      () | avail == 0 ->
         return (ls, prod)
       -- In this case, we have enough space to write the full bytestring.
-      () | ((prod64 + bstrLn) - cons64) <= bufferSize -> do
-        writeBS (ocBuffer och) (ocSize och) prod64 bstr
+      () | avail > bstrLn -> do
+        writeBS (ocBuffer och) (ocSize och) prod bstr
         putMVar resMV ()
         doPossibleWrites (prod + fromIntegral bstrLn) cons rest
       -- In this case, we have space to do a write, but not the whole
       -- bytestring
       () | otherwise -> do
-        let room64  = fromIntegral (ocSize och) - (prod64 - cons64)
-            (h,t)   = BS.splitAt (fromIntegral room64) bstr
-        writeBS (ocBuffer och) (ocSize och) prod64 h
-        return ((t, resMV) : rest, fromIntegral (prod64 + room64))
+        let (h,t)   = BS.splitAt (fromIntegral avail) bstr
+        writeBS (ocBuffer och) (ocSize och) prod h
+        return ((t, resMV) : rest, fromIntegral (prod + avail))
 
-writeBS :: Ptr Word8 -> Word -> Word64 -> ByteString -> IO ()
+writeBS :: Ptr Word8 -> Word -> Word32 -> ByteString -> IO ()
 writeBS buffer size logical_off lbstr =
   foldM_ doWrite logical_off (BS.toChunks lbstr)
  where
-  doWrite :: Word64 -> BSS.ByteString -> IO Word64
+  doWrite :: Word32 -> BSS.ByteString -> IO Word32
   doWrite loff bstr = BSS.useAsCStringLen bstr $ \ (dptr, dlenI) -> do
     let real_off = fromIntegral (loff `mod` fromIntegral size)
         destPtr  = buffer `plusPtrW` real_off
@@ -339,7 +339,7 @@ data InChan = InChan {
   }
 
 data InChanState = NeedSize [MVar ByteString]
-                 | GotSize Word ByteString [MVar ByteString]
+                 | GotSize Word32 ByteString [MVar ByteString]
 
 buildRawInChan :: Bool -> Ptr Word8 -> Word -> Port -> IO InChan
 buildRawInChan doClear buf size port = do
@@ -372,47 +372,49 @@ tryReadData ich = modifyMVar_ (icStateMV ich) $ \ istate -> do
  where
   doPossibleReads :: Word32 -> Word32 -> InChanState -> IO (InChanState, Word32)
   doPossibleReads prod cons istate = do
-    let mprod64 = fromIntegral prod :: Word64
-        cons64  = fromIntegral cons :: Word64
-        -- check for the rollover case
-        prod64  = if mprod64 < cons64 then (mprod64 + 0x100000000) else mprod64
-        avail   = fromIntegral (prod64 - cons64)
+    let avail = if prod >= cons then prod - cons else overflow
+        overflow = prod + 1 + (0xFFFFFFFF - cons)
     case istate of
       -- If we need to get a size, we have waiters, and there's at least
       -- four bytes to read, then we should read off the size.
-      NeedSize ws@(_:_) | prod64 >= (cons64 + sizeSize) -> do
-        size <- decode `fmap` readBS (icBuffer ich) (icSize ich) cons64 sizeSize
-        let istate' = GotSize size BS.empty ws
-        doPossibleReads prod (fromIntegral (cons64 + sizeSize)) istate'
+      NeedSize ws@(_:_) | avail >= sizeSize -> do
+        sizeBS <- readBS (icBuffer ich) (icSize ich) cons sizeSize
+        let size = decode sizeBS :: Word
+        when (size > 5000) $ do
+          writeDebugConsole ("Size too big: " ++ show size ++ "\n")
+        let istate' = GotSize (fromIntegral size) BS.empty ws
+        doPossibleReads prod (cons + sizeSize) istate'
       -- If we have some data, but not enough, update ourselves with the
       -- new data and the lesser requirement.
       GotSize n acc ws | (avail > 0) && (n > avail) -> do
-        part <- readBS (icBuffer ich) (icSize ich) cons64 avail
+        part <- readBS (icBuffer ich) (icSize ich) cons avail
         let istate' = GotSize (n - avail) (acc `BS.append` part) ws
-        doPossibleReads prod (cons + fromIntegral avail) istate'
+        doPossibleReads prod (cons + avail) istate'
       -- If we can read everything, do it!
       GotSize n acc (f:rest) | (avail > 0) && (n <= avail) -> do
-        endp <- readBS (icBuffer ich) (icSize ich) cons64 n
+        endp <- readBS (icBuffer ich) (icSize ich) cons n
         putMVar f (acc `BS.append` endp)
-        doPossibleReads prod (cons + fromIntegral n) (NeedSize rest)
+        doPossibleReads prod (cons + n) (NeedSize rest)
       -- Otherwise, we can't do anything
       _ ->
         return (istate, cons)
 
-readBS :: Ptr Word8 -> Word -> Word64 -> Word -> IO ByteString
-readBS buffer size logical_off amt = do
-  let real_off = fromIntegral (logical_off `mod` fromIntegral size)
+readBS :: Ptr Word8 -> Word -> Word32 -> Word32 -> IO ByteString
+readBS buffer sizeW logical_off amt = do
+  let real_off = logical_off `mod` size
       readPtr  = buffer `plusPtrW` real_off
+      part1sz  = size - real_off
+      part2sz  = amt - part1sz
   if real_off + amt > size
-    then do part1 <- packCStringLen readPtr (size - real_off)
-            part2 <- packCStringLen buffer (amt - (size - real_off))
+    then do part1 <- packCStringLen readPtr part1sz
+            part2 <- packCStringLen buffer  part2sz
             return $! BS.fromStrict part1 `BS.append` BS.fromStrict part2
     else    BS.fromStrict `fmap` packCStringLen readPtr amt
  where
-  packCStringLen :: Ptr Word8 -> Word -> IO BSS.ByteString
+  size = fromIntegral sizeW
   packCStringLen p s = BSS.packCStringLen (castPtr p, fromIntegral s)
 
-plusPtrW :: Ptr a -> Word -> Ptr a
+plusPtrW :: Integral b => Ptr a -> b -> Ptr a
 plusPtrW p x = p `plusPtr` (fromIntegral x)
 
 sizeSize :: Integral a => a
