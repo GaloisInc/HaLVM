@@ -50,6 +50,7 @@ module Hypervisor.Memory(
 
 import Control.Exception
 import Control.Monad
+import Data.Binary
 import Data.Bits
 import Data.Word
 import Foreign.Ptr
@@ -253,6 +254,10 @@ instance Read GrantRef where
     case splitAt 6 str of
       ("grant:",x) -> map (\ (g,rest) -> (GrantRef g, rest)) (readsPrec d x)
       _            -> []
+
+instance Binary GrantRef where
+  put (GrantRef r) = put r
+  get              = GrantRef `fmap` get
 
 -- |Grant access to a given domain to a given region of memory (starting at
 -- the pointer and extending for the given length). The boolean determines
