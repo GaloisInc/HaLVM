@@ -336,9 +336,9 @@ prepareTransfer dom = do
 
 -- |Transfer the given frame to another domain, using the given grant
 -- reference as the transfer mechanism.
-transferFrame :: DomId -> GrantRef -> MFN -> IO ()
-transferFrame dom (GrantRef ref) (MFN frame) = do
-  res <- transferGrant (fromDomId dom) ref frame
+transferFrame :: DomId -> GrantRef -> VPtr a -> IO ()
+transferFrame dom (GrantRef ref) ptr = do
+  res <- transferGrant (fromDomId dom) ref ptr
   when (res < 0) $ throw (toEnum (-res) :: ErrorCode)
   when (res > 0) $ throw (toEnum   res  :: GrantErrorCode)
 
@@ -478,7 +478,7 @@ foreign import ccall unsafe "grants.h unmap_grants"
 foreign import ccall unsafe "grants.h prepare_transfer"
   prepTransfer :: Word16 -> IO Int
 foreign import ccall unsafe "grants.h transfer_frame"
-  transferGrant :: Word16 -> Word32 -> Word -> IO Int
+  transferGrant :: Word16 -> Word32 -> VPtr a -> IO Int
 foreign import ccall unsafe "grants.h complete_transfer"
   compTransfer :: Word32 -> Bool -> IO Int
 foreign import ccall unsafe "grants.h copy_frame"
