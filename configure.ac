@@ -322,6 +322,7 @@ else
   echo
   AC_CONFIG_FILES([
                    autoconf.mk
+                   examples/standard.mk
                    src/HALVMCore/HALVMCore.buildinfo
                    src/misc/build.mk
                    src/scripts/halvm-cabal

@@ -1,4 +1,7 @@
-HALVM_LIBDIR := $(shell halvm-ghc --print-libdir)
+prefix := @prefix@
+exec_prefix := @exec_prefix@
+IVC_LIB := @libdir@
+IVC_INC := @includedir@
 
 all: $(BINARIES)
 
@@ -9,4 +12,4 @@ clean::
 	halvm-ghc --make -o $@ $^
 
 %: c/%.c
-	gcc -o $@ $^ -I$(HALVM_LIBDIR)/include -lxenctrl -lcrypto -lxenstore $(HALVM_LIBDIR)/libIVC.a
+	gcc -o $@ $^ -I$(IVC_INC) -lxenctrl -lcrypto -lxenstore $(IVC_LIB)/libIVC.a
