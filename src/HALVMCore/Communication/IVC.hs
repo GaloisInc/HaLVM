@@ -122,10 +122,17 @@ buildIOChan :: Float -> Word ->
                Bool -> Ptr Word8 -> Word -> Port ->
                IO (InChan, OutChan)
 buildIOChan perc npages doClear ptr _ port = do
-  let inSize  = floor ((fromIntegral (npages * 4096)) * perc)
-      outSize = (npages * 4096) - inSize
-  ichn <- buildRawInChan  doClear ptr                     inSize  port
-  ochn <- buildRawOutChan doClear (ptr `plusPtrW` inSize) outSize port
+  let p1Size   = floor ((fromIntegral (npages * 4096)) * perc)
+      p2Size   = (npages * 4096) - p1Size
+      b1Size   = p1Size - bookkeepingOverhead
+      b2Size   = p2Size - bookkeepingOverhead
+  let (inPtr, inSize, outPtr, outSize) =
+        if doClear
+          then (ptr, b1Size, ptr `plusPtrW` p1Size, b2Size)
+          else (ptr `plusPtrW` p1Size, b2Size, ptr, b1Size)
+  ichn <- buildRawInChan  doClear inPtr  inSize  port
+  ochn <- buildRawOutChan doClear outPtr outSize port
+  setPortHandler port $ tryWriteData ochn >> tryReadData  ichn
   return (ichn, ochn)
 
 makeNewChan :: DomId -> Word ->
