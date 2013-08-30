@@ -26,6 +26,8 @@ import Control.Concurrent.MVar
 import Control.Exception
 import Control.Monad
 import Data.Binary hiding (get,put)
+import Data.Binary.Get(runGet, getWordhost)
+import Data.Binary.Put(runPut, putWordhost, putLazyByteString)
 import qualified Data.ByteString as BSS
 import Data.ByteString.Lazy(ByteString)
 import qualified Data.ByteString.Lazy as BS
@@ -282,7 +284,9 @@ runWriteRequest och !bs = do
   tryWriteData och
   takeMVar resMV
  where
-  !msg = encode (fromIntegral (BS.length bs) :: Word) `BS.append` bs
+  !msg = runPut $ do
+     putWordhost (fromIntegral (BS.length bs))
+     putLazyByteString bs
 
 tryWriteData :: OutChan -> IO ()
 tryWriteData och = do
@@ -391,7 +395,7 @@ tryReadData ich = modifyMVar_ (icStateMV ich) $ \ istate -> do
       -- four bytes to read, then we should read off the size.
       NeedSize ws@(_:_) | avail >= sizeSize -> do
         sizeBS <- readBS (icBuffer ich) (icSize ich) cons sizeSize
-        let size = decode sizeBS :: Word
+        let size = runGet getWordhost sizeBS
         let istate' = GotSize (fromIntegral size) BS.empty ws
             cons'   = (cons + sizeSize) `mod` icModulus ich
         doPossibleReads prod cons' istate'

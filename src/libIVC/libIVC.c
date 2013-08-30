@@ -423,11 +423,11 @@ static void readRaw(ivc_connection_t *con, void *buffer, uint32_t size)
   if(off + size > con->insize) {
     /* we need to split this up, as we're wrapping around */
     uint32_t part1sz = con->insize - off;
-    memcpy(basep, buffer, part1sz);
-    memcpy(con->inbuf, (void*)((uintptr_t)buffer + part1sz), size - part1sz);
+    memcpy(buffer, basep, part1sz);
+    memcpy((void*)((uintptr_t)buffer + part1sz), con->inbuf, size - part1sz);
   } else {
     /* we can just write it in directly here */
-    memcpy(basep, buffer, size);
+    memcpy(buffer, basep, size);
   }
   con->input->consumed = (con->input->consumed + size) % con->inmod;
   __sync_synchronize();
@@ -441,10 +441,10 @@ static void writeRaw(ivc_connection_t *con, void *buffer, uint32_t size)
 
   if(off + size > con->outsize) {
     uint32_t part1sz = con->outsize - off;
-    memcpy(buffer, basep, part1sz);
-    memcpy((void*)((uintptr_t)buffer + part1sz), con->outbuf, size - part1sz);
+    memcpy(basep, buffer, part1sz);
+    memcpy(con->outbuf, (void*)((uintptr_t)buffer + part1sz), size - part1sz);
   } else {
-    memcpy(buffer, basep, size);
+    memcpy(basep, buffer, size);
   }
   con->output->produced = (con->output->produced + size) % con->outmod;
   __sync_synchronize();
