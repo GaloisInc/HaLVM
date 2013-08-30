@@ -25,13 +25,14 @@ struct libIVC_interface {
 
 libIVC_t *openIVCLibrary()
 {
-  libIVC_t *retval = calloc(1, sizeof(struct libIVC_interface));
+  libIVC_t *retval;
 
+  assert( retval = calloc(1, sizeof(struct libIVC_interface)) );
   assert( retval->xc = xc_interface_open(NULL, NULL, 0) );
   assert( retval->xs = xs_open(0) );
   assert( retval->ec = xc_evtchn_open(NULL, 0) );
   assert( retval->gt = xc_gnttab_open(NULL, 0) );
-  assert( retval->gs = xc_gntshr_open(NULL, 0) );
+  retval->gs = xc_gntshr_open(NULL, 0); /* may not be available on all plats */
 
   return retval;
 }
@@ -42,7 +43,7 @@ void closeIVCLibrary(libIVC_t *iface)
   xs_close(iface->xs);
   xc_interface_close(iface->xc);
   xc_gnttab_close(iface->gt);
-  xc_gntshr_close(iface->gs);
+  if(iface->gs) xc_gntshr_close(iface->gs);
   free(iface);
 }
 
@@ -142,6 +143,8 @@ ivc_connection_t *acceptConnection(libIVC_t *iface,
   unsigned int len;
   void *buffer;
 
+  /* we can only do this if we create grant references */
+  if(!iface->gs) return NULL;
   /* other <- read `fmap` waitForKey xs (targetPath ++ "/LeftDomId) */
   asprintf(&key, "/rendezvous/%s/LeftDomId", name);
   while(!domStr) { domStr = xs_read(iface->xs, 0, key, &len); }
