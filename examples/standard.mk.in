@@ -11,5 +11,5 @@ clean::
 %: %.hs
 	halvm-ghc --make -o $@ $^
 
-%: c/%.c
+%: %.c
 	gcc -o $@ $^ -I$(IVC_INC) -lxenctrl -lcrypto -lxenstore $(IVC_LIB)/libIVC.a
