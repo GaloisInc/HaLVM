@@ -26,7 +26,6 @@ import Control.Concurrent.MVar
 import Control.Exception
 import Control.Monad
 import Data.Binary hiding (get,put)
-import Data.Binary.Put
 import qualified Data.ByteString as BSS
 import Data.ByteString.Lazy(ByteString)
 import qualified Data.ByteString.Lazy as BS
@@ -255,6 +254,7 @@ bookkeepingOverhead = 8
 data OutChan = OutChan {
     ocBuffer  :: Ptr Word8
   , ocSize    :: Word
+  , ocModulus :: Word32
   , ocPort    :: Port
   , ocWaiting :: MVar [(ByteString, MVar ())]
   }
@@ -263,7 +263,7 @@ buildRawOutChan :: Bool -> Ptr Word8 -> Word -> Port -> IO OutChan
 buildRawOutChan doClear buf size port = do
   when doClear $ bzero buf size
   waiters <- newMVar []
-  let res = OutChan buf size port waiters
+  let res = OutChan buf size (computeModulus size) port waiters
   setPortHandler port $ tryWriteData res
   return res
 
@@ -295,7 +295,9 @@ tryWriteData och = do
   doPossibleWrites prod _ [] = return ([], prod)
   doPossibleWrites prod cons ls@((bstr, resMV):rest) = do
     -- this is an awkward way to deal with rollver, but it should work.
-    let avail = if (prod < cons) then 0 else bufferSize - (prod - cons)
+    let unread = if prod >= cons then prod - cons else overflow
+        overflow = prod + (ocModulus och - cons)
+        avail = bufferSize - unread
         bstrLn  = fromIntegral (BS.length bstr)
     case () of
       -- In this case, the buffer is full.
@@ -305,13 +307,15 @@ tryWriteData och = do
       () | avail > bstrLn -> do
         writeBS (ocBuffer och) (ocSize och) prod bstr
         putMVar resMV ()
-        doPossibleWrites (prod + fromIntegral bstrLn) cons rest
+        let prod' = (prod + fromIntegral bstrLn) `mod` ocModulus och
+        doPossibleWrites prod' cons rest
       -- In this case, we have space to do a write, but not the whole
       -- bytestring
       () | otherwise -> do
         let (h,t)   = BS.splitAt (fromIntegral avail) bstr
         writeBS (ocBuffer och) (ocSize och) prod h
-        return ((t, resMV) : rest, fromIntegral (prod + avail))
+        let prod' = fromIntegral (prod + avail) `mod` ocModulus och
+        return ((t, resMV) : rest, prod')
 
 writeBS :: Ptr Word8 -> Word -> Word32 -> ByteString -> IO ()
 writeBS buffer size logical_off lbstr =
@@ -334,18 +338,19 @@ writeBS buffer size logical_off lbstr =
 data InChan = InChan {
     icBuffer    :: Ptr Word8
   , icSize      :: Word
+  , icModulus   :: Word32
   , icPort      :: Port
   , icStateMV   :: MVar InChanState
   }
 
 data InChanState = NeedSize [MVar ByteString]
-                 | GotSize Word32 ByteString [MVar ByteString]
+                 | GotSize !Word32 ByteString [MVar ByteString]
 
 buildRawInChan :: Bool -> Ptr Word8 -> Word -> Port -> IO InChan
 buildRawInChan doClear buf size port = do
   when doClear $ bzero buf size
   stateMV <- newMVar (NeedSize [])
-  let res = InChan buf size port stateMV
+  let res = InChan buf size (computeModulus size) port stateMV
   setPortHandler port $ tryReadData res
   return res
 
@@ -373,34 +378,35 @@ tryReadData ich = modifyMVar_ (icStateMV ich) $ \ istate -> do
   doPossibleReads :: Word32 -> Word32 -> InChanState -> IO (InChanState, Word32)
   doPossibleReads prod cons istate = do
     let avail = if prod >= cons then prod - cons else overflow
-        overflow = prod + 1 + (0xFFFFFFFF - cons)
+        overflow = prod + (icModulus ich - cons)
     case istate of
       -- If we need to get a size, we have waiters, and there's at least
       -- four bytes to read, then we should read off the size.
       NeedSize ws@(_:_) | avail >= sizeSize -> do
         sizeBS <- readBS (icBuffer ich) (icSize ich) cons sizeSize
         let size = decode sizeBS :: Word
-        when (size > 5000) $ do
-          writeDebugConsole ("Size too big: " ++ show size ++ "\n")
         let istate' = GotSize (fromIntegral size) BS.empty ws
-        doPossibleReads prod (cons + sizeSize) istate'
+            cons'   = (cons + sizeSize) `mod` icModulus ich
+        doPossibleReads prod cons' istate'
       -- If we have some data, but not enough, update ourselves with the
       -- new data and the lesser requirement.
       GotSize n acc ws | (avail > 0) && (n > avail) -> do
         part <- readBS (icBuffer ich) (icSize ich) cons avail
         let istate' = GotSize (n - avail) (acc `BS.append` part) ws
-        doPossibleReads prod (cons + avail) istate'
+            cons'   = (cons + avail) `mod` icModulus ich
+        doPossibleReads prod cons' istate'
       -- If we can read everything, do it!
       GotSize n acc (f:rest) | (avail > 0) && (n <= avail) -> do
         endp <- readBS (icBuffer ich) (icSize ich) cons n
         putMVar f (acc `BS.append` endp)
-        doPossibleReads prod (cons + n) (NeedSize rest)
+        let cons' = (cons + n) `mod` icModulus ich
+        doPossibleReads prod cons' (NeedSize rest)
       -- Otherwise, we can't do anything
       _ ->
         return (istate, cons)
 
 readBS :: Ptr Word8 -> Word -> Word32 -> Word32 -> IO ByteString
-readBS buffer sizeW logical_off amt = do
+readBS !buffer !sizeW !logical_off !amt = do
   let real_off = logical_off `mod` size
       readPtr  = buffer `plusPtrW` real_off
       part1sz  = size - real_off
@@ -419,6 +425,15 @@ plusPtrW p x = p `plusPtr` (fromIntegral x)
 
 sizeSize :: Integral a => a
 sizeSize = fromIntegral (BS.length (encode (0 :: Word)))
+
+computeModulus :: Word -> Word32
+computeModulus size
+  | base == 0 = fromIntegral q * (fromIntegral size - 1)
+  | otherwise = base
+  where
+   base  = fromIntegral q * fromIntegral size
+   size' = fromIntegral size :: Word64
+   q     = 0x100000000 `div` size'
 
 foreign import ccall unsafe "strings.h bzero"
   bzero :: Ptr a -> Word -> IO ()
