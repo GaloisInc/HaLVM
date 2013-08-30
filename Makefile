@@ -99,7 +99,7 @@ LIBIVC_HEADERS := $(shell find $(TOPDIR)/src/libIVC -name '*.h')
 LIBIVC_O_FILES := $(LIBIVC_C_FILES:.c=.o)
 
 $(LIBIVC_C_FILES:.c=.o): %.o: %.c $(LIBIVC_HEADERS)
-	$(CC) -o $@ $(CFLAGS) -I$(TOPDIR)/src/libIVC/include -c $<
+	$(CC) -o $@ $(CFLAGS) -I$(TOPDIR)/src/libIVC -c $<
 
 $(TOPDIR)/src/libIVC/libIVC.a: $(LIBIVC_O_FILES)
 	$(AR) rcs $@ $(LIBIVC_O_FILES)
@@ -111,6 +111,7 @@ clean::
 
 install:: $(TOPDIR)/src/libIVC/libIVC.a
 	$(INSTALL) -D $(TOPDIR)/src/libIVC/libIVC.a $(libdir)/libIVC.a
+	$(INSTALL) -D $(TOPDIR)/src/libIVC/libIVC.h $(incdir)/libIVC.h
 
 ###############################################################################
 # MK_REND_DIR #################################################################
