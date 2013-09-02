@@ -15,3 +15,4 @@ src/libIVC/*/*.o
 
 src/libIVC/libIVC.a
 src/libm/libm.a
+*test*
