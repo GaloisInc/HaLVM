@@ -8,6 +8,7 @@
 -- Author: Adam Wick <awick@galois.com> and Magnus Carlsson <magnus@galois.com>
 -- BANNEREND
 import Communication.IVC
+import Control.Monad
 import Data.ByteString.Lazy(ByteString)
 import qualified Data.ByteString.Lazy as BS
 import Data.Time
@@ -15,6 +16,7 @@ import Data.Word
 import Hypervisor.Console
 import Hypervisor.Debug
 import Hypervisor.XenStore
+import Numeric
 
 import Common
 
@@ -42,6 +44,12 @@ run_getter con !total !x !start_t !c
   | x >= print_amt = do print_speed con start_t total
                         run_getter con total 0 start_t c
   | otherwise      = do block <- get c
+{-
+                        unless (block == dataBlob) $ do
+                          writeConsole con "Data read error\n"
+                          findDifference con 0 (BS.unpack block) (BS.unpack dataBlob)
+                          fail "Read wrong data!"
+-}
                         let !size = fromIntegral $ BS.length block
                         run_getter con (total + size) (x + size) start_t c
  where
@@ -65,3 +73,14 @@ print_speed con start numBytes = do
   onek = 1024
   onem = 1024 * 1024
   oneg = 1024 * 1024 * 1024
+
+{-
+findDifference :: Console -> Integer -> [Word8] -> [Word8] -> IO ()
+findDifference con _ [] [] = writeConsole con "Same blocks?!\n"
+findDifference con _ [] _  = writeConsole con "First block ended prematurely\n"
+findDifference con _ _  [] = writeConsole con "Secnd block ended prematurely\n"
+findDifference con i (a:rest1) (b:rest2)
+  | a == b    = findDifference con (i + 1) rest1 rest2
+  | otherwise = writeConsole con ("Difference starts at byte " ++ show i ++
+                                  " (" ++ show a ++ " /= " ++ show b ++ ")\n")
+-}
