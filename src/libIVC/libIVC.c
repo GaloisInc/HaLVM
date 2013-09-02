@@ -55,7 +55,8 @@ static uint32_t getMyDomId(libIVC_t *);
 static uint32_t *parseRefs(char *str, uint32_t *len);
 static char     *showGrantRefList(uint32_t *grants, uint32_t num);
 static ivc_connection_t *buildChannel(libIVC_t*, uint32_t, ivc_contype_t,
-                                      evtchn_port_t, void *, uint32_t, float);
+                                      evtchn_port_t, void *, uint32_t,
+                                      float, int);
 static uint32_t computeModulus(uint32_t);
 
 struct bufstate
@@ -80,7 +81,7 @@ struct ivc_connection
 ivc_connection_t *makeConnection(libIVC_t *iface,
                                  char *name,
                                  ivc_contype_t type,
-                                 float perc)
+                                 float per)
 {
   char *key, *val, *rdomstr = NULL, *rrefstr = NULL, *rpstr = NULL;
   uint32_t me, other, num_refs, *grants;
@@ -123,7 +124,7 @@ ivc_connection_t *makeConnection(libIVC_t *iface,
   port = xc_evtchn_bind_interdomain(iface->ec, other, port);
   assert(port >= 0);
   /* res <- acceptConnection other grants ports extra */
-  res = buildChannel(iface, other, type, port, buffer, num_refs * 4096, perc);
+  res = buildChannel(iface, other, type, port, buffer, num_refs * 4096, per, 0);
   /* xsWrite xs (targetPath ++ "/LeftConnectionConfirmed") "True" */
   free(key), asprintf(&key, "/rendezvous/%s/LeftConnectionConfirmed", name);
   free(val), asprintf(&val, "True");
@@ -136,7 +137,7 @@ ivc_connection_t *acceptConnection(libIVC_t *iface,
                                    char *name,
                                    ivc_contype_t type,
                                    uint32_t num_pages,
-                                   float perc)
+                                   float per)
 {
   char *key, *val, *domStr = NULL;
   uint32_t me, other, *gs, ps;
@@ -177,7 +178,7 @@ ivc_connection_t *acceptConnection(libIVC_t *iface,
   free(key), asprintf(&key, "/rendezvous/%s", name);
   xs_rm(iface->xs, 0, key);
   /* confirm */
-  return buildChannel(iface, other, type, ps, buffer, 4096 * num_pages, perc);
+  return buildChannel(iface, other, type, ps, buffer, 4096 * num_pages, per, 1);
 }
 
 void closeConnection(libIVC_t *iface, ivc_connection_t *con)
@@ -277,7 +278,8 @@ static ivc_connection_t *buildChannel(libIVC_t *iface,
                                       evtchn_port_t port,
                                       void *buffer,
                                       uint32_t buffer_size,
-                                      float perc)
+                                      float perc,
+                                      int doClear)
 {
   ivc_connection_t *res = calloc(1, sizeof(ivc_connection_t));
 
@@ -285,6 +287,7 @@ static ivc_connection_t *buildChannel(libIVC_t *iface,
   res->peer = peer;
   res->type = type;
   res->port = port;
+  if(doClear) memset(buffer, 0, buffer_size);
 
   switch(type) {
     case ivcInputChannel:
@@ -308,19 +311,30 @@ static ivc_connection_t *buildChannel(libIVC_t *iface,
       res->output = (struct bufstate *)((uintptr_t)buffer + res->outsize);
       break;
     case ivcInputOutputChannel:
-      /* base computation */
-      res->insize = (uint32_t)(perc * (float)buffer_size);
-      res->outsize = buffer_size - res->insize;
-      res->inbuf = buffer;
-      res->outbuf = (void*)((uintptr_t)buffer + res->insize);
-      /* real computation */
-      res->insize -= sizeof(struct bufstate);
-      res->outsize -= sizeof(struct bufstate);
-      res->inmod = computeModulus(res->insize);
-      res->outmod = computeModulus(res->outsize);
-      res->input = (struct bufstate *)((uintptr_t)res->inbuf + res->insize);
-      res->output = (struct bufstate *)((uintptr_t)res->outbuf + res->outsize);
+    {
+      uint32_t         ptr1size = (uint32_t)(perc * (float)buffer_size);
+      uint32_t         ptr2size = buffer_size - ptr1size;
+      uint32_t         buf1sz   = ptr1size - sizeof(struct bufstate);
+      uint32_t         buf2sz   = ptr2size - sizeof(struct bufstate);
+      void            *buf1     = buffer;
+      void            *buf2     = (void*)((uintptr_t)buffer + ptr1size);
+      uint32_t         modulus1 = computeModulus(buf1sz);
+      uint32_t         modulus2 = computeModulus(buf2sz);
+      struct bufstate *bstate1  = (struct bufstate*)((uintptr_t)buf1 + buf1sz);
+      struct bufstate *bstate2  = (struct bufstate*)((uintptr_t)buf2 + buf2sz);
+
+      res->insize  = doClear ? buf1sz   : buf2sz;
+      res->inbuf   = doClear ? buf1     : buf2;
+      res->inmod   = doClear ? modulus1 : modulus2;
+      res->input   = doClear ? bstate1  : bstate2;
+
+      res->outsize = doClear ? buf2sz   : buf1sz;
+      res->outbuf  = doClear ? buf2     : buf1;
+      res->outmod  = doClear ? modulus2 : modulus1;
+      res->output  = doClear ? bstate2  : bstate1;
+
       break;
+    }
     default:
       assert(0);
   }
