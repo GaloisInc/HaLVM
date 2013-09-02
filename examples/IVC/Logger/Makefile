@@ -8,4 +8,12 @@
 BINARIES=logger Server
 include ../../standard.mk
 
-
+run: $(BINARIES)
+	-sudo xl destroy Server
+	-sudo killall logger
+	sudo ./logger > output &
+	sudo xl create Server.config
+	sleep 3
+	sudo xl dmesg -c
+	sudo cat output
+	sudo rm output
