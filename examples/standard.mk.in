@@ -3,13 +3,17 @@ exec_prefix := @exec_prefix@
 IVC_LIB := @libdir@
 IVC_INC := @includedir@
 
+ifeq ($(THREADED),y)
+THR_RT_OPT := -threaded
+endif
+
 all: $(BINARIES)
 
 clean::
 	rm -f $(BINARIES) *.hi *.o
 
 %: %.hs
-	halvm-ghc --make -o $@ $^
+	halvm-ghc $(THR_RT_OPT) --make -o $@ $^
 
 %: %.c
 	gcc -o $@ $^ -I$(IVC_INC) -lxenctrl -lcrypto -lxenstore $(IVC_LIB)/libIVC.a
