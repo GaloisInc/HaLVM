@@ -157,13 +157,11 @@ ENTRY(hypervisor_callback)
 
 ENTRY(hypervisor_callback2)
         movq %rdi, %rsp 
-11:     movq %gs:8,%rax
-        incl %gs:0
+11:     movq %fs:8,%rax
         cmovzq %rax,%rsp
         pushq %rdi
         call do_hypervisor_callback 
         popq %rsp
-        decl %gs:0
         jmp error_exit
 
 restore_all_enable_events:  
