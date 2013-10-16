@@ -1,5 +1,5 @@
--- BANNERSTART
--- - Copyright 2006-2008, Galois, Inc.
+-- BANNERSTART --
+-- Copyright 2006-2008, Galois, Inc.
 -- - This software is distributed under a standard, three-clause BSD license.
 -- - Please see the file LICENSE, distributed with this software, for specific
 -- - terms and conditions.
@@ -9,620 +9,479 @@
 -- |Direct access to low-level disk devices. You probably want to use a file
 -- system instead.
 --
-module XenDevice.Disk (dDisks,
-                       Disk,
-                       initializedDisks, potentialDisks,
-                       notifyOnNewInitializedDisk, notifyOnNewPotentialDisk,
-                       diskIsInitialized, initializeDisk,
-                       diskName,
-                       diskIsReadOnly, diskIsRemovable, diskIsCDRom,
-                       diskSectors, diskBytesPerSector,
-                       DResult(..),
-                       readBytes, tryReadBytes,
-                       writeBytes, tryWriteBytes)
-    where
-
-import XenDevice.Xenbus as XB
-import XenDevice.XenRingState
+module XenDevice.Disk (
+         Disk
+       , listDisks
+       , openDisk
+       , readDisk
+       , writeDisk
+       , flushDiskCaches
+       , diskWriteBarrier
+       , discardRegion
+       , diskName
+       , isDiskReadOnly
+       , isDiskRemovable
+       , diskSupportsBarrier
+       , diskSupportsFlush
+       , diskSupportsDiscard
+       , diskSectors
+       , diskSectorSize
+       )
+ where
 
 import Communication.RingBuffer
-import Control.Concurrent.MVar
-import Control.Exception(assert)
+import Control.Concurrent
+import Control.Exception
 import Control.Monad
-import Data.Bits
+import qualified Data.ByteString as SBS
+import Data.ByteString.Lazy(ByteString)
+import qualified Data.ByteString.Lazy as BS
+import Data.ByteString.Unsafe(unsafePackCStringFinalizer, unsafeUseAsCStringLen)
 import Data.Int
-import Data.IORef
-import Data.List
+import Data.Map.Strict(Map)
+import qualified Data.Map.Strict as Map
+import Data.Maybe
 import Data.Word
-import GHC.IO(unsafePerformIO)
+import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
-import Hypervisor.Basics
-import Hypervisor.Debug
-import Hypervisor.Kernel
+import Hypervisor.DomainInfo
+import Hypervisor.ErrorCodes
 import Hypervisor.Memory
+import Hypervisor.Port
+import Hypervisor.XenStore
 
--- The implementation of the public interfaces
+import Hypervisor.Debug
 
--- LOCK ORDERING:
---
---   initializedDeviceMV
---   potentialDeviceMV
---   initializationCallbacksMV
---   potentialCallbacksMV
---
--- Thus, if you need to take initializedDeviceMV and
--- initializationCallbacksMV, you must lock them in that
--- order. Taking out locks in another order may cause a
--- deadlock.
-
-dDisks :: DeviceDriver
-dDisks = DeviceDriver { devName = "XenDeviceInternalDisks"
-                      , dependencies = [XB.dXenbus]
-                      , initialize = initDiskDriver
-                      , shutdown = return ()
-                      }
-
--- |Computes and returns the list of initialized disks.
-initializedDisks :: IO [Disk]
-initializedDisks = readMVar initializedDisksMV
-
--- |Computes and returns the list of potential disks. These are disks
--- that Xen has made available, but have not had initializeDisk called
--- on them.
-potentialDisks :: IO [String]
-potentialDisks =
-    do devices <- readMVar potentialDisksMV
-       return $ map pDiskName devices
-
--- |Installs a handler that will be called when a disk is initialized.
--- Note that this handler will be called regardless of the originating
--- thread; if a thread installs a callback and then initializes the 
--- disk, it will still receive the event.
-notifyOnNewInitializedDisk :: (Disk -> IO ()) -> IO ()
-notifyOnNewInitializedDisk callback =
-    do lock <- takeMVar initializedDisksMV
-       iCallbacks <- takeMVar initializationCallbacksMV
-       putMVar initializationCallbacksMV (callback:iCallbacks)
-       putMVar initializedDisksMV lock
-
--- |Installs a handler that will be called when Xen informs the domain
--- of a new, potential disk. 
-notifyOnNewPotentialDisk :: (String -> IO ()) -> IO ()
-notifyOnNewPotentialDisk callback =
-    do lock <- takeMVar potentialDisksMV
-       pCallbacks <- takeMVar potentialCallbacksMV
-       putMVar potentialCallbacksMV (callback:pCallbacks)
-       putMVar potentialDisksMV lock
-
--- |Determines whether or not the given disk is initialized
-diskIsInitialized :: String -> IO Bool
-diskIsInitialized disk =
-    do devices <- readMVar initializedDisksMV
-       return $ elem disk $ map iDiskName devices
-
--- |Intialize a disk, so that it can be used to read and write, and the
--- various bits of information about it (whether or not it is read only,
--- the number of sectors, etc.) becomes available. Returns the initialized
--- disk upon success. This routine can be called safely on the same disk
--- multiple times.
-initializeDisk :: String -> IO (Maybe Disk)
-initializeDisk dName = do
-  iDevices <- readMVar initializedDisksMV
-  case find (\ dev -> iDiskName dev == dName) iDevices of
-    Just disk -> return (Just disk)
-    Nothing   -> do 
-      devices <- readMVar potentialDisksMV
-      case find (\ dev -> pDiskName dev == dName) devices of
-        Nothing  -> return Nothing
-        Just dev -> do
-          asyncNotifMV <- newEmptyMVar
-          -- We must put the lock back immediately so that we don't
-          -- accidentally block anyone else
-          probeDisk dev asyncNotifMV
-          retval <- takeMVar asyncNotifMV
-          case retval of
-            Nothing   -> return ()
-            Just disk -> do
-              iDevs <- takeMVar initializedDisksMV
-              pDevs <- takeMVar potentialDisksMV
-              putMVar potentialDisksMV
-                (filter (\ x -> pDiskName x /= dName) pDevs)
-              putMVar initializedDisksMV (disk:iDevs)
-          return retval
-
--- |Returns the name associated with the given disk
-diskName :: Disk -> String
-diskName = iDiskName
-
--- |Determines whether or not the given disk is read-only
-diskIsReadOnly :: Disk -> Bool
-diskIsReadOnly = iDiskIsReadOnly
-
--- |Determines whether or not the given disk is removable
-diskIsRemovable :: Disk -> Bool
-diskIsRemovable = iDiskIsRemovable
-
--- |Determines whether or not the given disk is a CDRom
-diskIsCDRom :: Disk -> Bool
-diskIsCDRom = iDiskIsCDRom
-
--- |Determines how many sectors there are on the given disk.
-diskSectors :: Disk -> Word64
-diskSectors = iDiskNumSectors
-
--- |Determines how many bytes there are per sector on the given disk.
-diskBytesPerSector :: Disk -> Word32
-diskBytesPerSector = iDiskBytesPerSector
-
--- |From the given disk, read size (arg3) bytes starting at the
--- given sector (arg2), storing the data in the given pages (arg3). 
--- The data is stored in-order by the list; a 16K read using <1,2,3,4>
--- as the pages will store the first 4K in page 1, the second 4K in
--- page 2, and so on. This routing blocks execution until the operation
--- completes. 
-readBytes :: Disk -> Word64 -> Word32 -> [VPtr a] -> IO DResult
-readBytes disk sector size pages = 
-    argumentsCheckOut disk DiskRead sector size pages (\ reqs -> do
-      reses <- frbRequestMany (iDiskRing disk) reqs
-      return $ zipResults reses)
-
--- |The same as readBytes, but immediately returns if the underlying disk
--- driver buffer is full. 
-tryReadBytes :: Disk -> Word64 -> Word32 -> [VPtr a] -> IO DResult
-tryReadBytes disk sector size pages = 
-    argumentsCheckOut disk DiskRead sector size pages (\ reqs -> do
-      _reses <- frbTryRequestMany (iDiskRing disk) reqs
-      case _reses of
-        Just reses -> return $ zipResults reses
-        Nothing -> return DRErrDeviceBusy)
-
--- |Write size (arg3) bytes to the given disk at the given sector (arg2),
--- using the data in the given pages. This routine will block until the
--- operation succeeds or fails.
-writeBytes :: Disk -> Word64 -> Word32 -> [VPtr a] -> IO DResult
-writeBytes disk sector size pages =
-    argumentsCheckOut disk DiskWrite sector size pages (\ reqs -> do
-      reses <- frbRequestMany (iDiskRing disk) reqs
-      return $ zipResults reses)
-
--- |The same as writeBytes, but immediately returns if the underlying disk
--- driver's buffer is full.
-tryWriteBytes :: Disk -> Word64 -> Word32 -> [VPtr a] -> IO DResult
-tryWriteBytes disk sector size pages = 
-    argumentsCheckOut disk DiskWrite sector size pages (\ reqs -> do
-      _reses <- frbTryRequestMany (iDiskRing disk) reqs
-      case _reses of
-        Just reses -> return $ zipResults reses
-        Nothing -> return DRErrDeviceBusy)
-
--- ---------------------------------------------------------------------------
---
--- INTERNAL
--- Maintenance (connection and shutdown) of a device
---
--- ---------------------------------------------------------------------------
-
-data PotentialDisk = PotentialDisk { 
-    pDiskName :: String
-  , pDiskNodeName :: String
-  , pDiskHandle :: Word16
-  , pDiskBackend :: String
-  , pDiskBackendDomId :: DomId
-  }
-
-data Disk = Disk { iDiskName :: String
-  , iDiskHandle :: Word16
-  , iDiskBackendDomId :: DomId
-  , iDiskRing :: DiskRingBuffer
-  , iDiskIsReadOnly :: Bool
-  , iDiskIsRemovable :: Bool
-  , iDiskIsCDRom :: Bool
-  , iDiskNumSectors :: Word64
-  , iDiskBytesPerSector :: Word32
-  }
-
-{-# NOINLINE initializedDisksMV #-}
--- This is the global state required for this driver. 
-initializedDisksMV :: MVar [Disk]
-initializedDisksMV = unsafePerformIO $ newMVar []
-
-{-# NOINLINE potentialDisksMV #-}
-potentialDisksMV :: MVar [PotentialDisk]
-potentialDisksMV = unsafePerformIO $ newMVar []
-
-{-# NOINLINE initializationCallbacksMV #-}
-initializationCallbacksMV :: MVar [Disk -> IO ()]
-initializationCallbacksMV = unsafePerformIO $ newMVar []
-
-{-# NOINLINE potentialCallbacksMV #-}
-potentialCallbacksMV :: MVar [String -> IO ()]
-potentialCallbacksMV = unsafePerformIO $ newMVar []
-
--- Just a handy little thing
-runCallbacks :: MVar [a -> IO ()] -> a -> IO ()
-runCallbacks callbacksMV val =
-    do callbacks <- readMVar callbacksMV
-       mapM_ (\ cb -> cb val) callbacks
-
--- This initializes the device driver, by pulling the available information
--- from the Xenstore about the initial potential devices and then storing
--- that away in our list of potential devices.
-initDiskDriver :: IO ()
-initDiskDriver = 
-    do ret <- XB.xsDirectory "device/vbd"
-       case ret of
-         XBOk vbd_devs -> mapM_ generatePotentialDevice vbd_devs
-         _ -> hDEBUG "VBD: No disk devices found on initial inspection.\n"
-       ret' <- XB.xsSetWatch "device/vbd" onVBDModification
-       case ret' of
-         XBOk _ -> hDEBUG "VBD: Set new device watch on device/vbd.\n"
-         XBError msg -> hDEBUG $ "VBD: Couldn't set watch on device/vbd! (" ++ 
-                                 msg ++ ")\n"
-
--- Invoked by the Xenbus when Xen adds a new device to our local tree.
-onVBDModification :: WatchId -> String -> IO ()
-onVBDModification _ path =
-    unless (any (\x -> x == '/') (drop (length "device/vbd") path))
-           (generatePotentialDevice (drop (length "device/vbd") path))
-
--- Called from the initialization, this attempts to generate a PotentialDisk
--- from an entry in our initial XenStore
-generatePotentialDevice :: String -> IO ()
-generatePotentialDevice _nodeName | _nodeName == "" = return ()
-generatePotentialDevice _nodeName =
-    do let nodeName = "device/vbd/" ++ _nodeName
-       _vdStr       <- XB.xsRead $ nodeName ++ "/virtual-device"
-       _bidStr      <- XB.xsRead $ nodeName ++ "/backend-id"
-       _stateStr    <- XB.xsRead $ nodeName ++ "/state"
-       _backend     <- XB.xsRead $ nodeName ++ "/backend"
-       case (_vdStr, _bidStr, _stateStr, _backend) of
-         (XBOk _, XBOk bidStr, XBOk _, XBOk backend) ->
-             do _name        <- XB.xsRead $ backend ++ "/dev"
-                case _name of
-                  XBOk name ->
-                      do let (virt_dev_id::Word16) = read _nodeName
-                             (backend_id::Word16) = read bidStr
-                         hDEBUG $ "VBD: Found potential block device " ++ 
-                                  name ++ "\n"
-                         pDevices <- takeMVar potentialDisksMV 
-                         let newDev = PotentialDisk { pDiskName = name
-                                                    , pDiskHandle = virt_dev_id
-                                                    , pDiskBackend = backend
-                                                    , pDiskBackendDomId = 
-                                                        (DomId backend_id)
-                                                    , pDiskNodeName = nodeName
-                                                    }
-                         runCallbacks potentialCallbacksMV name
-                         putMVar potentialDisksMV (newDev:pDevices)
-                  _ -> maybePrintCaseError _name "disk name"
-         _ -> do maybePrintCaseError _vdStr "virtual device"
-                 maybePrintCaseError _bidStr "backend id"
-                 maybePrintCaseError _stateStr "state"
-                 maybePrintCaseError _backend "backend path"
-    where maybePrintCaseError :: XBResult a -> String -> IO () 
-          maybePrintCaseError (XBOk _) _ = return ()
-          maybePrintCaseError (XBError _) item =
-              hDEBUG $ "VBD: Couldn't get " ++ item ++ " for device node " ++ 
-                       _nodeName ++ "\n"
-
--- Called to attempt to initialize a potential device. 
-probeDisk :: PotentialDisk -> MVar (Maybe Disk) -> IO ()
-probeDisk dev resMV = do
-  _frb <- xTry $ frbCreate (pDiskBackendDomId dev)
-  case _frb of
-    Right (frb, (GrantRef grefNum), port) -> do
-      ret <- XB.xsSetWatch ((pDiskBackend dev) ++ "/state") 
-                           (onPossibleConnect dev frb resMV)
-      case ret of
-        XBOk _ -> do
-          _ <- XB.xsWrite ((pDiskNodeName dev)++"/ring-ref") (show grefNum)
-          _ <- XB.xsWrite ((pDiskNodeName dev)++"/event-channel") 
-                          (drop 1 $ dropWhile (/= ' ') $ show port)
-          _ <- XB.xsWrite ((pDiskNodeName dev)++"/state")
-		          (show xenRingInitialised)
-          return ()
-        XBError _ -> do
-          hDEBUG $ "VBD: Failed to set conn watch for disk "++
-                   (pDiskName dev)++"\n"
-          frbShutdown frb
-          putMVar resMV Nothing
-    Left e -> do
-      hDEBUG $ "VBD: Failed to create ring buffer for disk " ++ 
-               (pDiskName dev) ++ " (" ++ show e ++ ")\n"
-      putMVar resMV Nothing
-                              
-onPossibleConnect :: PotentialDisk -> DiskRingBuffer -> MVar (Maybe Disk) ->
-                     WatchId -> String -> IO ()
-onPossibleConnect dev frb resMV watch path = do
-  _stateStr <- XB.xsRead path
-  case _stateStr of
-    XBOk _state | (read _state) == xenRingInitialising -> return ()
-    XBOk _state | (read _state) == xenRingInitialisingWait -> return ()
-    XBOk _state | (read _state) == xenRingInitialised -> return ()
-    XBOk _state | (read _state) == xenRingConnected -> do
-      _dinfo <- gatherDiskInfo (pDiskBackend dev)
-      case _dinfo of
-        Just (sectors, sectorSize, info, _) -> do
-          let (cdrom, removable, readonly) = parseInfo info
-          _ <- XB.xsUnsetWatch watch
-          _ <- XB.xsWrite ((pDiskNodeName dev) ++ "/state")
-		          (show xenRingConnected)
-          hDEBUG $ "VBD: Connected to disk " ++ (pDiskName dev) ++ "\n"
-          let newDisk = Disk { 
-                          iDiskName = pDiskName dev
-                        , iDiskHandle = pDiskHandle dev
-                        , iDiskBackendDomId = pDiskBackendDomId dev
-                        , iDiskRing = frb
-                        , iDiskIsReadOnly = readonly
-                        , iDiskIsRemovable = removable
-                        , iDiskIsCDRom = cdrom
-                        , iDiskNumSectors = sectors
-                        , iDiskBytesPerSector = sectorSize
-                        }
-          runCallbacks initializationCallbacksMV newDisk
-          putMVar resMV $ Just newDisk
-        Nothing -> do
-          hDEBUG $ "VBD: ERROR: No disk info for " ++ pDiskName dev ++
-                   "?!\n"
-          putMVar resMV Nothing
-    XBOk _state | (read _state) == xenRingClosing -> fail'
-    XBOk _state | (read _state) == xenRingClosed -> fail'
-    XBOk _state -> do
-      hDEBUG $ "VBD: Weird state " ++ show _state
-      putMVar resMV Nothing
-    XBError _ -> do
-      hDEBUG $ "VBD: Error reading post-watch state for disk " ++ 
-               (pDiskName dev) ++ "\n"
-      putMVar resMV Nothing
- where fail' = do 
-        hDEBUG $ "VBD: State failure (closure) for disk "++(pDiskName dev)++"\n"
-        putMVar resMV Nothing
-
--- ---------------------------------------------------------------------------
---
--- INTERNAL
--- Validation and performance of I/O
---
--- ---------------------------------------------------------------------------
-
--- |The possible results from a disk operation.
-data DResult = DROK 
-               -- ^The operation was successful
-             | DRErrDeviceBusy 
-               -- ^You called one of the Try functions, and the internal 
-               -- buffer was full.
-             | DRErrInvalidSectorOrSize
-               -- ^The sector and size information you sent would have run
-               -- off the beginning or end of the disk.
-             | DRErrMisalignedSize
-               -- ^The size you sent was not a multiple of the sector size.
-             | DRErrNotEnoughPages
-               -- ^You didn't pass in enough pages to cover the size.
-             | DRErrNoGrantsLeft
-               -- ^There were an insufficient number of grant references left
-               -- to perform the request
-             | DRErrOperationNotSupported
-               -- ^The operation you requested is not supported by the disk
-             | DRErrDiskFailure
-               -- ^The disk itself reported a failure in the operation
-    deriving (Show,Ord,Eq)
-
--- Given a list of results, combine them into a single result that we can
--- return to the user. This functions by basically returning the first error
--- result.
-zipResults :: [DiskResponse] -> DResult
-zipResults [] = DROK
-zipResults ((DiskResponse{ drspStatus = (#const BLKIF_RSP_EOPNOTSUPP) }):_) =
-    DRErrOperationNotSupported
-zipResults ((DiskResponse{ drspStatus = (#const BLKIF_RSP_ERROR) }):_) =
-    DRErrDiskFailure
-zipResults ((DiskResponse{ drspStatus = (#const BLKIF_RSP_OKAY) }):rest) =
-    zipResults rest
-zipResults _ =
-    DRErrDiskFailure
-
--- Make sure the arguments passed to this disk operation are valid. If they
--- are, convert them into DiskRequest objects and pass them onto the passed-in
--- function to complete the operation. Otherwise, inform the user on why the
--- operation failed.
-argumentsCheckOut :: Disk -> DiskOperation -> 
-                     Word64 -> Word32 -> [VPtr a] ->
-                     ([DiskRequest] -> IO DResult) ->
-                     IO DResult
-argumentsCheckOut disk op sector size pages k
-  | size `mod` iDiskBytesPerSector disk /= 0 = return DRErrMisalignedSize
-  | genericLength pages * 4096 < size        = return DRErrNotEnoughPages
-  | calcSectors > iDiskNumSectors disk       = return DRErrInvalidSectorOrSize
-  | otherwise                                = do
-    (requests, status) <- spliceIntoRequests sector size pages
-    fromDROK status (return status) $ do
-      res <- k requests
-      cleanUpRequests requests
-      return res
- where
-  calcSectors = sector + fromIntegral (size `div` iDiskBytesPerSector disk)
-
-  requestSize = 11 * 4096
-
-  fromDROK s def m | s == DROK = m
-                   | otherwise = def
-
-  spliceIntoRequests :: Word64 -> Word32 -> [VPtr a] ->
-                        IO ([DiskRequest], DResult)
-  spliceIntoRequests _ 0 _ = return ([], DROK)
-  spliceIntoRequests sec s ps | s <= requestSize = do
-    (segs, status) <- spliceIntoSegments s ps
-    fromDROK status (return ([],status)) $ do
-      reqId <- nextId
-      let request = DiskRequest {
-                      dreqOperation = op
-                    , dreqHandle = iDiskHandle disk
-                    , dreqId = reqId
-                    , dreqSector = sec
-                    , dreqSegments = segs
-                    }
-      return ([request], DROK)
-  spliceIntoRequests sec s ps = do
-    let sec' = sec + fromIntegral (requestSize `div` iDiskBytesPerSector disk)
-    let s' = s - requestSize
-    let (as,bs) = splitAt 11 ps
-    (rest, status) <- spliceIntoRequests sec' s' bs
-    fromDROK status (return ([],status)) $ do
-      (first, status') <- spliceIntoRequests sec requestSize as
-      let cleanup = cleanUpRequests rest >> return ([],status')
-      fromDROK status' cleanup $ do
-        () <- assert (length first == 1) $ return ()
-        return (first ++ rest, status')
-  -- --------------------------------------------------------------------
-  spliceIntoSegments :: Word32 -> [VPtr a] -> 
-                        IO ([DiskRequestSegment], DResult)
-  spliceIntoSegments 0 _ = return ([], DROK)
-  spliceIntoSegments s (fpage:_) | s <= 4096 = do
-    _ref <- xTry allocRef 
-    case _ref of
-      Right ref -> do 
-        grantAccess ref (iDiskBackendDomId disk) fpage True
-        let sectors = (s `div` (iDiskBytesPerSector disk)) - 1
-        let segment = DiskRequestSegment {
-                        dsegGrant = ref
-                      , dsegFirstSect = 0
-                      , dsegLastSect = fromIntegral sectors
-                      }
-        return ([segment], DROK)
-      Left _ -> do
-        return ([], DRErrNoGrantsLeft)
-  spliceIntoSegments s (fpage:rpages) = do
-    (first, status) <- spliceIntoSegments 4096 [fpage]
-    fromDROK status (return ([],status)) $ do
-      () <- assert (length first == 1) $ return ()
-      (rest, status') <- spliceIntoSegments (s - 4096) rpages
-      let cleanup = cleanUpSegments first >> return ([],status')
-      fromDROK status cleanup (return (first ++ rest, status'))
-  spliceIntoSegments _ [] =
-    error "INTERNAL ERROR: XenDevice.Disk.spliceIntoSegments, shouldn't be here"
-  -- --------------------------------------------------------------------
-  cleanUpRequests :: [DiskRequest] -> IO ()
-  cleanUpRequests reqs = mapM_ (cleanUpSegments . dreqSegments) reqs
-  -- --------------------------------------------------------------------
-  cleanUpSegments :: [DiskRequestSegment] -> IO ()
-  cleanUpSegments segs = mapM_ cleanupRef segs
-    where
-    cleanupRef DiskRequestSegment { dsegGrant = ref } = do
-      endAccess ref
-      freeRef ref
-
-{-# NOINLINE currentId #-}
-currentId :: IORef Word64
-currentId = unsafePerformIO $ newIORef 0
-
-nextId :: IO Word64
-nextId = atomicModifyIORef currentId (\ x -> (x + 1, x))
-
--- ---------------------------------------------------------------------------
---
--- INTERNAL
--- Other internals not dealing with the ring buffer
---
--- ---------------------------------------------------------------------------
-
-gatherDiskInfo :: String -> IO (Maybe (Word64, Word32, Word32, String))
-gatherDiskInfo path = do
-  resNumSecs <- XB.xsRead $ path ++ "/sectors"
-  resSecSize <- XB.xsRead $ path ++ "/sector-size"
-  resInfo <- XB.xsRead $ path ++ "/info"
-  resName <- XB.xsRead $ path ++ "/dev"
-  case (resNumSecs, resSecSize, resInfo, resName) of
-    (XBOk numSecsStr, XBOk secSizeStr, XBOk infoStr, XBOk name) ->
-        return $ Just $ ((read numSecsStr), (read secSizeStr), (read infoStr), name)
-    _ -> return Nothing
-
-parseInfo :: Word32 -> (Bool, Bool, Bool)
-parseInfo info = ( (testBit info 0), (testBit info 1), (testBit info 2) )
-
-hDEBUG :: String -> IO ()
-hDEBUG = Hypervisor.Debug.writeDebugConsole
-
--- ---------------------------------------------------------------------------
---
--- INTERNAL
--- The implementation of the VBD ring buffer
---
--- ---------------------------------------------------------------------------
-
+#include <stdint.h>
+#include <stdlib.h>
 #include "xen/xen.h"
 #include "xen/io/blkif.h"
+#include "xen/io/xenbus.h"
 
-type DiskRingBuffer = FrontRingBuffer DiskRequest DiskResponse Word64
+data Disk = Disk {
+    diskName            :: String
+  , diskHandle          :: Word16
+  , diskRing            :: FrontEndRing DiskRequest DiskResponse
+  , isDiskReadOnly      :: Bool
+  , isDiskRemovable     :: Bool
+  , diskSectors         :: Word
+  , diskSectorSize      :: Word
+  , diskSupportsBarrier :: Bool
+  , diskSupportsFlush   :: Bool
+  , diskSupportsDiscard :: Bool
+  -- You may not hold both of these locks at the same time.
+  , nextRequestIdMV     :: MVar Word64
+  , requestTableMV      :: MVar (Map Word64 (MVar (Maybe ErrorCode)))
+  }
+
+advanceReqId :: Word64 -> Word64
+advanceReqId x = if (x' == 0) then 1 else x'
+ where x' = x + 1
+
+-- |List all the disks available to the domain.
+listDisks :: XenStore -> IO [String]
+listDisks xs = do
+  ents <- xsDirectory xs "device/vbd"
+  forM (filter (not . null) ents) $ \ ent -> do
+    backend <- xsRead xs ("device/vbd/" ++ ent ++ "/backend")
+    xsRead xs (backend ++ "/dev")
+
+-- |Attach to a disk device and prepare it for operation.
+openDisk :: XenStore -> String -> IO Disk
+openDisk xs name = do
+  (feDir, beDir) <- findDevice xs name
+  secSize <- read     `fmap` xsRead xs (beDir ++ "/sector-size")
+  numSecs <- read     `fmap` xsRead xs (beDir ++ "/sectors")
+  readOnl <- readMode `fmap` xsRead xs (beDir ++ "/mode")
+  isRemov <- readRemv `fmap` xsRead xs (beDir ++ "/removable")
+  dom     <- read     `fmap` xsRead xs (feDir ++ "/backend-id")
+  hndle   <- read     `fmap` xsRead xs (feDir ++ "/virtual-device")
+  --
+  ring  <- frbCreate diskRingType (toDomId (dom :: Word))
+  req   <- newMVar 1
+  table <- newMVar Map.empty
+  xsWrite xs (feDir ++ "/ring-ref") (show (unGrantRef (frbGetRef ring)))
+  xsWrite xs (feDir++"/event-channel") (show (fromPort (frbGetPort ring)::Word))
+  xsWrite xs (feDir ++ "/state") (show ((#const XenbusStateInitialised)::Word))
+  waitForState (beDir ++ "/state") (show ((#const XenbusStateConnected)::Word))
+  xsWrite xs (feDir ++ "/state") (show ((#const XenbusStateConnected)::Word))
+  --
+  canBarrier <- testFeature (beDir ++ "/feature-barrier")
+  canFlush   <- testFeature (beDir ++ "/feature-flush-cache")
+  canDiscard <- testFeature (beDir ++ "/feature-discard")
+  --
+  _ <- forkIO $ forever $ processResponses ring table
+  return Disk {
+    diskName            = name
+  , diskHandle          = hndle
+  , diskRing            = ring
+  , isDiskReadOnly      = readOnl
+  , isDiskRemovable     = isRemov
+  , diskSectors         = numSecs
+  , diskSectorSize      = secSize
+  , diskSupportsBarrier = canBarrier
+  , diskSupportsFlush   = canFlush
+  , diskSupportsDiscard = canDiscard
+  , nextRequestIdMV     = req
+  , requestTableMV      = table
+  }
+ where
+  readMode "r" = True
+  readMode "w" = False
+  readMode  _  = throw EREMOTEIO
+  readRemv "0" = False
+  readRemv "1" = True
+  readRemv  _  = throw EIO
+  --
+  waitForState key val = do
+    val' <- xsRead xs key
+    unless (val' == val) $ do
+      threadDelay 100000
+      waitForState key val
+  --
+  testFeature key = handle (\ (_ :: ErrorCode) -> return False) $ do
+    val <- xsRead xs key
+    return (val == "1")
+  --
+  processResponses ring tableMV = do
+    resps <- frbReadResponses ring
+    modifyMVar_ tableMV $ \ table -> do
+      foldM handleResponse table resps
+  --
+  handleResponse table resp =
+    case Map.lookup (respId resp) table of
+      Nothing -> do
+        writeDebugConsole "WARNING: Received response to unsent disk request.\n"
+        return table
+      Just retMV -> do
+        unless (respStatus resp == 0) $
+          writeDebugConsole ("Caugh respStatus of " ++ show (respStatus resp) ++ "\n")
+        let retval = case respStatus resp of
+                       (#const BLKIF_RSP_EOPNOTSUPP) -> Just EOPNOTSUPP
+                       (#const BLKIF_RSP_ERROR)      -> Just EIO
+                       (#const BLKIF_RSP_OKAY)       -> Nothing
+                       _                             -> Just EPROTO
+        putMVar retMV retval
+        return (Map.delete (respId resp) table)
+
+
+-- Given the name of a device, find its ID, if it's around.
+findDevice :: XenStore -> String -> IO (String, String)
+findDevice xs str = do
+  ents <- xsDirectory xs "device/vbd"
+  maps <- forM (filter (not . null) ents) $ \ ent -> do
+            backend <- xsRead xs ("device/vbd/" ++ ent ++ "/backend")
+            name <- xsRead xs (backend ++ "/dev")
+            return (name, ("device/vbd/" ++ ent, backend))
+  case lookup str maps of
+    Nothing  -> throw ENODEV
+    Just res -> return res
+
+-- |Read data n bytes from the given sector on the disk. If n is not an even
+-- multiple of the sector size, it will be rounded up to the nearest sector.
+readDisk :: Disk -> Word -> Word -> IO ByteString
+readDisk disk inlen sector = do
+  oreqid <- takeMVar (nextRequestIdMV disk)
+  (reqs, nextReq, bstr) <- buildReqs length' oreqid sector
+  putMVar (nextRequestIdMV disk) nextReq
+  mvs <- modifyMVar (requestTableMV disk) $ \ reqTable ->
+           foldM addReqTableEntry (reqTable, []) reqs
+  frbWriteRequests (diskRing disk) reqs
+  errs <- mapM takeMVar mvs
+  mapM_ endAccess (map bsGrant (concatMap segments reqs))
+  case catMaybes errs of
+    []    -> return bstr
+    (x:_) -> throw x
+ where
+  numSecs     = (inlen + (diskSectorSize disk - 1)) `div` (diskSectorSize disk)
+  length'     = numSecs * diskSectorSize disk
+  secsPerPage = 4096 `div` diskSectorSize disk
+  --
+  buildReqs 0 reqid _ = return ([], reqid, BS.empty)
+  buildReqs left myreq stsec = do
+    (segs, fbstr, left', stsec') <- buildSegs left stsec
+    (rreqs, rid, rbstr) <- buildReqs left' (advanceReqId myreq) stsec'
+    let req = DiskRequest {
+                reqOp       = BlockOpRead
+              , numSegments = fromIntegral (length segs)
+              , devHandle   = diskHandle disk
+              , reqId       = myreq
+              , sectorNum   = fromIntegral stsec
+              , segments    = segs
+              , numSectors  = undefined
+              , secure      = undefined
+              }
+    return (req : rreqs, rid, fbstr `BS.append` rbstr)
+  --
+  buildSegs 0    stsec = return ([], BS.empty, 0, stsec)
+  buildSegs left stsec = do
+    let sectorsLeft = left `div` diskSectorSize disk
+        mySectors   = min secsPerPage sectorsLeft
+        myLength    = diskSectorSize disk * mySectors
+        left'       = left - myLength
+        stsec'      = stsec + mySectors
+    page <- allocPage
+    [ref] <- grantAccess (frbGetDomain (diskRing disk)) page 4096 True
+    mybstr <- unsafePackCStringFinalizer page (fromIntegral myLength)
+                (freePage page)
+    let seg = Segment ref 0 (fromIntegral mySectors - 1)
+    (rsegs, rbstr, 0, ensec) <- buildSegs left' stsec'
+    return (seg : rsegs, BS.fromStrict mybstr `BS.append` rbstr, 0, ensec)
+
+addReqTableEntry :: (Map Word64 (MVar (Maybe ErrorCode)),
+                     [MVar (Maybe ErrorCode)]) ->
+                    DiskRequest ->
+                    IO (Map Word64 (MVar (Maybe ErrorCode)),
+                        [MVar (Maybe ErrorCode)])
+addReqTableEntry (inTable, rmvs) req = do
+  mv <- newEmptyMVar
+  return (Map.insert (reqId req) mv inTable, mv : rmvs)
+
+-- |Write the bytestring to the given sector on the disk. The ByteString
+-- provided should be an even multiple of sector size. The results if it
+-- is not are not defined.
+writeDisk :: Disk -> ByteString -> Word -> IO ()
+writeDisk disk bs sector = do
+  writeDebugConsole ("Writing bs starting with " ++ show (BS.take 16 bs) ++ "\n")
+  (segs, pgs) <- segmentize Nothing (BS.toChunks bs)
+  firstReqId <- takeMVar (nextRequestIdMV disk)
+  (reqs, nextReqId) <- requestify segs sector firstReqId
+  putMVar (nextRequestIdMV disk) $! nextReqId
+  mvars <- modifyMVar (requestTableMV disk) $ \ reqTable ->
+             foldM addReqTableEntry (reqTable, []) reqs
+  frbWriteRequests (diskRing disk) reqs
+  errs <- mapM takeMVar mvars
+  mapM_ endAccess (map bsGrant segs)
+  mapM_ freePage pgs
+  case catMaybes errs of
+    []      -> return ()
+    (err:_) -> throw err
+ where
+  dom         = frbGetDomain (diskRing disk)
+  --
+  requestify :: [BlockSegment] -> Word -> Word64 -> IO ([DiskRequest], Word64)
+  requestify []   _ nextReq =
+    return ([], nextReq)
+  requestify segs startSec myReq = do
+    let (req1segs, osegs) = splitAt 11 segs
+        nsecs             = foldr (\ a acc ->
+                                    fromIntegral (bsLast a) -
+                                    fromIntegral (bsFirst a) +
+                                    1 + acc)
+                                  0 req1segs
+        request           = DiskRequest {
+          reqOp       = BlockOpWrite
+        , numSegments = fromIntegral (length req1segs)
+        , devHandle   = diskHandle disk
+        , reqId       = myReq
+        , sectorNum   = fromIntegral startSec
+        , segments    = req1segs
+        , numSectors  = undefined
+        , secure      = undefined
+        }
+    (rres, resreqid) <- requestify osegs (startSec + nsecs) (advanceReqId myReq)
+    return (request : rres, resreqid)
+  --
+  segmentize Nothing [] = return ([], [])
+  segmentize (Just (page, len)) [] = do
+    [ref] <- grantAccess dom page 4096 False
+    let endsec = fromIntegral ((len - 1)`div` 512)
+    return ([Segment ref 0 endsec], [page])
+  segmentize Nothing chunks = do
+    pg <- allocPage
+    segmentize (Just (pg, 0)) chunks
+  segmentize info@(Just (page, len)) chunks@(chunk:rest)
+    | SBS.length chunk == 0 = segmentize info rest
+    | len == 4096           = do
+       [ref] <- grantAccess dom page 4096 False
+       (rsegs, rpages) <- segmentize Nothing chunks
+       return (Segment ref 0 7 : rsegs, page : rpages)
+    | otherwise             = do
+       let (mypart, rchunk) = SBS.splitAt (4096 - len) chunk
+       len' <- unsafeUseAsCStringLen mypart $ \ (ptr, plen) -> do
+                 memcpy (page `plusPtr` len) ptr (fromIntegral plen)
+                 return (len + plen)
+       segmentize (Just (page, len')) (rchunk : rest)
+
+-- |Create a write barrier on the disk; all writes prior to this request
+-- will be completed before any commands after this event.
+diskWriteBarrier :: Disk -> IO ()
+diskWriteBarrier disk = do
+  myid <- modifyMVar (nextRequestIdMV disk) (\ x -> return (advanceReqId x, x))
+  let req = DiskRequest {
+              reqOp       = BlockOpWriteBarrier
+            , numSegments = 0
+            , devHandle   = diskHandle disk
+            , reqId       = myid
+            , sectorNum   = 0
+            , segments    = []
+            , numSectors  = undefined
+            , secure      = undefined
+            }
+  [mv] <- modifyMVar (requestTableMV disk) (\ x -> addReqTableEntry (x,[]) req)
+  frbWriteRequests (diskRing disk) [req]
+  err <- takeMVar mv
+  case err of
+    Nothing -> return ()
+    Just e  -> throw e
+
+-- |Flush any cached items out to disk.
+flushDiskCaches :: Disk -> IO ()
+flushDiskCaches disk = do
+  myid <- modifyMVar (nextRequestIdMV disk) (\ x -> return (advanceReqId x, x))
+  let req = DiskRequest {
+              reqOp       = BlockOpFlushDiskCache
+            , numSegments = 0
+            , devHandle   = diskHandle disk
+            , reqId       = myid
+            , sectorNum   = 0
+            , segments    = []
+            , numSectors  = undefined
+            , secure      = undefined
+            }
+  [mv] <- modifyMVar (requestTableMV disk) (\ x -> addReqTableEntry (x,[]) req)
+  frbWriteRequests (diskRing disk) [req]
+  err <- takeMVar mv
+  case err of
+    Nothing -> return ()
+    Just e  -> throw e
+
+-- |Indicate to the backend device that a region of storage is no longer in use
+-- and may be discarded at any time without impact. If the boolean flag is
+-- present, it also ensures that the discarded region is rendered
+-- unrecoverable before the command returns.
+--
+-- You may also know this command as trim or unmap. The Word arguments are
+-- the first sector and number of sectors to discard.
+discardRegion :: Disk -> Word64 -> Word64 -> Bool -> IO ()
+discardRegion disk sector num dosec = do
+  myid <- modifyMVar (nextRequestIdMV disk) (\ x -> return (advanceReqId x, x))
+  let req = DiskRequest {
+              reqOp       = BlockOpDiscard
+            , numSegments = 0
+            , devHandle   = diskHandle disk
+            , reqId       = myid
+            , sectorNum   = sector
+            , segments    = []
+            , numSectors  = num
+            , secure      = dosec
+            }
+  [mv] <- modifyMVar (requestTableMV disk) (\ x -> addReqTableEntry (x,[]) req)
+  frbWriteRequests (diskRing disk) [req]
+  err <- takeMVar mv
+  case err of
+    Nothing -> return ()
+    Just e  -> throw e
+
+-- ----------------------------------------------------------------------------
+
+diskRingType :: FrontEndRingType DiskRequest DiskResponse
+diskRingType = FrontEndRingType {
+    entrySize    = max (#size blkif_request_t) (#size blkif_response_t)
+  , peekResponse = readDiskResponse
+  , pokeRequest  = writeDiskRequest
+  }
+
+data BlockOperation = BlockOpRead
+                    | BlockOpWrite
+                    | BlockOpWriteBarrier
+                    | BlockOpFlushDiskCache
+                    | BlockOpDiscard
+ deriving (Eq)
+
+instance Storable BlockOperation where
+  sizeOf _    = 1
+  alignment _ = 1
+  peek ptr    = do
+    val <- peek (castPtr ptr) :: IO Word8
+    case val of
+      (#const BLKIF_OP_READ)            -> return BlockOpRead
+      (#const BLKIF_OP_WRITE)           -> return BlockOpWrite
+      (#const BLKIF_OP_WRITE_BARRIER)   -> return BlockOpWriteBarrier
+      (#const BLKIF_OP_FLUSH_DISKCACHE) -> return BlockOpFlushDiskCache
+      (#const BLKIF_OP_DISCARD)         -> return BlockOpDiscard
+      _                                 -> throw EIO
+  poke ptr BlockOpRead =
+    poke (castPtr ptr) ((#const BLKIF_OP_READ) :: Word8)
+  poke ptr BlockOpWrite =
+    poke (castPtr ptr) ((#const BLKIF_OP_WRITE) :: Word8)
+  poke ptr BlockOpWriteBarrier =
+    poke (castPtr ptr) ((#const BLKIF_OP_WRITE_BARRIER) :: Word8)
+  poke ptr BlockOpFlushDiskCache =
+    poke (castPtr ptr) ((#const BLKIF_OP_FLUSH_DISKCACHE) :: Word8)
+  poke ptr BlockOpDiscard =
+    poke (castPtr ptr) ((#const BLKIF_OP_DISCARD) :: Word8)
 
 data DiskRequest = DiskRequest {
-    dreqOperation   :: DiskOperation
-  , dreqHandle      :: Word16
-  , dreqId          :: Word64
-  , dreqSector      :: Word64
-  , dreqSegments    :: [DiskRequestSegment]
+    reqOp       :: BlockOperation
+  , numSegments :: Word8
+  , devHandle   :: Word16
+  , reqId       :: Word64
+  , sectorNum   :: Word64
+  , segments    :: [BlockSegment]
+    -- these are only used for discard requests
+  , numSectors  :: Word64
+  , secure      :: Bool
   }
 
-data DiskOperation = DiskRead
-                   | DiskWrite
-
-data DiskRequestSegment = DiskRequestSegment {
-    dsegGrant     :: GrantRef
-  , dsegFirstSect :: Word8
-  , dsegLastSect  :: Word8
+data BlockSegment = Segment {
+    bsGrant     :: GrantRef
+  , bsFirst     :: Word8
+  , bsLast      :: Word8
   }
-  deriving (Show)
-  
+
+instance Storable BlockSegment where
+  sizeOf _    = 8
+  alignment _ = 1
+  peek ptr    = do
+    g <- GrantRef `fmap` (#peek struct blkif_request_segment,gref)       ptr
+    f <-                 (#peek struct blkif_request_segment,first_sect) ptr
+    l <-                 (#peek struct blkif_request_segment,last_sect)  ptr
+    return (Segment g f l)
+  poke ptr s  = do
+    (#poke struct blkif_request_segment,gref)       ptr (unGrantRef (bsGrant s))
+    (#poke struct blkif_request_segment,first_sect) ptr (bsFirst s)
+    (#poke struct blkif_request_segment,last_sect)  ptr (bsLast s)
+
 data DiskResponse = DiskResponse {
-    drspId        :: Word64
-  , drspOperation :: DiskOperation
-  , drspStatus    :: Int16
+    respId      :: Word64
+  , _respOp     :: BlockOperation
+  , respStatus  :: Int16
   }
 
-num2operation :: Word8 -> DiskOperation
-num2operation (#const BLKIF_OP_READ) = DiskRead
-num2operation (#const BLKIF_OP_WRITE) = DiskWrite
-num2operation _ = error "Unknown value to convert to disk op!"
+writeDiskRequest :: Ptr DiskRequest -> DiskRequest -> IO ()
+writeDiskRequest ptr req = do
+  memset ptr 0xab 112
+  (#poke blkif_request_t,operation) ptr (reqOp req)
+  if reqOp req == BlockOpDiscard
+    -- write a blkif_reqeust_discard
+    then do (#poke blkif_request_discard_t,flag)          ptr discardFlag
+            (#poke blkif_request_discard_t,handle)        ptr (devHandle req)
+            (#poke blkif_request_discard_t,id)            ptr (reqId req)
+            (#poke blkif_request_discard_t,sector_number) ptr (sectorNum req)
+            (#poke blkif_request_discard_t,nr_sectors)    ptr (numSectors req)
+    -- write a blkif_request
+    else do (#poke blkif_request_t,nr_segments)   ptr numSegs
+            (#poke blkif_request_t,handle)        ptr (devHandle req)
+            (#poke blkif_request_t,id)            ptr (reqId req)
+            (#poke blkif_request_t,sector_number) ptr (sectorNum req)
+            pokeArray (castPtr ptr `plusPtr` (#offset blkif_request_t,seg))
+                      (segments req)
+ where
+  numSegs     = fromIntegral (length (segments req)) :: Word8
+  discardFlag = if (secure req) then (#const BLKIF_DISCARD_SECURE) else 0::Word8
 
-operation2num :: DiskOperation -> Word8
-operation2num DiskRead = (#const BLKIF_OP_READ)
-operation2num DiskWrite = (#const BLKIF_OP_WRITE)
+readDiskResponse :: Ptr DiskResponse -> IO DiskResponse
+readDiskResponse ptr = do
+  ident  <- (#peek blkif_response_t,id)        ptr
+  op     <- (#peek blkif_response_t,operation) ptr
+  status <- (#peek blkif_response_t,status)    ptr
+  return (DiskResponse ident op status)
 
-instance RingBufferable DiskRequest DiskResponse Word64 where
-  requestId DiskRequest{ dreqId = rid } = rid
-  responseId DiskResponse{ drspId = rid } = rid
-  entrySize _ _ = max (#size blkif_request_t) (#size blkif_response_t)
 
-instance FrontRingBufferable DiskRequest DiskResponse Word64 where
-  peekResponse ptr = do
-    rid <- (#peek blkif_response_t, id) (castPtr ptr)
-    op_num <- (#peek blkif_response_t, operation) (castPtr ptr)
-    stat <- (#peek blkif_response_t, status) (castPtr ptr)
-    return DiskResponse { 
-             drspId = rid
-           , drspOperation = num2operation op_num
-           , drspStatus = stat 
-           }
-  pokeRequest ptr request = do
-    (#poke blkif_request_t, operation) (castPtr ptr) 
-           (operation2num (dreqOperation request))
-    (#poke blkif_request_t, nr_segments) (castPtr ptr)
-           (length (dreqSegments request))
-    (#poke blkif_request_t, handle) (castPtr ptr) (dreqHandle request)
-    (#poke blkif_request_t, id) (castPtr ptr) (dreqId request)
-    (#poke blkif_request_t, sector_number) (castPtr ptr) (dreqSector request)
-    zipWithM_ (\ seg ptr' -> do
-                 let (GrantRef gref_num) = (dsegGrant seg)
-                 (#poke struct blkif_request_segment, gref) (castPtr ptr')
-                              gref_num
-                 (#poke struct blkif_request_segment, first_sect)
-                              (castPtr ptr')
-                              (dsegFirstSect seg)
-                 (#poke struct blkif_request_segment, last_sect) 
-                              (castPtr ptr')
-                              (dsegLastSect seg))
-              (dreqSegments request)
-              (iterate (\ ptr' -> 
-                          ptr' `plusPtr` (#size struct blkif_request_segment))
-                       (ptr `plusPtr` (#offset blkif_request_t, seg)))
+foreign import ccall unsafe "memcpy"
+  memcpy :: Ptr a -> Ptr a -> Word -> IO ()
 
+foreign import ccall unsafe "memset"
+  memset :: Ptr a -> Word8 -> Word -> IO ()

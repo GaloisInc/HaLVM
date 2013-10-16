@@ -1,7 +1,7 @@
 name:           XenDevice
-version:        1.1.0
+version:        2.0.0
 license:        BSD3
-author:         Adam Wick <awick@galois.com>, Magnus Carlsson <magnus@galois.com>
+author:         Adam Wick <awick@galois.com>
 maintainer:     Adam Wick <awick@galois.com>
 description:    This package provides access to the Xen paravirtualized 
                 devices; virtual disks, virtual network cards, the virtual
@@ -18,26 +18,19 @@ cabal-version:  >= 1.2
 tested-with:    GHC ==6.8.0
 
 library
-  build-depends:    base >=3, bytestring >= 0.9, HALVMCore >=1.1.0,
-                    mtl >=1.1, array >=0.1, containers >=0.1,
-                    BoundedChan
-  exposed-modules:  Communication.RingBuffer,
-                    XenDevice.Console,
-                    XenDevice.ConsoleAux,
-                    XenDevice.ConsoleBackend,
-                    XenDevice.ConsoleInterface,
-                    XenDevice.HypervisorConsole,
-                    XenDevice.Codecs,
-                    XenDevice.Xenbus,
-                    XenDevice.XenbusInterface,
-                    XenDevice.XenRingState,
-                    XenDevice.NIC,
-                    XenDevice.Disk,
-                    XenDevice.PCI
-  extensions:       CPP, MultiParamTypeClasses, FunctionalDependencies,
-                    UndecidableInstances, OverlappingInstances,
-                    ForeignFunctionInterface, ScopedTypeVariables, BangPatterns
+  build-depends:
+                    base >= 4.7 && < 5.0,
+                    bytestring >= 0.10.3 && < 0.11,
+                    HALVMCore >= 2.0.0 && < 3.0.0,
+                    containers >= 0.5.0.0 && < 0.9
+  exposed-modules:
+                    Communication.RingBuffer,
+                    XenDevice.Disk
+--                    XenDevice.NIC,
+--                    XenDevice.PCI
+  extensions:
+                    BangPatterns,
+                    CPP,
+                    ForeignFunctionInterface,
+                    ScopedTypeVariables
   ghc-options:      -O2 -Wall
-  include-dirs:     cbits/include
-  c-sources:        cbits/console.c,
-                    cbits/xenbus.c
