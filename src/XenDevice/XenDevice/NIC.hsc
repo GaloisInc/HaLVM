@@ -15,580 +15,297 @@
 -- to the network device. If successful, it can then use it to send and 
 -- receive packets.
 --
-
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
-module XenDevice.NIC (dNICs,
-                      potentialNICs, notifyOnNewPotentialNIC,
-                      NIC,
-                      initializedNICs, notifyOnNewInitializedNIC,
-                      isNICInitialized, initializeNIC,
-                      getNICName,
-                      RxHandler,
-                      setReceiveHandler,
-                      TxResult(..),
-                      transmitPacket,
-                      tryTransmitPacket)
-    where
-
-import XenDevice.Xenbus
-import XenDevice.XenRingState
+module XenDevice.NIC (
+         NIC
+       , listNICs
+       , openNIC
+       , sendPacket
+       , setReceiveHandler
+       )
+ where
 
 import Communication.RingBuffer
 import Control.Concurrent
-import Control.Exception(assert)
+import Control.Exception
 import Control.Monad
-import Control.Monad.Error() -- For Monad (Either a) instance
 import Data.Bits
-import qualified Data.ByteString.Internal as BSI
-import Data.ByteString.Lazy(ByteString)
-import qualified Data.ByteString.Lazy as BS
+import qualified Data.ByteString as SBS
+import Data.ByteString.Lazy(ByteString,fromChunks,toChunks)
+import Data.ByteString.Unsafe(unsafePackCStringFinalizer, unsafeUseAsCStringLen)
 import Data.Int
-import Data.IORef
-import Data.List
-import qualified Data.Map as Map
+import Data.Map.Strict(Map)
+import qualified Data.Map.Strict as Map
+import Data.Maybe
 import Data.Word
-import Foreign.ForeignPtr
 import Foreign.Ptr
 import Foreign.Storable
-import GHC.IO(unsafePerformIO)
-import Hypervisor.Basics
 import Hypervisor.Debug
-import Hypervisor.Kernel
+import Hypervisor.DomainInfo
+import Hypervisor.ErrorCodes
 import Hypervisor.Memory
+import Hypervisor.Port
+import Hypervisor.XenStore
 
--- |The device driver data you should pass to halvm_kernel or
--- halvm_kernel_daemon
-dNICs :: DeviceDriver
-dNICs = DeviceDriver { devName = "XenDeviceInternalNICs"
-                     , dependencies = [dXenbus]
-                     , initialize = initNICDriver
-                     , shutdown = shutdownNICDriver
-                     }
+#include <stdint.h>
+#include <stdlib.h>
+#include "xen/xen.h"
+#include "xen/io/netif.h"
+#include "xen/io/xenbus.h"
 
--- ---------------------------------------------------------------------------
---
--- Device driver initialization and shutdown
---
--- ---------------------------------------------------------------------------
+data NIC = NIC {
+    nicTxRing    :: FrontEndRing TxRequest TxResponse
+  , nicTxId      :: MVar Word16
+  , nicTxTable   :: MVar (Map Word16 (MVar (Maybe ErrorCode)))
+  , nicRxHandler :: MVar (ByteString -> IO ())
+  }
 
--- Initialize the network driver
-initNICDriver :: IO ()
-initNICDriver = do
-  ret <- xsDirectory "device/vif"
-  case ret of
-    XBOk vif_devs -> mapM_ generatePotentialDevice vif_devs
-    _ -> hDEBUG $ "VIF: No network devices found upon initial inspection.\n"
-  ret' <- xsSetWatch "device/vif" onVIFModification
-  case ret' of
-    XBOk _ -> hDEBUG $ "VIF: Set new device watch on device/vif.\n"
-    _ -> hDEBUG $ "VIF: Couldn't set new device watch on device/vif.\n"
- where onVIFModification :: WatchId -> String -> IO ()
-       onVIFModification _ path =
-           unless (any (\ x -> x == '/') (drop (length "device/vif") path))
-                  (generatePotentialDevice (drop (length "device/vif") path))
+listNICs :: XenStore -> IO [String]
+listNICs xs = do
+  ents <- xsDirectory xs "device/vif"
+  forM (filter (not . null) ents) $ \ ent -> do
+    xsRead xs ("device/vif/" ++ ent ++ "/mac")
 
--- Shut down the network driver
-shutdownNICDriver :: IO ()
-shutdownNICDriver = return () -- FIXME!
-
--- ---------------------------------------------------------------------------
---
--- Types, data structures and routines for potential NICs
---
--- ---------------------------------------------------------------------------
-
-data PotentialNIC = PotentialNIC { potName              :: String
-                                 , potHandle            :: Word16
-                                 , potBackend           :: String
-                                 , potBackendDom        :: DomId
-                                 , potNodeName          :: String
-                                 }
-
--- The set of potential NICs
-potentials :: IORef [PotentialNIC]
-potentials = unsafePerformIO $ newIORef []
-{-# NOINLINE potentials #-}
-
--- The set of callbacks for newly-found potential devices
-newPotentialCallbacks :: IORef [String -> IO ()]
-newPotentialCallbacks = unsafePerformIO $ newIORef []
-{-# NOINLINE newPotentialCallbacks #-}
-
-potentialNICs :: IO [String]
-potentialNICs = map potName `fmap` readIORef potentials
-
-notifyOnNewPotentialNIC :: (String -> IO ()) -> IO ()
-notifyOnNewPotentialNIC handler =
-    atomicModifyIORef newPotentialCallbacks
-       (\ ls -> (handler:ls, ()))
-
-generatePotentialDevice :: String -> IO ()
-generatePotentialDevice "" = return () -- Happens when we first set the watch
-generatePotentialDevice _nodeName = do
-  let nodeName = "device/vif/" ++ _nodeName
-  _bidStr <- xsRead $ nodeName ++ "/backend-id"
-  _macStr <- xsRead $ nodeName ++ "/mac"
-  _backend <- xsRead $ nodeName ++ "/backend"
-  case(_bidStr, _macStr, _backend) of
-    (XBOk bidStr, XBOk macStr, XBOk backend) -> do
-      let (virtDevId::Word16) = read _nodeName
-          (backendId::Word16) = read bidStr
-      hDEBUG $ "VIF: Found potential network device " ++ macStr ++ "\n"
-      let newDevice = PotentialNIC { potName = macStr
-                                   , potHandle = virtDevId
-                                   , potBackend = backend
-                                   , potBackendDom = (DomId backendId)
-                                   , potNodeName = nodeName
-                                   }
-      runCallbacks newPotentialCallbacks macStr
-      atomicModifyIORef potentials (\ ls -> (newDevice:ls, ()))
-    _ -> hDEBUG $ "VIF: Failed to get XenStore info for " ++ nodeName ++ "\n"
-
--- ---------------------------------------------------------------------------
---
--- Types, data structures and routines for initialized NICs, including 
--- turning potential NICs into initialized NICs
---
--- ---------------------------------------------------------------------------
-
-data NIC = NIC { initName               :: String
-               , initTxRB               :: TxRingBuffer
-               , initRxRB               :: RxRingBuffer
-               , initBackendDom         :: DomId
-               , initNextTxIdIO         :: IORef Word16
-               , initReceiveProcIO      :: IORef RxHandler
-               }
-
--- The set of initialized NICs
-inittedNICs :: IORef [NIC]
-inittedNICs = unsafePerformIO $ newIORef []
-{-# NOINLINE inittedNICs #-}
-
--- The set of callbacks for NIC initialization
-initializationCallbacks :: IORef [NIC -> IO ()]
-initializationCallbacks = unsafePerformIO $ newIORef []
-{-# NOINLINE initializationCallbacks #-}
-
--- |Returns the list of initialized devices.
-initializedNICs :: IO [NIC]
-initializedNICs = readIORef inittedNICs
-
--- |Register a callback that will be invoked every time a NIC is initialized.
-notifyOnNewInitializedNIC :: (NIC -> IO ()) -> IO ()
-notifyOnNewInitializedNIC handler =
-    atomicModifyIORef initializationCallbacks
-       (\ ls -> (handler:ls, ()))
-
--- |Get the name of a NIC. Currently, this is guaranteed to be the MAC 
--- address of the NIC.
-getNICName :: NIC -> String
-getNICName NIC{ initName = name } = name
-
--- |Returns True if the card with the given name (MAC address) has been
--- initialized.
-isNICInitialized :: String -> IO Bool
-isNICInitialized name =
-  any (\ nic -> initName nic == name) `fmap` readIORef inittedNICs
-
--- |Attempt to initialize the NIC with the given MAC address. Returns the
--- initialized NIC upon success. Note that NICs can only be initialized once;
--- a successive call to this using the same MAC address will fail. The Maybe
--- argument is the size of the receive buffer in 4K pages. If left unset, this
--- is set to a standard default.
-initializeNIC :: String -> Maybe Int -> IO (Maybe NIC)
-initializeNIC name rxBufSize = do
-  do res <- atomicModifyIORef potentials
-               (\ ls ->
-                    case partition (\ x -> (potName x) == name) ls of
-                      ([], rest) -> (rest, Nothing)
-                      ([item], rest) -> (rest, Just item)
-                      _ -> error "INTERNAL ERROR: More than one NIC w/ name")
-     case res of
-       Just dev -> do asyncNotifMV <- newEmptyMVar
-                      probeNIC dev asyncNotifMV rxBufSize
-                      retval <- takeMVar asyncNotifMV
-                      case retval of
-                        Just idev -> do atomicModifyIORef inittedNICs
-                                           (\ ls -> (idev:ls, ()))
-                                        return retval
-                        Nothing ->
-                            return Nothing
-       Nothing ->
-           return Nothing
-
-probeNIC :: PotentialNIC -> MVar (Maybe NIC) -> Maybe Int -> IO ()
-probeNIC dev resMV rxBufSize = withRingBuffers finishProbe
-    where withRingBuffers :: (TxRingBuffer -> RxRingBuffer ->
-                              Word16 -> Word16 -> String ->
-                              IO ())
-                             -> IO ()
-          withRingBuffers k = do
-            (txrb, (GrantRef txGRef), port) <- frbCreate (potBackendDom dev)
-            (rxrb, (GrantRef rxGRef), _) <- frbCreateWithEC (potBackendDom dev) port
-
-            k txrb rxrb txGRef rxGRef (drop 1 $ dropWhile (/= ' ') $ show port)
-
-          -- ----------------------------------------------------------------
-          finishProbe :: TxRingBuffer -> RxRingBuffer ->
-                         Word16 -> Word16 -> String -> IO ()
-          finishProbe txrb rxrb txGRef rxGRef port = do
-            ret <- xsSetWatch (potBackend dev ++ "/state")
-                              (onPossibleConnect txrb rxrb)
-            case ret of
-              XBOk _ -> do
-                _ <- xsWrite (potNodeName dev++"/tx-ring-ref") (show txGRef)
-                _ <- xsWrite (potNodeName dev++"/rx-ring-ref") (show rxGRef)
-                _ <- xsWrite (potNodeName dev++"/event-channel") port
-                _ <- xsWrite (potNodeName dev++"/request-rx-copy") "1"
-                _ <- xsWrite (potNodeName dev++"/state") (show xenRingConnected)
-                return ()
-              _ -> do
-                frbShutdown txrb
-                frbShutdown rxrb
-                fail $ "Couldn't set watch on " ++ potBackend dev ++ "\n"
-          -- ----------------------------------------------------------------
-          onPossibleConnect :: TxRingBuffer -> RxRingBuffer ->
-                               WatchId -> String ->
-                               IO ()
-          onPossibleConnect txrb rxrb watch path = do
-            _stateStr <- xsRead path
-            case _stateStr of
-              XBOk _s | read _s == xenRingInitialising -> return ()
-                      | read _s == xenRingInitialisingWait -> return ()
-                      | read _s == xenRingInitialised -> return ()
-                      | read _s == xenRingConnected -> do
-                _ <- xsUnsetWatch watch
-                _ <- xsWrite (potNodeName dev++"/state") (show xenRingConnected)
-                hDEBUG $ "VIF: Connected to device " ++ show (potName dev)++"\n"
-                droppingReceiverIOR <- newIORef droppingReceiver
-                nextIdIO <- newIORef 0
-                let nic = NIC { initName = potName dev
-                              , initTxRB = txrb
-                              , initRxRB = rxrb
-                              , initBackendDom = potBackendDom dev
-                              , initNextTxIdIO = nextIdIO
-                              , initReceiveProcIO = droppingReceiverIOR
-                              }
-                runCallbacks initializationCallbacks nic
-                rxBuffer <- xTry $ allocRxBuffers (initBackendDom nic) rxBufSize
-                case rxBuffer of
-                  Right rxBuf -> do
-                    _ <- forkIO $ startReceiving nic rxBuf
-                    putMVar resMV $ Just nic
-                  Left e -> do
-                    hDEBUG $ "VIF: Couldn't allocate rx buffers for " ++
-                             show (potName dev) ++ " (" ++ show e ++ ")\n"
-                    putMVar resMV Nothing
-              XBOk _s | (read _s) == xenRingClosing -> return ()
-              XBOk _s | (read _s) == xenRingClosed -> return ()
-              XBOk _s ->
-                hDEBUG $ "VIF: Got weird ring state: " ++ show _s ++
-                         " (ignoring)"
-              XBError _s ->
-                hDEBUG $ "VIF: Weird watch error: " ++ show _s ++
-                         " (ignoring)"
-
--- ---------------------------------------------------------------------------
---
--- Types, data structures and routines for dealing with packet reception.
---
--- ---------------------------------------------------------------------------
-
-type RxHandler = ByteString -> IO ()
-data BufferBlock = BB !(VPtr Word8) !Word16
-
--- |Set the receive handler for the given NIC. All packets the NIC receives
--- will be passed back up, regardless of whether or not they're addressed
--- to us, so you'll have to manager filtering yourself.
-setReceiveHandler :: NIC -> RxHandler -> IO ()
-setReceiveHandler nic handler =
-  atomicModifyIORef (initReceiveProcIO nic)
-     (\ _ -> (handler, ()))
-
--- |Allocate the buffer space for packet reception. Also manages all the
--- grant reference work required for packet reception, so this may fail
--- due to a lack of memory space, a lack of available grant references,
--- or some other similar Xen error. The arguments are the domain ID of the
--- network backend and potentially a view describing how large of a buffer
--- to use (given in kilobytes; must be a multiple of 4). The return result
--- is a list of buffer blocks.
-allocRxBuffers :: DomId -> Maybe Int -> Xen [BufferBlock]
-allocRxBuffers dom Nothing          = allocRxBuffers dom $ Just 128
-allocRxBuffers dom (Just rxBufSizeK)
- | rxBufSizeK `mod` 4 /= 0          = xThrow EINVAL
- | otherwise                        = do
-   let rxBufPages = rxBufSizeK `div` 4
-   pages <- allocN rxBufPages [] allocPage freePage
-   refs  <- allocN rxBufPages [] allocRef freeRef `xOnException` mapM_ freePage pages
-   zipWithM_ (\ p r -> grantAccess r dom p True) pages refs
-   return $ zipWith (\ p (GrantRef g) -> BB p g) pages refs
-
-allocN :: Int -> [a] -> Xen a -> (a -> Xen b) -> Xen [a]
-allocN 0 accum _     _    = return accum
-allocN n accum alloc free = do
-    a <- alloc `xOnException` mapM_ free accum
-    allocN (n-1) (a:accum) alloc free
-
-startReceiving :: NIC -> [BufferBlock] -> IO ()
-startReceiving _   []   = hDEBUG "VIF: FAILURE: No receive buffers!\n"
-startReceiving nic bufs = rcv bufferIDs
- where
-  reqHash   = Map.fromList [(i,p) | BB p i <- bufs]
-  bufferIDs = map (\ (BB _ i) -> i) bufs
-  handlerIO = initReceiveProcIO nic
-  ring      = assert (length bufs == 128) $ initRxRB nic
+openNIC :: XenStore -> String -> IO NIC
+openNIC xs mac = do
+  ents <- xsDirectory xs "device/vif"
+  vifs <- forM (filter (not . null) ents) $ \ ent -> do
+            backend <- xsRead xs ("device/vif/" ++ ent ++ "/backend")
+            name <- xsRead xs ("device/vif/" ++ ent ++ "/mac")
+            splits <- testFeature (backend ++ "/feature-split-event-channels")
+            copy <- testFeature (backend ++ "/feature-rx-copy")
+            if copy
+              then return (name, ("device/vif/" ++ ent, backend, splits))
+              else return ("", (undefined, undefined, undefined))
+  let (feDir, beDir, splitECs) = fromMaybe (throw ENODEV) (lookup mac vifs)
   --
-  rcv :: [Word16] -> IO ()
-  -- If we ran out of buffers -- which should be rare -- then we should have
-  -- some requests in flight. Thus, we block. If something has gone *really*
-  -- wrong, then we've somehow lost track of our requests and this will block
-  -- indefinitely; I don't know how to detect this.
-  rcv []  = do resps    <- frbGetResponses ring
-               done_ids <- processResponses [] resps []
-               rcv done_ids
-  rcv ids = do newlySent <- frbTryRequestSomeOfAsync ring ids
-               let ids'  =  assert (newlySent > 0) $ drop newlySent ids
-               resps     <- frbGetResponses ring
-               done_ids  <- processResponses [] resps []
-               rcv (done_ids ++ ids')
+  dom <- read `fmap` xsRead xs (feDir ++ "/backend-id")
+  let domid = toDomId (dom :: Word)
+  txRing <- frbCreate nicTxRingType domid
+  rxRing <- if splitECs
+              then frbCreate       nicRxRingType domid
+              else frbCreateWithEC nicRxRingType domid (frbGetPort txRing)
+  xsWrite xs (feDir ++ "/tx-ring-ref") (show (unGrantRef (frbGetRef txRing)))
+  xsWrite xs (feDir ++ "/rx-ring-ref") (show (unGrantRef (frbGetRef rxRing)))
+  let txPort = frbGetPort txRing
+      rxPort = frbGetPort rxRing
+  if splitECs
+    then do xsWrite xs (feDir ++ "/event-channel-tx") (show (fromPortW txPort))
+            xsWrite xs (feDir ++ "/event-channel-rx") (show (fromPortW rxPort))
+    else xsWrite xs (feDir ++ "/event-channel") (show (fromPortW txPort))
+  xsWrite xs (feDir ++ "/request-rx-copy") "1"
+  xsWrite xs (feDir ++ "/state") (show ((#const XenbusStateConnected)::Word))
+  waitForState (beDir ++ "/state") (show ((#const XenbusStateConnected)::Word))
+  xsWrite xs (feDir ++ "/state") (show ((#const XenbusStateConnected)::Word))
   --
-  -- process responses from the other end.
-  processResponses :: [BSI.ByteString] -> [RxResponse] -> [Word16] ->
-                      IO [Word16]
-  processResponses []     []    dones = return dones
-  processResponses _      []    dones = do
-       hDEBUG "VIF: Ended process responses with unfinished blocks!\n"
-       return dones
-  processResponses blocks (RxResponse i off flags status : rest) dones
-    -- Error case
-    | status < 0               = do
-       hDEBUG $ "VIF: Error response from request: " ++ show status ++ "\n"
-       processResponses [] rest (i:dones)
-    -- Unspecificied case I'm not sure how to deal with.
-    | status == 0              = do
-       hDEBUG   "VIF: Received zero sized packet (error?) ignoring.\n"
-       processResponses [] rest (i:dones)
-    -- This packet has extra info we don't know how to deal with.
-    | RxExtraInfo `elem` flags = do
-       hDEBUG   "VIF: Ignoring packet with extra info.\n"
-       processResponses [] rest (i:dones)
-    -- This packet has more data coming next.
-    | RxMoreData `elem` flags  = do
-       let Just block = Map.lookup i reqHash
-       prt <- BSI.create (fromIntegral status) $ \ ptr ->
-                memcpy ptr (block `plusPtrW` off) $ fromIntegral status
-       processResponses (prt:blocks) rest (i:dones)
-    -- This packet is all here, or is finishing a previous packet
-    | otherwise                = do
-       let Just block = Map.lookup i reqHash
-       prt <- BSI.create (fromIntegral status) $ \ ptr ->
-                memcpy ptr (block `plusPtrW` off) $ fromIntegral status
-       handler <- readIORef handlerIO
-       handler $ BS.fromChunks $ reverse (prt:blocks)
-       processResponses [] rest (i:dones)
-
-droppingReceiver :: ByteString -> IO ()
-droppingReceiver _ = return ()
-
--- ---------------------------------------------------------------------------
---
--- Types, data structures and routines for dealing with packet transmission.
---
--- ---------------------------------------------------------------------------
-
--- |A simple data type describing the result of a transmission attempt
-data TxResult = TXOk -- ^The packet was successfully sent
-              | TXPacketTooBig -- ^The packet was too large to be sent
-              | TXBufferFull -- ^The buffer was full. This will only occur
-                             -- using tryTransmitPacket
-              | TXDropped -- ^The underlying network card dropped the packet
-              | TXError -- ^There was some error in the network card
-              | TXOutOfMemory -- ^The network driver ran out of memory or 
-                              -- grant references trying to send the packet
-  deriving (Eq,Show)
-
--- |Transmit a packet on the network. This routine will block until the
--- packet has been sent or the network card informs us of some error.
-transmitPacket :: NIC -> ByteString -> IO TxResult
-transmitPacket _ packet | BS.length packet > 4096 = return TXPacketTooBig
-transmitPacket nic packet = do
-  page <- xTry allocPage
-  ref  <- xTry allocRef
-  case (page, ref) of
-    (Right p, Right r) -> do
-      grantAccess r (initBackendDom nic) p False
-      ident <- atomicModifyIORef (initNextTxIdIO nic) (\ x -> (x + 1, x))
-      _ <- pokeBS p packet
-      let size = fromIntegral $ BS.length packet
-      let req  = TxRequest r 0 [] ident size
-      resp <- frbRequest (initTxRB nic) req
-      endAccess r >> freeRef r >> freePage p
-      case txrsStatus resp of
-        0  -> return TXOk
-        -1 -> hDEBUG "TXError!\n" >> return TXError
-        -2 -> hDEBUG "TXDropped!\n" >> return TXDropped
-        _  -> error "XenDevice.NIC.transmitPacket, unhandled txrsStatus value"
-
-    (Left _,  Left _)  -> do
-      hDEBUG "VIF: TX: Both failed!\n"
-      return TXOutOfMemory
-
-    (Left _,  Right _) -> do
-      hDEBUG "VIF: TX: Page alloc failed!\n"
-      return TXOutOfMemory
-
-    (Right _, Left _)  -> do
-      hDEBUG "VIF: TX: Ref alloc failed!\n" 
-      return TXOutOfMemory
+  initRxTable <- foldM (buildRequest domid) Map.empty [0..255]
+  txIdMV <- newMVar 0
+  txTableMV <- newMVar Map.empty
+  rxHandlerMV <- newMVar (\ _ -> return ())
+  let reqs = Map.foldlWithKey (\ l i (g, _) -> RxRequest i g : l) [] initRxTable
+  frbWriteRequests rxRing reqs
+  --
+  _ <- forkIO $ forever $ processTxResponses txRing txTableMV
+  _ <- forkIO $ processRxResponses rxRing rxHandlerMV initRxTable False []
+  return NIC {
+    nicTxRing    = txRing
+  , nicTxId      = txIdMV
+  , nicTxTable   = txTableMV
+  , nicRxHandler = rxHandlerMV
+  }
  where
-  pokeBS dptr bstr = foldM pokeBS' dptr (BS.toChunks bstr)
-  pokeBS' dptr bstr = do
-    withForeignPtr fptr $ \ sptr -> memcpy dptr (sptr `plusPtr` off) lenW
-    return (dptr `plusPtr` len)
-    where
-    (fptr, off, len) = BSI.toForeignPtr bstr
-    lenW             = fromIntegral len
+  fromPortW :: Port -> Word
+  fromPortW = fromPort
+  --
+  testFeature key = handle (\ (_ :: ErrorCode) -> return False) $ do
+    val <- xsRead xs key
+    return (val == "1")
+  --
+  waitForState key val = do
+    val' <- xsRead xs key
+    unless (val' == val) $ do
+      threadDelay 100000
+      waitForState key val
+  --
+  buildRequest domid table i = do
+    pg <- allocPage
+    memset pg 0 4096
+    [ref] <- grantAccess domid pg 4096 True
+    return (Map.insert i (ref, pg) table)
+  --
+  processTxResponses txRing tableMV = do
+    resps <- frbReadResponses txRing
+    modifyMVar_ tableMV $ \ table -> do
+      foldM handleTxResponse table resps
+  handleTxResponse table resp =
+    case Map.lookup (txrsId resp) table of
+      Nothing -> do
+        writeDebugConsole ("WARNING: Received response to unsent NIC tx req " ++ show (txrsId resp) ++ "\n")
+        return table
+      Just retMV -> do
+        putMVar retMV (txrsStatus resp)
+        return (Map.delete (txrsId resp) table)
+  --
+  processRxResponses rxRing handlerMV table st1 st2 = do
+    rawresps <- frbReadResponses rxRing
+    -- convert the raw responses into more useful items
+    (ids, bstrs, table', st1', st2') <-
+      convertRxResponses table st1 st2 rawresps
+    --
+    handler <- readMVar handlerMV
+    forM_ bstrs $ \ x -> forkIO (handler x)
+    --
+    (reqs, table'') <- resendRequests (frbGetDomain rxRing) table' ids
+    frbWriteRequests rxRing reqs
+    processRxResponses rxRing handlerMV table'' st1' st2'
+  --
+  -- FIXME: What if we end with more data?
+  convertRxResponses table st1 st2 [] = return ([], [], table, st1, st2)
+  -- case #1: we're expecting an extra_info, which we don't handle
+  convertRxResponses table True _ (_:rest) =
+    convertRxResponses table False [] rest
+  -- case #2: this is real data
+  convertRxResponses table False acc (rresp:rest) = do
+    let err = rxrsStatus rresp
+    case Map.lookup (rxrsId rresp) table of
+      Nothing -> do
+        writeDebugConsole "WARNING: Received response to unsent NIC rx req.\n"
+        convertRxResponses table False [] rest
+      Just (grant, pg) | err > 0 -> do
+        endAccess grant
+        let ptr    = pg `plusPtr` fromIntegral (rxrsOffset rresp)
+            len    = fromIntegral err
+            table' = Map.delete (rxrsId rresp) table
+        bstr <- unsafePackCStringFinalizer ptr len (freePage pg)
+        if rxrsFlags rresp .&. (#const NETRXF_more_data) /= 0
+          then convertRxResponses table' False (bstr : acc) rest
+          else do (idr, bstrr, table'', s1, s2) <-
+                    convertRxResponses table' False [] rest
+                  let bstr' = fromChunks (bstr : reverse acc)
+                  return (rxrsId rresp : idr, bstr' : bstrr, table'', s1, s2)
+      Just (_, _) -> do
+        writeDebugConsole ("WARNING: Receive request error: "++show err++"\n")
+        convertRxResponses table False [] rest
+  --
+  resendRequests _   table [] = return ([], table)
+  resendRequests dom table (i:rest) = do
+    pg <- allocPage
+    memset pg 0 4096
+    [ref] <- grantAccess dom pg 4096 True
+    let table' = Map.insert i (ref, pg) table
+    (rest', table'') <- resendRequests dom table' rest
+    return (RxRequest i ref : rest', table'')
 
--- |Transmit a packet on the network, but abort if the ring buffer is full.
--- It is my intention to eventually turn this routine into a true nonblocking
--- function, but at the moment it may block.
-tryTransmitPacket :: NIC -> ByteString -> IO TxResult
-tryTransmitPacket _ packet | BS.length packet > 1500 = return TXPacketTooBig
-tryTransmitPacket _ _ = undefined
+sendPacket :: NIC -> ByteString -> IO ()
+sendPacket nic bstr = do
+  curId <- takeMVar (nicTxId nic)
+  (reqs,id')  <- createRecs curId (frbGetDomain (nicTxRing nic)) (toChunks bstr)
+  putMVar (nicTxId nic) $! id'
+  resMVs <- modifyMVar (nicTxTable nic) $ \ x -> foldM addLink (x, []) reqs
+  frbWriteRequests (nicTxRing nic) reqs
+  res <- mapM takeMVar resMVs
+  case catMaybes res of
+    []    -> return ()
+    (e:_) -> throw e
+ where
+  createRecs myid _   [] = return ([], myid)
+  createRecs myid dom (chunk:rest)
+    | SBS.length chunk == 0 = createRecs myid dom rest
+    | otherwise =
+       unsafeUseAsCStringLen chunk $ \ (ptr, len) -> do
+         let ptrW   = ptrToWordPtr ptr
+             base   = wordPtrToPtr (ptrW .&. (complement 4095))
+             off    = fromIntegral (ptrW .&. 4095)
+             sz     = min len (4096 - fromIntegral off)
+             chunk' = SBS.drop (fromIntegral sz) chunk
+         [ref] <- grantAccess dom base 4096 False
+         (rest', myid') <- createRecs (myid + 1) dom (chunk' : rest)
+         let flags  = if null rest' then 0 else (#const NETTXF_more_data)
+             req   = TxRequest ref off flags myid (fromIntegral sz)
+         return ((req : rest'), myid')
+  --
+  addLink (table, mvars) req = do
+    mv <- newEmptyMVar
+    return (Map.insert (txrqId req) mv table, mv : mvars)
 
+setReceiveHandler :: NIC -> (ByteString -> IO ()) -> IO ()
+setReceiveHandler nic handler = do
+  _ <- takeMVar (nicRxHandler nic)
+  putMVar (nicRxHandler nic) handler
 
--- ---------------------------------------------------------------------------
---
--- Types and routines for dealing with the Xen NIC ring buffers
---
--- ---------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------
 
-#ifndef __i386__
-#define __i386__
-#endif
-#include <xen/xen.h>
-#include <xen/io/netif.h>
+nicTxRingType :: FrontEndRingType TxRequest TxResponse
+nicTxRingType  = FrontEndRingType {
+    entrySize    = max (#size netif_tx_request_t) (#size netif_tx_response_t)
+  , peekResponse = readTxResponse
+  , pokeRequest  = writeTxRequest
+  }
 
-type TxRingBuffer = FrontRingBuffer TxRequest TxResponse Word16
+data TxResponse = TxResponse {
+    txrsId     :: Word16
+  , txrsStatus :: Maybe ErrorCode
+  }
+
+readTxResponse :: Ptr TxResponse -> IO TxResponse
+readTxResponse ptr = do
+  i  <- (#peek netif_tx_response_t, id)     ptr
+  st <- (#peek netif_tx_response_t, status) ptr
+  case st :: Int16 of
+    (#const NETIF_RSP_DROPPED) -> return $ TxResponse i Nothing
+    (#const NETIF_RSP_ERROR)   -> return $ TxResponse i (Just EIO)
+    (#const NETIF_RSP_OKAY)    -> return $ TxResponse i Nothing
+    _                          -> return $ TxResponse i (Just EPROTO)
 
 data TxRequest = TxRequest {
     txrqGrant  :: GrantRef
   , txrqOffset :: Word16
-  , txrqFlags  :: [TxFlags]
+  , txrqFlags  :: Word16
   , txrqId     :: Word16
   , txrqSize   :: Word16
   }
- deriving (Show)
 
-data TxResponse = TxResponse {
-    txrsId     :: Word16
-  , txrsStatus :: Int16
+writeTxRequest :: Ptr TxRequest -> TxRequest -> IO ()
+writeTxRequest ptr req = do
+  (#poke netif_tx_request_t,gref)   ptr (unGrantRef (txrqGrant req))
+  (#poke netif_tx_request_t,offset) ptr (txrqOffset req)
+  (#poke netif_tx_request_t,flags)  ptr (txrqFlags req)
+  (#poke netif_tx_request_t,id)     ptr (txrqId req)
+  (#poke netif_tx_request_t,size)   ptr (txrqSize req)
+
+-- ----------------------------------------------------------------------------
+
+nicRxRingType :: FrontEndRingType RxRequest RxResponse
+nicRxRingType  = FrontEndRingType {
+    entrySize     = max (#size netif_rx_request_t) (#size netif_rx_response_t)
+  , peekResponse  = readRxResponse
+  , pokeRequest   = writeRxRequest
   }
- deriving (Show)
 
-data TxFlags = TxChecksumBlank
-             | TxDataValidated
-             | TxMoreData
-  deriving (Eq, Show)
-
-instance RingBufferable TxRequest TxResponse Word16 where
-  requestId     = txrqId
-  responseId    = txrsId
-  entrySize _ _ = max (#size netif_tx_request_t) (#size netif_tx_response_t)
-
-instance FrontRingBufferable TxRequest TxResponse Word16 where
-  peekResponse ptr = do
-    rid <- (#peek netif_tx_response_t, id) ptr
-    status <- (#peek netif_tx_response_t, status) ptr
-    return TxResponse { txrsId = rid, txrsStatus = status }
-
-  pokeRequest ptr val = do
-    bzero ptr (#size netif_tx_request_t)
-    let (GrantRef grefNum) = txrqGrant val
-        txFlags = txrqFlags val -- shorthand
-        csumFlag = if TxChecksumBlank `elem` txFlags
-                      then (#const NETTXF_csum_blank)
-                      else 0
-        dataValFlag = if TxDataValidated `elem` txFlags
-                         then (#const NETTXF_data_validated)
-                         else 0
-        moreDataFlag = if TxMoreData `elem` txFlags
-                          then (#const NETTXF_more_data)
-                          else 0
-        (flags::Word16) = csumFlag .|. dataValFlag .|. moreDataFlag
-    (#poke netif_tx_request_t, gref) ptr (fromIntegral grefNum :: Word32)
-    (#poke netif_tx_request_t, offset) ptr $ txrqOffset val
-    (#poke netif_tx_request_t, flags) ptr flags
-    (#poke netif_tx_request_t, id) ptr $ txrqId val
-    (#poke netif_tx_request_t, size) ptr $ txrqSize val
-
--- Yes, that's correct. Word16 to avoid boxing.
-type RxRingBuffer = FrontRingBuffer Word16 RxResponse Word16
-
-data RxResponse = RxResponse
-  { rxrsId     :: !Word16
-  , rxrsOffset :: !Word16
-  , rxrsFlags  :: [RxFlags]
+data RxResponse = RxResponse {
+    rxrsId     :: Word16
+  , rxrsOffset :: Word16
+  , rxrsFlags  :: Word16
   , rxrsStatus :: Int16
   }
+ deriving (Show)
 
-data RxFlags
-  = RxDataValidated
-  | RxChecksumBlank
-  | RxMoreData
-  | RxExtraInfo
-  deriving (Eq, Show)
+readRxResponse :: Ptr RxResponse -> IO RxResponse
+readRxResponse ptr = do
+  i <- (#peek netif_rx_response_t,id)     ptr
+  o <- (#peek netif_rx_response_t,offset) ptr
+  f <- (#peek netif_rx_response_t,flags)  ptr
+  s <- (#peek netif_rx_response_t,status) ptr
+  return (RxResponse i o f s)
 
-instance RingBufferable Word16 RxResponse Word16 where
-  requestId x   = x
-  responseId    = rxrsId
-  entrySize _ _ = max (#size netif_rx_request_t) (#size netif_rx_response_t)
+data RxRequest = RxRequest {
+    rxrqId    :: Word16
+  , rxrqGrant :: GrantRef
+  }
 
-instance FrontRingBufferable Word16 RxResponse Word16 where
-  peekResponse ptr = do
-    rid <- (#peek netif_rx_response_t, id) ptr
-    off <- (#peek netif_rx_response_t, offset) ptr
-    (flags::Word16) <- (#peek netif_rx_response_t, flags) ptr
-    status <- (#peek netif_rx_response_t, status) ptr
-    let dataVal = if flags `testBit` (#const _NETRXF_data_validated)
-                     then [RxDataValidated]
-                     else []
-        csumBlank = if flags `testBit` (#const _NETRXF_csum_blank)
-                       then [RxChecksumBlank]
-                       else []
-        moreData = if flags `testBit` (#const _NETRXF_more_data)
-                      then [RxMoreData]
-                      else []
-        extraInfo = if flags `testBit` (#const _NETRXF_extra_info)
-                       then [RxExtraInfo]
-                       else []
-        outFlags = dataVal ++ csumBlank ++ moreData ++ extraInfo
-    return RxResponse { rxrsId = rid, rxrsOffset = off,
-                        rxrsFlags = outFlags, rxrsStatus = status }
+writeRxRequest :: Ptr RxRequest -> RxRequest -> IO ()
+writeRxRequest ptr req = do
+  (#poke netif_rx_request_t,id) ptr   (rxrqId req)
+  (#poke netif_rx_request_t,gref) ptr (unGrantRef (rxrqGrant req))
 
-  pokeRequest ptr val = do
-    (#poke netif_rx_request_t, id) ptr (val :: Word16)
-    (#poke netif_rx_request_t, gref) ptr (fromIntegral val::(#type grant_ref_t))
-
--- ---------------------------------------------------------------------------
---
--- Miscellaneous useful helper things
---
--- ---------------------------------------------------------------------------
-
-hDEBUG :: String -> IO ()
-hDEBUG = writeDebugConsole
-
-plusPtrW :: Integral a => Ptr b -> a -> Ptr b
-plusPtrW ptr off = ptr `plusPtr` fromIntegral off
-
-runCallbacks :: IORef [a -> IO ()] -> a -> IO ()
-runCallbacks ref val =
-    readIORef ref >>= mapM_ (\ f -> f val)
-
-foreign import ccall unsafe "strings.h bzero"
-  bzero :: Ptr a -> Word -> IO ()
-
-foreign import ccall unsafe "string.h memcpy"
-  memcpy :: Ptr a -> Ptr a -> Word -> IO ()
+foreign import ccall unsafe "memset"
+  memset :: Ptr a -> Word8 -> Word -> IO ()

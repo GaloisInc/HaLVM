@@ -45,8 +45,6 @@ import Hypervisor.ErrorCodes
 import Hypervisor.Memory
 import Hypervisor.Port
 
-import Hypervisor.Debug
-
 data FrontEndRingType reqt respt = FrontEndRingType {
     entrySize    :: Word32
   , pokeRequest  :: Ptr reqt -> reqt -> IO ()
@@ -87,7 +85,6 @@ frbCreateWithEC t dom port = do
   unless (entrySize t <= maxEntrySize) $ throw EINVAL
   page <- allocPage
   [ref] <- grantAccess dom page 4096 True
-  writeDebugConsole ("Ring page is " ++ show page ++ "(" ++ show ref ++ ")\n")
   setRingRequestsProduced  page 0
   setRingResponsesProduced page 0
   setRingRequestEvents     page 1
@@ -201,9 +198,6 @@ advanceFrontRingState ring = do
     let idx = prod `mod` frbRingSize ring
         ptr = frbBase ring `plusPtrW` (64 + (idx * entrySize (frbType ring)))
     pokeRequest (frbType ring) (castPtr ptr) first
-    --forM_ [0 .. 16] $ \ i -> do
-    --  ptrw <- peekByteOff (castPtr ptr) (i * 64)
-    --  writeDebugConsole (show i ++ ": " ++ show (wordPtrToPtr ptrw) ++ "\n")
     putMVar firstMV ()
     writeRequests (n - 1) (prod + 1) (viewl rest)
   --
