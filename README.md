@@ -7,9 +7,10 @@ The Haskell Lightweight Virtual Machine (HALVM) Source Archive
 
 **WARNING**        **WARNING**          **WARNING**
 
-You are on a development branch of the HaLVM. It is very unlikely that
-this branch will work. You should probably switch back to the 'master'
-branch right now, and come back later.
+You are on a development version of the HaLVM, currently in testing. This
+version may work great, but it may fail unexpectedly and in unexpected
+ways. If you find any bugs, please file them on the HaLVM GitHub page.
+We, the HaLVM development team, greatly appreciate your efforts!
 
 **WARNING**        **WARNING**          **WARNING**
 
@@ -40,51 +41,46 @@ purpose Xen domains with minimal resource requirements.
 
 The HaLVM is available publicly [on GitHub](http://github.org/GaloisInc/HaLVM).
 
-**WARNING**        **WARNING**          **WARNING**
-This is a development branch of the HaLVM. The build process is currently
-under flux. You probably shouldn't even try to build it.
-**WARNING**        **WARNING**          **WARNING**
+We develop the HaLVM almost exclusively in Fedora Linux, running a slightly
+modified version of their versions of Xen. Our modified versions simply add
+the flag "verbose=y" to their build specification, on the lines that build
+and install the hypervisor (search for dist-xen and install-xen). We try to
+keep the latest version we're using available, in src/misc/xen.spec. In
+addition, I will try to keep recent binary and source RPMs available at:
 
-We develop the HaLVM almost exclusively in Fedora Linux 17 or 18, running their
-associated versions of Xen. Please see the HaLVM wiki at GitHub for information
-on how you can tune your version of Xen to be better for debugging.
+  http://uhsure.com/halvm-xen-rpms/
 
-Please follow the directions there for checking out the most recent release
-of the HaLVM. If you plan to do development work on the HaLVM itself, please
-fork the HaLVM. This allows us to more easily tell who is working on the HaLVM,
-and GitHub's tools make merging your changes much more easy.
+If you plan to do development work on the HaLVM itself, please fork the HaLVM.
+This allows us to more easily tell who is working on the HaLVM, and GitHub's
+tools make merging your changes much more easy.
 
-Once checked out, the HaLVM utilizes a very traditional build process:
+Once checked out, the HaLVM builds as follows:
 
-> autoreconf
+> git submodule update --init --recursive
+
+> autoconf
 
 > ./configure
 
 > make
 
-We typically recommend building the HaLVM in place. The above commands will
-install the HaLVM into your local directory, in the path `dist/bin/`. This
-is how we use the HaLVM internally, and so is the most likely to work. We
-also include a less-tested capability to install the HaLVM tools into another
-directory:
-
-> ./configure --prefix=...
-
-> make
-
 > make install
 
-However, be warned that this is frequently less tested than the former
-installation options.
+The configure system will accept and honor the "--prefix" flag as per
+normal. We also strongly suggest using the "--enable-gmp" flag, in order
+to enable the (much faster) GMP library for large integer math.
 
 3. Where To Look Next
 ---------------------
 
 The HaLVM comes with a number of examples / test cases, located in the folder
-`static-bits/examples`. We suggest taking a look at these to see a wide
-variety of HaLVM programs you might use as a starting point. In addition,
-the HaLVM builds full documentation for all of its libraries, which you can
-find wherever you installed the HaLVM
+`examples`. We suggest taking a look at these to see a wide variety of HaLVM
+programs you might use as a starting point.
+
+Further information about using the HaLVM is available on the HaLVM wiki.
+Developers interested in improving the HaLVM should also take a look at the
+current list of HaLVM bugs, and submit any new feature requests to the
+HaLVM bug system.
 
 4. How To Contact Us
 --------------------
