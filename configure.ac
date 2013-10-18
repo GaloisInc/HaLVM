@@ -129,10 +129,10 @@ AC_FORCE_EXIST(TOUCH,touch)
 AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [[789].*],
                   LOG_FAILURE("The HaLVM requires GHC 7 or higher."))
 AC_CHECK_PROG_VER(ALEX, alex, --version, [version \([0-9.]*\)],
-                  [3.[0-9]* | 2.3[0-9.]*],
-                  LOG_FAILURE("The HaLVM requires alex 2.2+."))
-AC_CHECK_PROG_VER(HAPPY, happy, --version, [Version \([0-9.]*\)], [1.1[89].*],
-                  LOG_FAILURE("The HaLVM requires Happy 1.16+."))
+                  [3.[1-9]*],
+                  LOG_FAILURE("The HaLVM requires alex 3.1+."))
+AC_CHECK_PROG_VER(HAPPY, happy, --version, [Version \([0-9.]*\)], [1.19.*],
+                  LOG_FAILURE("The HaLVM requires Happy 1.19+."))
 
 dnl -------------------------------------------------------------------------
 dnl
