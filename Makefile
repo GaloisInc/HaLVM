@@ -176,10 +176,14 @@ $(TOPDIR)/halvm-ghc/configure: $(EVERYTHING_DOWNLOADED)                       \
 $(TOPDIR)/halvm-ghc/libraries/HALVMCore: $(EVERYTHING_DOWNLOADED)
 	$(LN) -sf $(TOPDIR)/src/HALVMCore $(TOPDIR)/halvm-ghc/libraries/HALVMCore
 
+$(TOPDIR)/halvm-ghc/libraries/XenDevice: $(EVERYTHING_DOWNLOADED)
+	$(LN) -sf $(TOPDIR)/src/XenDevice $(TOPDIR)/halvm-ghc/libraries/XenDevice
+
 EVERYTHING_PREPPED := $(TOPDIR)/halvm-ghc/mk/build.mk                         \
                       $(TOPDIR)/halvm-ghc/.linked-xen                         \
                       $(TOPDIR)/halvm-ghc/.linked-rts                         \
                       $(TOPDIR)/halvm-ghc/libraries/HALVMCore                 \
+                      $(TOPDIR)/halvm-ghc/libraries/XenDevice                 \
                       $(TOPDIR)/halvm-ghc/configure
 
 ifeq ($(INTEGER_LIBRARY),integer-gmp)

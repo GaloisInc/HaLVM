@@ -9,6 +9,9 @@ dist
 src/gmp
 
 src/HALVMCore/dist-install
+src/XenDevice/dist-install
+
+src/XenDevice/GNUmakefile
 
 src/libm/*/*.o
 src/libIVC/*/*.o

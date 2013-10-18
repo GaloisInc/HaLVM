@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables,ForeignFunctionInterface #-}
 -- BANNERSTART
 -- - Copyright 2006-2008, Galois, Inc.
 -- - This software is distributed under a standard, three-clause BSD license.
@@ -42,29 +41,8 @@ module XenDevice.PCI(
        )
  where
 
-import Control.Applicative((<$>))
---import Control.Arrow(right)
-import Control.Concurrent
-import Control.Exception
-import Control.Monad
-import Data.Bits
-import Data.Int
-import Data.List
-import Data.Word
-import Foreign.Marshal.Array
-import Foreign.Ptr
-import Foreign.Storable
-import Numeric
-import System.IO.Unsafe(unsafePerformIO)
-import System.Timeout
-
-import Hypervisor.Basics
-import Hypervisor.Kernel
-import Hypervisor.Memory
-import Hypervisor.Port
-import XenDevice.Xenbus
-import XenDevice.XenRingState
-
+#include <stdint.h>
+#include <stdlib.h>
 #include <xen/io/pciif.h>
 
 data PCIDevice = PCIDevice {
@@ -233,7 +211,7 @@ initializePCIDevice _nodeName = do
         XBOk _ -> do
           _ <- xsWrite (nodeName ++ "/pci-op-ref")    refStr
           _ <- xsWrite (nodeName ++ "/event-channel") portStr
-          _ <- xsWrite (nodeName ++ "/magic")         (#const_str XEN_PCI_MAGIC)
+          _ <- xsWrite (nodeName ++ "/magic")         (show (#const XEN_PCI_MAGIC))
           _ <- xsWrite (nodeName ++ "/state")         (show xenRingInitialised)
           return ()
         _      -> do

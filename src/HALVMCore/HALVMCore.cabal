@@ -1,7 +1,7 @@
 name:           HALVMCore
 version:        2.0.0
 license:        BSD3
-author:         Adam Wick <awick@galois.com>, Andrew Tolmach <apt@galois.com>
+author:         Adam Wick <awick@galois.com>
 maintainer:     Adam Wick <awick@galois.com>
 description:    Basic libraries for using Xen functionality from the HaLVM.
                 This module is pretty much required for all HaLVM programs,

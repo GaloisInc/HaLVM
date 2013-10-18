@@ -155,8 +155,6 @@ openDisk xs name = do
         writeDebugConsole "WARNING: Received response to unsent disk request.\n"
         return table
       Just retMV -> do
-        unless (respStatus resp == 0) $
-          writeDebugConsole ("Caugh respStatus of " ++ show (respStatus resp) ++ "\n")
         let retval = case respStatus resp of
                        (#const BLKIF_RSP_EOPNOTSUPP) -> Just EOPNOTSUPP
                        (#const BLKIF_RSP_ERROR)      -> Just EIO
@@ -452,7 +450,6 @@ data DiskResponse = DiskResponse {
 
 writeDiskRequest :: Ptr DiskRequest -> DiskRequest -> IO ()
 writeDiskRequest ptr req = do
-  memset ptr 0xab 112
   (#poke blkif_request_t,operation) ptr (reqOp req)
   if reqOp req == BlockOpDiscard
     -- write a blkif_reqeust_discard
@@ -482,6 +479,3 @@ readDiskResponse ptr = do
 
 foreign import ccall unsafe "memcpy"
   memcpy :: Ptr a -> Ptr a -> Word -> IO ()
-
-foreign import ccall unsafe "memset"
-  memset :: Ptr a -> Word8 -> Word -> IO ()

@@ -14,7 +14,7 @@ disk2.img: buildRODisk
 	./buildRODisk > disk2.img
 
 clean::
-	rm -f disk1.img disk2.img
+	rm -f disk1.img disk2.img buildRODisk
 
 run: disk1.img disk2.img VBDTest
 	-sudo xl destroy VBDTest
