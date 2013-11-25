@@ -134,6 +134,20 @@ AC_CHECK_PROG_VER(ALEX, alex, --version, [version \([0-9.]*\)],
 AC_CHECK_PROG_VER(HAPPY, happy, --version, [Version \([0-9.]*\)], [1.19.*],
                   LOG_FAILURE("The HaLVM requires Happy 1.19+."))
 
+AC_CHECK_HEADER(ncurses.h, HAVE_NCURSES=y,
+  [AC_CHECK_HEADER(curses.h, HAVE_NCURSES=y,
+     LOG_FAILURE("The HaLVM requires the ncurses development library."))])
+
+AC_MSG_CHECKING(for globally-installed GHC terminfo package)
+
+if ${GHC}-pkg list --simple-output --no-user-package-db | grep -q terminfo;
+then
+  AC_MSG_RESULT(yes)
+else
+  AC_MSG_RESULT(no)
+  LOG_FAILURE("The HaLVM requires GHC's terminfo library to be installed globally.")
+fi
+
 dnl -------------------------------------------------------------------------
 dnl
 dnl C Compiler Oddities: Here we check for a few different flags that we
@@ -313,6 +327,7 @@ if test "${MESSAGE_LOG}" != ""; then
 fi
 
 if test "${FAILED}" == "Yes"; then
+  echo
   echo "Fix these errors, and then try again."
 else
   echo
