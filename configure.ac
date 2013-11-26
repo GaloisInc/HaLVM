@@ -103,6 +103,7 @@ dnl -------------------------------------------------------------------------
 
 dnl From this point on, we should use LOG_FAILURE instead of AC_FORCE_EXIST.
 AC_FORCE_EXIST(AR,ar)
+AC_FORCE_EXIST(AUTOMAKE,automake)
 AC_FORCE_EXIST(AUTORECONF,autoreconf)
 AC_FORCE_EXIST(CABAL,cabal)
 AC_FORCE_EXIST(CC,gcc)
