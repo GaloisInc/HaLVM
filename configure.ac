@@ -140,7 +140,7 @@ AC_CHECK_HEADER(ncurses.h, HAVE_NCURSES=y,
 
 AC_MSG_CHECKING(for globally-installed GHC terminfo package)
 
-if ${GHC}-pkg list --simple-output --no-user-package-db | grep -q terminfo;
+if ${GHC}-pkg list --simple-output --no-user-package-conf | grep -q terminfo;
 then
   AC_MSG_RESULT(yes)
 else
