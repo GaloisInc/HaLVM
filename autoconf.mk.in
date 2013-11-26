@@ -49,6 +49,7 @@ MKDIR                   := @MKDIR@
 MV                      := @MV@
 NM                      := @NM@
 OBJDUMP                 := @OBJDUMP@
+PATCH                   := @PATCH@
 PERL                    := @PERL@
 RM                      := @RM@
 SED                     := @SED@

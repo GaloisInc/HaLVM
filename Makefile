@@ -196,7 +196,7 @@ $(TOPDIR)/halvm-ghc/.linked-gmp: \
 	$(TOUCH) $@
 
 $(TOPDIR)/halvm-ghc/.fixed-gmp: $(EVERYTHING_DOWNLOADED)
-	$(SED) -i 's/1/0/g' $(TOPDIR)/halvm-ghc/libraries/integer-gmp/mkGmpDerivedConstants/ghc.mk
+	(cd halvm-ghc/libraries/integer-gmp && $(PATCH) -p1 < $(TOPDIR)/src/misc/hsgmp.patch)
 	$(TOUCH) $@
 
 EVERYTHING_PREPPED += $(TOPDIR)/halvm-ghc/.linked-gmp \
