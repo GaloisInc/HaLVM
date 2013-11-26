@@ -82,7 +82,11 @@ instance Storable DomainInfo where
     tp <- (#peek xen_domctl_getdomaininfo_t,tot_pages)         p
     mx <- (#peek xen_domctl_getdomaininfo_t,max_pages)         p
     sh <- (#peek xen_domctl_getdomaininfo_t,shr_pages)         p
+#if __XEN_LATEST_INTERFACE_VERSION > 0x0003020a
     pa <- (#peek xen_domctl_getdomaininfo_t,paged_pages)       p
+#else
+    let pa = 0
+#endif
     sf <- (#peek xen_domctl_getdomaininfo_t,shared_info_frame) p :: IO Word32
     cp <- (#peek xen_domctl_getdomaininfo_t,cpu_time)          p :: IO Word64
     vc <- (#peek xen_domctl_getdomaininfo_t,nr_online_vcpus)   p :: IO Word32
@@ -101,7 +105,9 @@ instance Storable DomainInfo where
     (#poke xen_domctl_getdomaininfo_t,tot_pages)         p (diTotalPages x)
     (#poke xen_domctl_getdomaininfo_t,max_pages)         p (diMaxPages x)
     (#poke xen_domctl_getdomaininfo_t,shr_pages)         p (diShrPages x)
+#if __XEN_LATEST_INTERFACE_VERSION > 0x0003020a
     (#poke xen_domctl_getdomaininfo_t,paged_pages)       p (diPagedPages x)
+#endif
     let m         = fromIntegral (fromMFN (diSharedInfoFrame x))
     (#poke xen_domctl_getdomaininfo_t,shared_info_frame) p (m :: Word64)
     (#poke xen_domctl_getdomaininfo_t,cpu_time)          p (diCPUTime x)

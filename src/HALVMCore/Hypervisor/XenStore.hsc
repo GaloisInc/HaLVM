@@ -28,7 +28,9 @@ module Hypervisor.XenStore(
        , xsResume, xstResume
        , xsSetTarget, xstSetTarget
        , xsRestrict, xstRestrict
+#ifdef XS_RESET_WATCHES
        , xsResetWatches, xstResetWatches
+#endif
        )
  where
 
@@ -227,12 +229,14 @@ xstRestrict :: XenStore -> TransId -> DomId -> IO ()
 xstRestrict (XenStore commChan) tid d =
   standardRequest commChan tid (XSRestrict d) RTRestrict (const ())
 
+#ifdef XS_RESET_WATCHES
 xsResetWatches :: XenStore -> IO ()
 xsResetWatches xs = xstResetWatches xs emptyTransaction
 
 xstResetWatches :: XenStore -> TransId -> IO ()
 xstResetWatches (XenStore commChan) tid =
   standardRequest commChan tid XSReset RTReset (const ())
+#endif
 
 standardRequest :: Chan DriverReq -> TransId ->
                    XenbusRequest -> ResponseType -> (ByteString -> a) ->
@@ -373,10 +377,13 @@ parseResponse = do
 #endif
 
 data ResponseType = RTRead     | RTWrite  | RTMkDir   | RTRm       | RTDir
-                  | RTSetPerms | RTWatch  | RTUnwatch | RTReset    | RTTransSt
+                  | RTSetPerms | RTWatch  | RTUnwatch | RTRestrict | RTTransSt
                   | RTTransEnd | RTIntro  | RTRelease | RTGetPath  | RTError
                   | RTIsDomInt | RTResume | RTSetTarg | RTGetPerms | RTEvent
-                  | RTRestrict | RTUnknown Word32
+#ifdef XS_RESET_WATCHES
+                  | RTReset
+#endif
+                  | RTUnknown Word32
  deriving (Eq)
 
 getResponseType :: Word32 -> ResponseType
@@ -400,7 +407,9 @@ getResponseType (#const XS_IS_DOMAIN_INTRODUCED) = RTIsDomInt
 getResponseType (#const XS_RESUME)               = RTResume
 getResponseType (#const XS_SET_TARGET)           = RTSetTarg
 getResponseType (#const XS_RESTRICT)             = RTRestrict
+#ifdef XS_RESET_WATCHES
 getResponseType (#const XS_RESET_WATCHES)        = RTReset
+#endif
 getResponseType x                                = RTUnknown x
 
 processResponse :: ResponseType -> (ByteString -> a) -> ResponseBody -> IO a
@@ -451,7 +460,9 @@ data XenbusRequest =
   | XSSetPerms String [XSPerm]
   | XSWatch    String String
   | XSUnwatch  String
+#ifdef XS_RESET_WATCHES
   | XSReset
+#endif
   | XSTransSt
   | XSTransEnd Bool
   | XSIntro    DomId MFN Port
@@ -472,7 +483,9 @@ requestId (XSGetPerms _)     = (#const XS_GET_PERMS)
 requestId (XSSetPerms _ _)   = (#const XS_SET_PERMS)
 requestId (XSWatch    _ _)   = (#const XS_WATCH)
 requestId (XSUnwatch  _)     = (#const XS_UNWATCH)
+#ifdef XS_RESET_WATCHES
 requestId  XSReset           = (#const XS_RESET_WATCHES)
+#endif
 requestId  XSTransSt         = (#const XS_TRANSACTION_START)
 requestId (XSTransEnd _)     = (#const XS_TRANSACTION_END)
 requestId (XSIntro    _ _ _) = (#const XS_INTRODUCE)
@@ -502,8 +515,10 @@ renderBody (XSWatch    str  token)   =
   renderStr str >> addNull >> renderStr token >> addNull
 renderBody (XSUnwatch  str)          =
   renderStr str >> addNull
+#ifdef XS_RESET_WATCHES
 renderBody  XSReset                  =
   addNull
+#endif
 renderBody  XSTransSt                =
   addNull
 renderBody (XSTransEnd good)         =

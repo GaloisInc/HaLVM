@@ -9,6 +9,12 @@
 -- |Direct access to low-level disk devices. You probably want to use a file
 -- system instead.
 --
+#include <stdint.h>
+#include <stdlib.h>
+#include "xen/xen.h"
+#include "xen/io/blkif.h"
+#include "xen/io/xenbus.h"
+
 module XenDevice.Disk (
          Disk
        , listDisks
@@ -17,7 +23,9 @@ module XenDevice.Disk (
        , writeDisk
        , flushDiskCaches
        , diskWriteBarrier
+#ifdef BLKIF_OP_DISCARD
        , discardRegion
+#endif
        , diskName
        , isDiskReadOnly
        , isDiskRemovable
@@ -52,12 +60,6 @@ import Hypervisor.Port
 import Hypervisor.XenStore
 
 import Hypervisor.Debug
-
-#include <stdint.h>
-#include <stdlib.h>
-#include "xen/xen.h"
-#include "xen/io/blkif.h"
-#include "xen/io/xenbus.h"
 
 data Disk = Disk {
     diskName            :: String
@@ -345,6 +347,7 @@ flushDiskCaches disk = do
     Nothing -> return ()
     Just e  -> throw e
 
+#ifdef BLKIF_OP_DISCARD
 -- |Indicate to the backend device that a region of storage is no longer in use
 -- and may be discarded at any time without impact. If the boolean flag is
 -- present, it also ensures that the discarded region is rendered
@@ -371,6 +374,7 @@ discardRegion disk sector num dosec = do
   case err of
     Nothing -> return ()
     Just e  -> throw e
+#endif
 
 -- ----------------------------------------------------------------------------
 
@@ -385,7 +389,9 @@ data BlockOperation = BlockOpRead
                     | BlockOpWrite
                     | BlockOpWriteBarrier
                     | BlockOpFlushDiskCache
+#ifdef BLKIF_OP_DISCARD
                     | BlockOpDiscard
+#endif
  deriving (Eq)
 
 instance Storable BlockOperation where
@@ -398,7 +404,9 @@ instance Storable BlockOperation where
       (#const BLKIF_OP_WRITE)           -> return BlockOpWrite
       (#const BLKIF_OP_WRITE_BARRIER)   -> return BlockOpWriteBarrier
       (#const BLKIF_OP_FLUSH_DISKCACHE) -> return BlockOpFlushDiskCache
+#ifdef BLKIF_OP_DISCARD
       (#const BLKIF_OP_DISCARD)         -> return BlockOpDiscard
+#endif
       _                                 -> throw EIO
   poke ptr BlockOpRead =
     poke (castPtr ptr) ((#const BLKIF_OP_READ) :: Word8)
@@ -408,8 +416,10 @@ instance Storable BlockOperation where
     poke (castPtr ptr) ((#const BLKIF_OP_WRITE_BARRIER) :: Word8)
   poke ptr BlockOpFlushDiskCache =
     poke (castPtr ptr) ((#const BLKIF_OP_FLUSH_DISKCACHE) :: Word8)
+#ifdef BLKIF_OP_DISCARD
   poke ptr BlockOpDiscard =
     poke (castPtr ptr) ((#const BLKIF_OP_DISCARD) :: Word8)
+#endif
 
 data DiskRequest = DiskRequest {
     reqOp       :: BlockOperation
@@ -450,6 +460,7 @@ data DiskResponse = DiskResponse {
 
 writeDiskRequest :: Ptr DiskRequest -> DiskRequest -> IO ()
 writeDiskRequest ptr req = do
+#ifdef BLKIF_OP_DISCARD
   (#poke blkif_request_t,operation) ptr (reqOp req)
   if reqOp req == BlockOpDiscard
     -- write a blkif_reqeust_discard
@@ -459,7 +470,9 @@ writeDiskRequest ptr req = do
             (#poke blkif_request_discard_t,sector_number) ptr (sectorNum req)
             (#poke blkif_request_discard_t,nr_sectors)    ptr (numSectors req)
     -- write a blkif_request
-    else do (#poke blkif_request_t,nr_segments)   ptr numSegs
+    else do
+#endif
+            (#poke blkif_request_t,nr_segments)   ptr numSegs
             (#poke blkif_request_t,handle)        ptr (devHandle req)
             (#poke blkif_request_t,id)            ptr (reqId req)
             (#poke blkif_request_t,sector_number) ptr (sectorNum req)
@@ -467,7 +480,9 @@ writeDiskRequest ptr req = do
                       (segments req)
  where
   numSegs     = fromIntegral (length (segments req)) :: Word8
+#ifdef BLKIF_OP_DISCARD
   discardFlag = if (secure req) then (#const BLKIF_DISCARD_SECURE) else 0::Word8
+#endif
 
 readDiskResponse :: Ptr DiskResponse -> IO DiskResponse
 readDiskResponse ptr = do

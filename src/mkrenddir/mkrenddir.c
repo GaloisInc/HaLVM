@@ -3,7 +3,11 @@
 /* Please see the file LICENSE, distributed with this software, for specific */
 /* terms and conditions.                                                     */
 #include <stdio.h>
+#ifdef HAVE_XENSTORE_H
 #include <xenstore.h>
+#else
+#include <xs.h>
+#endif
 
 int main(int argc, char **argv)
 {

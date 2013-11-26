@@ -115,6 +115,7 @@ AC_FORCE_EXIST(FIND,find)
 AC_FORCE_EXIST(GIT,git)
 AC_FORCE_EXIST(INSTALL,install)
 AC_FORCE_EXIST(LD,ld)
+AC_FORCE_EXIST(LIBTOOL,libtool) dnl Required by Ubuntu 12 for autoreconf
 AC_FORCE_EXIST(LN,ln)
 AC_FORCE_EXIST(MAKE,make)
 AC_FORCE_EXIST(MKDIR,mkdir)
@@ -139,6 +140,19 @@ AC_CHECK_PROG_VER(HAPPY, happy, --version, [Version \([0-9.]*\)], [1.19.*],
 AC_CHECK_HEADER(ncurses.h, HAVE_NCURSES=y,
   [AC_CHECK_HEADER(curses.h, HAVE_NCURSES=y,
      LOG_FAILURE("The HaLVM requires the ncurses development library."))])
+
+AC_CHECK_HEADER(xenstore.h, HAVE_XENSTORE_H=yes, HAVE_XENSTORE_H=no)
+AC_CHECK_HEADER(xs.h, HAVE_XS_H=yes, HAVE_XS_H=no)
+
+if test "${HAVE_XENSTORE_H}${HAVE_XS_H}" = "nono"; then
+  LOG_FAILURE("The HaLVM requires either xenstore.h or xs.h.")
+fi
+
+if test "${HAVE_XENSTORE_H}" = "yes"; then
+  AC_SUBST(XENSTORE_H_OPT, "-DHAVE_XENSTORE_H")
+else
+  AC_SUBST(XENSTORE_H_OPT, "")
+fi
 
 AC_MSG_CHECKING(for globally-installed GHC terminfo package)
 

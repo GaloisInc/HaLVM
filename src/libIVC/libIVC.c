@@ -7,9 +7,16 @@
 #include <libIVC.h>
 #include <assert.h>
 #include <xenctrl.h>
+
+#ifdef HAVE_XENSTORE_H
 #include <xenstore.h>
+#else
+#include <xs.h>
+#endif
 
 #define PROT_READWRITE (PROT_READ | PROT_WRITE)
+
+#define ASPRINTF(fmt, ...) assert(asprintf(fmt, __VA_ARGS__) >= 0)
 
 /*****************************************************************************/
 /** Opening / Closing High Level Interfaces **********************************/
@@ -20,7 +27,9 @@ struct libIVC_interface {
   struct xs_handle *xs;
   xc_evtchn        *ec;
   xc_gnttab        *gt;
+#ifdef HAVE_XENSTORE_H
   xc_gntshr        *gs;
+#endif
 };
 
 libIVC_t *openIVCLibrary()
@@ -32,7 +41,9 @@ libIVC_t *openIVCLibrary()
   assert( retval->xs = xs_open(0) );
   assert( retval->ec = xc_evtchn_open(NULL, 0) );
   assert( retval->gt = xc_gnttab_open(NULL, 0) );
+#ifdef HAVE_XENSTORE_H
   retval->gs = xc_gntshr_open(NULL, 0); /* may not be available on all plats */
+#endif
 
   return retval;
 }
@@ -43,7 +54,9 @@ void closeIVCLibrary(libIVC_t *iface)
   xs_close(iface->xs);
   xc_interface_close(iface->xc);
   xc_gnttab_close(iface->gt);
+#ifdef HAVE_XENSTORE_H
   if(iface->gs) xc_gntshr_close(iface->gs);
+#endif
   free(iface);
 }
 
@@ -53,7 +66,9 @@ void closeIVCLibrary(libIVC_t *iface)
 
 static uint32_t getMyDomId(libIVC_t *);
 static uint32_t *parseRefs(char *str, uint32_t *len);
+#ifdef HAVE_XENSTORE_H
 static char     *showGrantRefList(uint32_t *grants, uint32_t num);
+#endif
 static ivc_connection_t *buildChannel(libIVC_t*, uint32_t, ivc_contype_t,
                                       evtchn_port_t, void *, uint32_t,
                                       float, int);
@@ -94,7 +109,7 @@ ivc_connection_t *makeConnection(libIVC_t *iface,
   /* me <- xsGetDomId */
   me = getMyDomId(iface);
   /* removePath xs targetPath */
-  asprintf(&key, "/rendezvous/%s", name);
+  ASPRINTF(&key, "/rendezvous/%s", name);
   xs_rm(iface->xs, 0, key);
   /* xsMakeDirectory xs targetPath */
   xs_mkdir(iface->xs, 0, key);
@@ -103,22 +118,22 @@ ivc_connection_t *makeConnection(libIVC_t *iface,
   perms.perms = XS_PERM_READ | XS_PERM_WRITE;
   xs_set_permissions(iface->xs, 0, key, &perms, 1);
   /* xsWrite xs (targetPath ++ "/LeftDomId") (show me) */
-  free(key), asprintf(&key, "/rendezvous/%s/LeftDomId", name);
-             asprintf(&val, "dom%d", me);
+  free(key), ASPRINTF(&key, "/rendezvous/%s/LeftDomId", name);
+             ASPRINTF(&val, "dom%d", me);
   xs_write(iface->xs, 0, key, val, strlen(val));
   /* other <- read <$> waitForKey xs (targetPAth ++ "/RightDomId") */
-  free(key), asprintf(&key, "/rendezvous/%s/RightDomId", name);
+  free(key), ASPRINTF(&key, "/rendezvous/%s/RightDomId", name);
   while(!rdomstr) { rdomstr = xs_read(iface->xs, 0, key, &len); };
   sscanf(rdomstr, "dom%d", &other);
   /* grants <- read <$> waitForKey xs (targetPAth ++ "/RightGrantRefs") */
-  free(key), asprintf(&key, "/rendezvous/%s/RightGrantRefs", name);
+  free(key), ASPRINTF(&key, "/rendezvous/%s/RightGrantRefs", name);
   while(!rrefstr) { rrefstr = xs_read(iface->xs, 0, key, &len); }
   grants = parseRefs(rrefstr, &num_refs);
   buffer = xc_gnttab_map_domain_grant_refs(iface->gt, num_refs, other, grants,
                                            PROT_READWRITE);
   assert(buffer);
   /* ports  <- read <$> waitForKey xs (targetPAth ++ "/RightPorts") */
-  free(key), asprintf(&key, "/rendezvous/%s/RightPorts", name);
+  free(key), ASPRINTF(&key, "/rendezvous/%s/RightPorts", name);
   while(!rpstr) { rpstr = xs_read(iface->xs, 0, key, &len); }
   sscanf(rpstr, "[echan:%d]", &port);
   port = xc_evtchn_bind_interdomain(iface->ec, other, port);
@@ -126,13 +141,14 @@ ivc_connection_t *makeConnection(libIVC_t *iface,
   /* res <- acceptConnection other grants ports extra */
   res = buildChannel(iface, other, type, port, buffer, num_refs * 4096, per, 0);
   /* xsWrite xs (targetPath ++ "/LeftConnectionConfirmed") "True" */
-  free(key), asprintf(&key, "/rendezvous/%s/LeftConnectionConfirmed", name);
-  free(val), asprintf(&val, "True");
+  free(key), ASPRINTF(&key, "/rendezvous/%s/LeftConnectionConfirmed", name);
+  free(val), ASPRINTF(&val, "True");
   xs_write(iface->xs, 0, key, val, strlen(val));
   /* return res */
   return res;
 }
 
+#ifdef HAVE_XENSTORE_H
 ivc_connection_t *acceptConnection(libIVC_t *iface,
                                    char *name,
                                    ivc_contype_t type,
@@ -147,7 +163,7 @@ ivc_connection_t *acceptConnection(libIVC_t *iface,
   /* we can only do this if we create grant references */
   if(!iface->gs) return NULL;
   /* other <- read `fmap` waitForKey xs (targetPath ++ "/LeftDomId) */
-  asprintf(&key, "/rendezvous/%s/LeftDomId", name);
+  ASPRINTF(&key, "/rendezvous/%s/LeftDomId", name);
   while(!domStr) { domStr = xs_read(iface->xs, 0, key, &len); }
   sscanf(domStr, "dom%d", &other);
   /* me <- xsGetDomId */
@@ -159,27 +175,28 @@ ivc_connection_t *acceptConnection(libIVC_t *iface,
   ps = xc_evtchn_bind_unbound_port(iface->ec, other);
   assert(ps);
   /* xsWrite xs (targetPath ++ "/RightDomId") (show me) */
-  free(key), asprintf(&key, "/rendezvous/%s/RightDomId", name);
-  free(val), asprintf(&val, "dom%d", me);
+  free(key), ASPRINTF(&key, "/rendezvous/%s/RightDomId", name);
+  free(val), ASPRINTF(&val, "dom%d", me);
   xs_write(iface->xs, 0, key, val, strlen(val));
   /* xsWrite xs (targetPath ++ "/RightGrantRefs") (show gs) */
-  free(key), asprintf(&key, "/rendezvous/%s/RightGrantRefs", name);
+  free(key), ASPRINTF(&key, "/rendezvous/%s/RightGrantRefs", name);
   free(val), val = showGrantRefList(gs, num_pages);
   xs_write(iface->xs, 0, key, val, strlen(val));
   /* xsWrite xs (targetPath ++ "/RightPorts") (show ps) */
-  free(key), asprintf(&key, "/rendezvous/%s/RightPorts", name);
-  free(val), asprintf(&val, "[echan:%d]", ps);
+  free(key), ASPRINTF(&key, "/rendezvous/%s/RightPorts", name);
+  free(val), ASPRINTF(&val, "[echan:%d]", ps);
   xs_write(iface->xs, 0, key, val, strlen(val));
   /* _ <- waitForKey xs (targetPath ++ "/LeftConnectionConfirmed") */
-  free(key), asprintf(&key, "/rendezvous/%s/LeftConnectionConfirmed", name);
+  free(key), ASPRINTF(&key, "/rendezvous/%s/LeftConnectionConfirmed", name);
   free(val), val = NULL;
   while(!val) { val = xs_read(iface->xs, 0, key, &len); }
   /* removePath xs targetPath */
-  free(key), asprintf(&key, "/rendezvous/%s", name);
+  free(key), ASPRINTF(&key, "/rendezvous/%s", name);
   xs_rm(iface->xs, 0, key);
   /* confirm */
   return buildChannel(iface, other, type, ps, buffer, 4096 * num_pages, per, 1);
 }
+#endif
 
 void closeConnection(libIVC_t *iface, ivc_connection_t *con)
 {
@@ -242,6 +259,7 @@ static uint32_t *parseRefs(char *str, uint32_t *count)
   return retval;
 }
 
+#ifdef HAVE_XENSTORE_H
 static char *showGrantRefList(uint32_t *grants, uint32_t num)
 {
   char **eachref = calloc(num, sizeof(char *));
@@ -249,7 +267,7 @@ static char *showGrantRefList(uint32_t *grants, uint32_t num)
   char *retval;
 
   for(i = 0, total_len = 0; i < num; i++) {
-    asprintf(&(eachref[i]), "grant:%d", grants[i]);
+    ASPRINTF(&(eachref[i]), "grant:%d", grants[i]);
     total_len += strlen(eachref[i]);
   }
 
@@ -271,6 +289,7 @@ static char *showGrantRefList(uint32_t *grants, uint32_t num)
 
   return retval;
 }
+#endif
 
 static ivc_connection_t *buildChannel(libIVC_t *iface,
                                       uint32_t peer,
