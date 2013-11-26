@@ -34,6 +34,11 @@ import Foreign.Storable
 #include <sys/types.h>
 #include <xen/xen.h>
 
+#if __XEN_LATEST_INTERFACE_VERSION__ > 0x00040200
+#define xenctl_cpumap xenctl_bitmap
+#define nr_cpus nr_bits
+#endif
+
 data CPUMap = CPUMap Int Integer
 
 instance Eq CPUMap where
@@ -108,10 +113,10 @@ withCPUMapWriter (CPUMap num bits) thunk =
 -- returns, the pointer (and its sub pointers) are no longer referenced.
 readSerializedCPUMap :: Ptr CPUMap -> IO CPUMap
 readSerializedCPUMap ptr = do
-  nr_cpus <- (#peek struct xenctl_cpumap,nr_cpus) ptr
-  valptr  <- (#peek struct xenctl_cpumap,bitmap) ptr
-  intval  <- readBytes ((nr_cpus + 7) `div` 8) valptr
-  return (CPUMap (fromIntegral nr_cpus) intval)
+  n_cpus <- (#peek struct xenctl_cpumap,nr_cpus) ptr
+  valptr <- (#peek struct xenctl_cpumap,bitmap) ptr
+  intval <- readBytes ((n_cpus + 7) `div` 8) valptr
+  return (CPUMap (fromIntegral n_cpus) intval)
  where
   readBytes :: Word32 -> Ptr Word8 -> IO Integer
   readBytes 0 _ = return 0
