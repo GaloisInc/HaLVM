@@ -147,12 +147,12 @@ data ProcessorContext = ProcessorContext {
   , rcFailsafeCallbackCS :: Word
   , rcFailsafeCallbackIP :: Word
 #endif
-  , rcSyscallCallbackIP  :: Word
   , rcVMAssist           :: [VMAssistFlag]
 #ifdef x86_64_TARGET_ARCH
   , rcFSBase             :: Word64
   , rcGSBaseKernel       :: Word64
   , rcGSBaseUser         :: Word64
+  , rcSyscallCallbackIP  :: Word
 #endif
   }
  deriving (Eq, Show, Generic)
@@ -418,18 +418,18 @@ instance Storable ProcessorContext where
     ecs <- (#peek vcpu_guest_context_t,event_callback_cs) p
     fcs <- (#peek vcpu_guest_context_t,failsafe_callback_cs) p
 #endif
-    sci <- (#peek vcpu_guest_context_t,syscall_callback_eip) p
     vma <- (#peek vcpu_guest_context_t,vm_assist) p
 #ifdef x86_64_TARGET_ARCH
+    sci <- (#peek vcpu_guest_context_t,syscall_callback_eip) p
     fsb <- (#peek vcpu_guest_context_t,fs_base) p
     gsk <- (#peek vcpu_guest_context_t,gs_base_kernel) p
     gsu <- (#peek vcpu_guest_context_t,gs_base_user) p
 #endif
     return (ProcessorContext fpu fla usr tct ldb lde gdb gde kss ksp cts dbs
 #ifdef x86_64_TARGET_ARCH
-                             eci fci sci vma fsb gsk gsu
+                             eci fci sci vma fsb gsk gsu sci
 #else
-                             ecs eci fcs fci sci vma
+                             ecs eci fcs fci vma
 #endif
                              )
   poke p v    = do
@@ -451,9 +451,9 @@ instance Storable ProcessorContext where
               (take 8 (rcDebugRegs v))
     (#poke vcpu_guest_context_t,event_callback_eip) p (rcEventCallbackIP v)
     (#poke vcpu_guest_context_t,failsafe_callback_eip)p (rcFailsafeCallbackIP v)
-    (#poke vcpu_guest_context_t,syscall_callback_eip) p (rcSyscallCallbackIP v)
     (#poke vcpu_guest_context_t,vm_assist) p (rcVMAssist v)
 #ifdef x86_64_TARGET_ARCH
+    (#poke vcpu_guest_context_t,syscall_callback_eip) p (rcSyscallCallbackIP v)
     (#poke vcpu_guest_context_t,fs_base) p (rcFSBase v)
     (#poke vcpu_guest_context_t,gs_base_kernel) p (rcGSBaseKernel v)
     (#poke vcpu_guest_context_t,gs_base_user) p (rcGSBaseUser v)

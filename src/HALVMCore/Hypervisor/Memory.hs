@@ -52,7 +52,6 @@ import Control.Exception
 import Control.Monad
 import Data.Binary
 import Data.Bits
-import Data.Word
 import Foreign.Ptr
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
@@ -228,7 +227,8 @@ setPageWritable x val = do
 markAsPageTable :: Int -> VPtr a -> DomId -> IO ()
 markAsPageTable l addr dom = do
   ent <- get_pt_entry addr
-  markFrameAsPageTable l (MFN (ent `shiftR` 12)) dom
+  let mfn' = fromIntegral (ent `shiftR` 12)
+  markFrameAsPageTable l (MFN mfn') dom
 
 markFrameAsPageTable :: Int -> MFN -> DomId -> IO ()
 markFrameAsPageTable l mfn dom = do
@@ -395,11 +395,11 @@ performFrameCopy src sd soff dest dd doff len = do
 -- |Convert a virtual address into a machine-physical address.
 virtualToMachine :: VPtr a -> IO (MPtr a)
 virtualToMachine x = do
-  ent <- fromIntegral `fmap` get_pt_entry x
+  ent <- get_pt_entry x
   when (ent == 0) $ throw EINVAL
   unless (ent `testBit` 0) $ throw EINVAL
   let inword = ptrToWordPtr x
-      inoff  = inword .&. 4095
+      inoff  = fromIntegral (inword .&. 4095)
       base   = ent .&. (complement 4095)
   return (MPtr (fromIntegral (base + inoff)))
 
@@ -439,9 +439,9 @@ standardUnitRes x = throw (toEnum (fromIntegral (-x)) :: ErrorCode)
 
 -- Functions from vmm.h
 foreign import ccall unsafe "vmm.h get_pt_entry"
-  get_pt_entry :: Ptr a -> IO Word
+  get_pt_entry :: Ptr a -> IO Word64
 foreign import ccall unsafe "vmm.h set_pt_entry"
-  set_pt_entry :: Ptr a -> Word -> IO ()
+  set_pt_entry :: Ptr a -> Word64 -> IO ()
 foreign import ccall unsafe "vmm.h machine_to_virtual"
   machine_to_virtual :: C_MADDR_T -> IO (VPtr a)
 

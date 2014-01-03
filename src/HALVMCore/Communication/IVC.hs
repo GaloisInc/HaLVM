@@ -39,8 +39,6 @@ import Hypervisor.ErrorCodes
 import Hypervisor.Memory
 import Hypervisor.Port
 
-import Hypervisor.Debug
-
 data InChannel a = InChannel {
     ichSetupData :: Maybe (DomId, [GrantRef], Port)
   , ichInChannel :: InChan
@@ -435,7 +433,7 @@ plusPtrW :: Integral b => Ptr a -> b -> Ptr a
 plusPtrW p x = p `plusPtr` (fromIntegral x)
 
 sizeSize :: Integral a => a
-sizeSize = fromIntegral (BS.length (encode (0 :: Word)))
+sizeSize = fromIntegral (BS.length (runPut (putWordhost 0)))
 
 computeModulus :: Word -> Word32
 computeModulus size

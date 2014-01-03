@@ -16,133 +16,15 @@
 
 	/* For Xen */	
 
-.section __xen_guest 
-        /* This section is only needed for Xen < 3.0.4 */
-#if __XEN_LATEST_INTERFACE_VERSION__ < 0x00030205
-	.ascii	"GUEST_OS=HaLVM"
-	.ascii	",XEN_VER=xen-3.0"
-	.ascii  ",VIRT_BASE=0xbac00000"
-	.ascii  ",ELF_PADDR_OFFSET=0xbac00000"
-	.ascii	",HYPERCALL_PAGE=0x1"
-# ifdef CONFIG_X86_PAE
-    .ascii  ",PAE=yes"
-# else
-	.ascii  ",PAE=no"
-# endif
-	.ascii	",LOADER=generic"
-	.byte	0
-#endif	
 .text
 
 .globl _start, hypercall_page
 .extern runtime_entry, do_hypervisor_callback
 	
 _start:
-        cld
-        fldcw newfpucw
-#        # Compute the values for the stack segment
-#
-#  This code doesn't work because Xen expects a flat address space, and
-#  both I and GCC use the stack frequently for passing data to Xen. 
-#
-#        mov $HALVM_STACK_SIZE, %eax # EAX = Size of the stack in bytes
-#        shr $12, %eax           # EAX = Size of the stack in pages
-#        mov $gdt_base, %edi     # EDI = Base of the GDT
-#        add $24, %edi           # EDI = Stack segment entry (segment 3 * 8)
-#        mov %ax, (%edi)         # Bit of a hack, using AX, but store the lower
-#                                # 16 bits of the in the GDT entry.
-#        shr $16, %eax           # EAX = High 4 bits of stack size in pages
-#        movb 6(%edi), %bl       # BL = G/DB/L/AVL/Limit19:16
-#        and $0xF0, %bl          # BL = G/DB/L/AVL/0000
-#        and $0x0F, %al          # AL = High 4 bits of stack size in pages
-#        or %bl, %al             # AL = New value for offset 6
-#        movb %al, 6(%edi)       # At this point, the segment limit is stored
-#        mov $stack, %eax        # EAX is the lowest address of the stack.
-#        mov %ax, 2(%edi)        # Set in the low 16 bits
-#        shr $16, %eax           # AX = top 16 bits of the low stack addr
-#        mov %al, 4(%edi)        # Set in bits 23:16, inclusive
-#        mov %ah, 7(%edi)        # Now the stack base is properly set.
-#       # Compute the values for the code segment
-#       mov $_etext, %eax       # EAX = The first address after the text segment
-#       shr $12, %eax           # EAX = the segment limit for the test segment
-#       mov $gdt_base, %edi     # EDI = Base of the GDT
-#       add $8, %edi            # EDI = Base of CS GDT entry
-#       mov %ax, (%edi)         # Set in the low 16 bits
-#       shr $16, %eax           # AL = Top 8 bits of the limit
-#       movb 6(%edi), %bl       # BL = G/DB/L/AVL/Limit19:16
-#       and $0xF0, %bl          # BL = G/DB/L/AVL/0000
-#       and $0x0F, %al          # AL = High four bits of stack size in pages
-#       or %bl, %al             # AL = New value for offset 6
-#       movb %al, 6(%edi)       # At this point, the segment limit is good
-#       # Get the machine address for our GDT table, below
-#       mov $gdt_base, %eax     # EAX = virtual address of GDT
-#       mov %eax, %ebx          # EBX = virtual address of GDT
-#       sub $0xbac00000, %eax   # EAX = pysical address of GDT
-#       shr $12, %eax           # EAX = PFN of GDT
-#       mov 68(%esi), %edi      # EDI = Physical to machine map
-#       shl $2, %eax            # EAX = offset of GDT into p2m map
-#       add %eax, %edi          # EDI = address of machine frame number
-#       mov 0(%edi), %ecx       # ECX = machine frame number of GDT
-#       push %ecx               # Safe this value; we'll want it later
-#       shl $12, %ecx           # ECX = Machine address of GDT
-#       # Now set the page read-only
-#       mov 60(%esi), %edi      # EDI = Base address of the page directory
-#       mov %ebx, %eax          # EAX = virtual address of the GDT
-#       shr $22, %eax           # EAX = Page directory entry for the GDT
-#       mov (%edi,%eax,4), %edx # EDX = Machine address + bits for GDT PT
-#       and $0xFFFFF000, %edx   # EDX = Machine address for GDT PT
-#       shr $12, %ebx           # EBX = ...
-#       and $1023, %ebx         # EBX = Index into the page table
-#       shl $2, %ebx            # EBX = Offset from the start of the PT
-#       add %ebx, %edx          # EDX = Machine address of the page table 
-#                               #       entry for the GDT
-#       or  $37, %ecx           # ECX = New PT value (add Acc,User,Present)
-#       push %esi               # Save ESI!!
-#       sub $16, %esp           # Generate space for the request structure
-#       mov %edx, 0(%esp)       # ESP ...
-#       movl $0, 4(%esp)        # ESP ...
-#       mov %ecx, 8(%esp)       # ESP ...
-#       movl $0, 12(%esp)       # ESP now points to the mmu_update struct
-#       mov %esp, %ebx          # ARG1 (EBX) = mmu_update_t*
-#       mov $1, %ecx            # ARG2 (ECX) = int (count)
-#       xor %edx, %edx          # ARG3 (EDX) = NULL
-#       mov $0x7ff0, %esi       # ARG4 (ESI) = DOMID_SELF
-#       xor %eax, %eax          # Clear return val, just for good measure
-#       call hypercall_page + (32 * __HYPERVISOR_mmu_update)
-#       or  %eax, %eax          # Do this to set or clear the zero flag
-#       jnz fail_out_of_boot
-#       mov 12(%esp), %ebx      # EBX = Machine address of GDT + some bits
-#       add $16, %esp           # Free the space from the request structure
-#       pop %esi                # Restore ESI
-#       # Set it as the GDT
-#                               # NOTE: The machine frame number for the GDT
-#                               # page just happens to be the first item on
-#                               # the stack.
-#       mov %esp, %ebx          # ARG1 (EBX) = unsigned long *
-#       mov $4, %ecx            # ARG2 (ECX) = count of entries
-#       xor %eax, %eax          # Clear return val, just for good measure
-#       call hypercall_page + (32 * __HYPERVISOR_set_gdt)
-#       mov %eax, %edx          
-#       or %eax, %eax           # Set the Z flag on return
-#       jnz fail_out_of_boot
-#       # Now set the registers
-#       ljmp $0x9,$reload_cs
-#       mov $0x9, %eax          # CS: Segment 1, Ring 1
-#       mov %eax, %cs
-#reload_cs:
-#       mov $0x11, %eax         # DS: Segment 2, Ring 1
-#       mov %eax, %ds
-#       mov %eax, %es
-#       mov %eax, %fs
-#       mov %eax, %gs
-#       mov $0x19, %eax         # SS: Segment 3, Ring 1
-#       mov $initial_tos, %esp
-#       mov %eax, %ss
-#       # And jump into the C
-#       mov $gdt_base, %edi
-#       add $24, %edi
-#       mov (%edi), %ecx
-#       mov 4(%edi), %edx
+       cld
+       fldcw newfpucw
+       push %esp
        push %esi
        call runtime_entry
 fail_out_of_boot:
@@ -181,7 +63,7 @@ CS              = 0x2c
 	pushl %edx; \
 	pushl %ecx; \
 	pushl %ebx; \
-	movl $(__KERNEL_DS),%edx; \
+	movl $(FLAT_KERNEL_DS),%edx; \
 	movl %edx,%ds; \
 	movl %edx,%es;
 
@@ -310,7 +192,7 @@ do_exception:
 	movl ORIG_EAX(%esp), %edx	# get the error code
 	movl %eax, ORIG_EAX(%esp)
 	movl %ecx, ES(%esp)
-	movl $(__KERNEL_DS), %ecx
+	movl $(FLAT_KERNEL_DS), %ecx
 	movl %ecx, %ds
 	movl %ecx, %es
 	movl %esp,%eax			# pt_regs pointer
@@ -451,11 +333,7 @@ gdt_base:
 	ELFNOTE(Xen, XEN_ELFNOTE_PADDR_OFFSET,   .long,  0xbac00000)
 	ELFNOTE(Xen, XEN_ELFNOTE_ENTRY,          .long,  _start)
 	ELFNOTE(Xen, XEN_ELFNOTE_HYPERCALL_PAGE, .long,  hypercall_page)
-# ifdef CONFIG_X86_PAE
     ELFNOTE(Xen, XEN_ELFNOTE_PAE_MODE,       .asciz, "yes")
-# else
-	ELFNOTE(Xen, XEN_ELFNOTE_PAE_MODE,       .asciz, "no")
-# endif
 	ELFNOTE(Xen, XEN_ELFNOTE_LOADER,         .asciz, "generic")
 #endif
 
