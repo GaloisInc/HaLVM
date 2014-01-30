@@ -427,7 +427,7 @@ instance Storable ProcessorContext where
 #endif
     return (ProcessorContext fpu fla usr tct ldb lde gdb gde kss ksp cts dbs
 #ifdef x86_64_TARGET_ARCH
-                             eci fci sci vma fsb gsk gsu sci
+                             eci fci vma fsb gsk gsu sci
 #else
                              ecs eci fcs fci vma
 #endif
