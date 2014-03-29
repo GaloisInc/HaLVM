@@ -215,7 +215,9 @@ HALVM_GHC_CONFIGURE_FLAGS  = --target=$(TARGET_ARCH)
 HALVM_GHC_CONFIGURE_FLAGS += --with-gcc=$(CC)
 HALVM_GHC_CONFIGURE_FLAGS += --with-ld=$(LD)
 HALVM_GHC_CONFIGURE_FLAGS += --with-nm=$(NM)
+HALVM_GHC_CONFIGURE_FLAGS += --with-ar=$(AR)
 HALVM_GHC_CONFIGURE_FLAGS += --with-objdump=$(OBJDUMP)
+HALVM_GHC_CONFIGURE_FLAGS += --with-ranlib=$(RANLIB)
 HALVM_GHC_CONFIGURE_FLAGS += --prefix=$(prefix)
 
 COMPILER_SOURCES := $(shell find $(TOPDIR)/halvm-ghc/compiler     \

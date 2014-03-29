@@ -51,6 +51,7 @@ NM                      := @NM@
 OBJDUMP                 := @OBJDUMP@
 PATCH                   := @PATCH@
 PERL                    := @PERL@
+RANLIB                  := @RANLIB@
 RM                      := @RM@
 SED                     := @SED@
 TAR                     := @TAR@
