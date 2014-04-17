@@ -46,7 +46,7 @@ $(TOPDIR)/src/gmp: | $(EVERYTHING_DOWNLOADED)
 	$(MV) gmp-5.0.3 $(TOPDIR)/src/gmp
 
 $(TOPDIR)/src/gmp/Makefile: | $(TOPDIR)/src/gmp
-	(cd src/gmp && ABI="$(GMP_ABI)" CFLAGS="$(CFLAGS)" \
+	(cd src/gmp && ABI="$(ABI)" CFLAGS="$(CFLAGS)" \
    ./configure --disable-shared --enable-static )
 
 $(TOPDIR)/src/gmp/.libs/libgmp.a: $(TOPDIR)/src/gmp/Makefile

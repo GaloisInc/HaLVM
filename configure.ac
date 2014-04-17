@@ -206,11 +206,15 @@ GCC_FLAG_CHECK(-fno-builtin,gp_cv_gcc_has_no_builtin,
 AC_LANG_POP(C)
 
 dnl Build with GMP?
-int_library=integer-simple
 AC_ARG_ENABLE([gmp],
   [AC_HELP_STRING([--enable-gmp],
                   [Build with gmp instead of integer-simple])],
-  [int_library=integer-gmp])
+  [if test "$enableval" = "yes"; then
+     int_library=integer-gmp
+   else
+     int_library=integer-simple
+   fi],
+  [int_library=integer-simple])
 AC_SUBST(INTEGER_LIBRARY, [$int_library])
 
 dnl -------------------------------------------------------------------------
