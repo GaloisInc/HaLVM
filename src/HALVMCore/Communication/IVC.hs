@@ -14,6 +14,7 @@
 --
 module Communication.IVC(
          InChannel, OutChannel, InOutChannel
+       , ReadableChan, WriteableChan
        , makeNewInChannel, acceptNewInChannel
        , makeNewOutChannel, acceptNewOutChannel
        , makeNewInOutChannel, acceptNewInOutChannel
