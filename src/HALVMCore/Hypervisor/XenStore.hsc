@@ -40,12 +40,14 @@ import Control.Exception
 import Control.Monad
 import Data.Binary.Get
 import Data.Binary.Put
+import Data.Bits
+import Data.ByteString(packCStringLen,useAsCStringLen)
 import Data.ByteString.Lazy(ByteString)
 import qualified Data.ByteString.Lazy as BS
 import Data.Char
 import Data.List
-import Data.Map(Map)
-import qualified Data.Map as Map
+import Data.Map.Strict(Map)
+import qualified Data.Map.Strict as Map
 import Data.Word
 import Foreign.C.String
 import Foreign.C.Types
@@ -58,7 +60,7 @@ import Hypervisor.ErrorCodes
 import Hypervisor.Memory
 import Hypervisor.Port
 
-data XenStore = XenStore (Chan DriverReq)
+newtype XenStore = XenStore (MVar XenbusState)
 
 data XSPerm =
     WritePerm     DomId
@@ -87,11 +89,11 @@ initXenStore  = do
 
 initCustomXenStore :: MFN -> Port -> IO XenStore
 initCustomXenStore xsMFN xsPort = do
-  commChan <- newChan
-  xsPtr    <- handle (mapMFN xsMFN) (mfnToVPtr xsMFN)
-  forkIO_ (xenbusClient xsPtr xsPort commChan initialClientState)
-  setPortHandler xsPort $ writeChan commChan Advance
-  return (XenStore commChan)
+  xsPtr <- handle (mapMFN xsMFN) (mfnToVPtr xsMFN)
+  let initState = state0 xsPort xsPtr
+  stateMV <- newMVar initState
+  setPortHandler xsPort (onXenbusEvent stateMV)
+  return (XenStore stateMV)
  where
   mapMFN :: MFN -> ErrorCode -> IO (VPtr a)
   mapMFN mfn _ = mapFrames [mfn]
@@ -107,244 +109,246 @@ xsDirectory :: XenStore -> String -> IO [String]
 xsDirectory xs = xstDirectory xs emptyTransaction
 
 xstDirectory :: XenStore -> TransId -> String -> IO [String]
-xstDirectory (XenStore commChan) tid str =
-  standardRequest commChan tid (XSDir str) RTDir parseStrings
+xstDirectory (XenStore xbs) tid str =
+  standardRequest xbs tid (XSDir str) RTDir parseStrings
 
 xsRead :: XenStore -> String -> IO String
 xsRead xs = xstRead xs emptyTransaction
 
 xstRead :: XenStore -> TransId -> String -> IO String
-xstRead (XenStore commChan) tid str =
-  standardRequest commChan tid (XSRead str) RTRead parseString
+xstRead (XenStore xbs) tid str =
+  standardRequest xbs tid (XSRead str) RTRead parseString
 
 xsGetPermissions :: XenStore -> String -> IO [XSPerm]
 xsGetPermissions xs = xstGetPermissions xs emptyTransaction
 
 xstGetPermissions :: XenStore -> TransId -> String -> IO [XSPerm]
-xstGetPermissions (XenStore commChan) tid str =
-  standardRequest commChan tid (XSGetPerms str) RTGetPerms parsePerms
+xstGetPermissions (XenStore xbs) tid str =
+  standardRequest xbs tid (XSGetPerms str) RTGetPerms parsePerms
 
 xsWatch :: XenStore -> String -> String -> (String -> String -> IO ()) -> IO ()
-xsWatch (XenStore commChan) str token handler = do
-  respMV <- newEmptyMVar
-  writeChan commChan (WatchRequest str token handler respMV)
-  processResponse RTWatch (const ()) =<< takeMVar respMV
+xsWatch (XenStore xbs) str token handler =
+  do modifyMVar_ xbs $ \ state ->
+       let oldwatches = waitingWatches state
+       in return state{ waitingWatches = oldwatches ++ [(str, token, handler)] }
+     standardRequest xbs emptyTransaction (XSWatch str token) RTWatch (const ())
 
-xsUnwatch :: XenStore -> String -> IO ()
+xsUnwatch :: XenStore -> String -> String -> IO ()
 xsUnwatch xs = xstUnwatch xs emptyTransaction
 
-xstUnwatch :: XenStore -> TransId -> String -> IO ()
-xstUnwatch (XenStore commChan) tid str =
-  standardRequest commChan tid (XSUnwatch str) RTUnwatch (const ())
+xstUnwatch :: XenStore -> TransId -> String -> String -> IO ()
+xstUnwatch (XenStore xbs) tid wpth tok =
+  do modifyMVar_ xbs $ \ state ->
+       let watches = filter (\ (a,b,_) -> (a /= wpth) || (b /= tok))
+                            (waitingWatches state)
+       in return state{ waitingWatches = watches }
+     standardRequest xbs tid (XSUnwatch wpth tok) RTUnwatch (const ())
 
 xsStartTransaction :: XenStore -> IO TransId
 xsStartTransaction xs = xstStartTransaction xs emptyTransaction
 
 xstStartTransaction :: XenStore -> TransId -> IO TransId
-xstStartTransaction (XenStore commChan) tid =
-  standardRequest commChan tid XSTransSt RTTransSt parseTransId
+xstStartTransaction (XenStore xbs) tid =
+  standardRequest xbs tid XSTransSt RTTransSt parseTransId
 
 xstAbort :: XenStore -> TransId -> IO ()
-xstAbort (XenStore commChan) tid =
-  standardRequest commChan tid (XSTransEnd False) RTTransEnd (const ())
+xstAbort (XenStore xbs) tid =
+  standardRequest xbs tid (XSTransEnd False) RTTransEnd (const ())
 
 xstCommit :: XenStore -> TransId -> IO ()
-xstCommit (XenStore commChan) tid =
-  standardRequest commChan tid (XSTransEnd True) RTTransEnd (const ())
+xstCommit (XenStore xbs) tid =
+  standardRequest xbs tid (XSTransEnd True) RTTransEnd (const ())
 
 xsIntroduce :: XenStore -> DomId -> MFN -> Port -> IO ()
 xsIntroduce xs = xstIntroduce xs emptyTransaction
 
 xstIntroduce :: XenStore -> TransId -> DomId -> MFN -> Port -> IO ()
-xstIntroduce (XenStore commChan) tid d m p =
-  standardRequest commChan tid (XSIntro d m p) RTIntro (const ())
+xstIntroduce (XenStore xbs) tid d m p =
+  standardRequest xbs tid (XSIntro d m p) RTIntro (const ())
 
 xsRelease :: XenStore -> DomId -> IO ()
 xsRelease xs = xstRelease xs emptyTransaction
 
 xstRelease :: XenStore -> TransId -> DomId -> IO ()
-xstRelease (XenStore commChan) tid d =
-  standardRequest commChan tid (XSRelease d) RTRelease (const ())
+xstRelease (XenStore xbs) tid d =
+  standardRequest xbs tid (XSRelease d) RTRelease (const ())
 
 xsGetDomainPath :: XenStore -> DomId -> IO String
 xsGetDomainPath xs = xstGetDomainPath xs emptyTransaction
 
 xstGetDomainPath :: XenStore -> TransId -> DomId -> IO String
-xstGetDomainPath (XenStore commChan) tid d =
-  standardRequest commChan tid (XSGetPath d) RTGetPath parseString
+xstGetDomainPath (XenStore xbs) tid d =
+  standardRequest xbs tid (XSGetPath d) RTGetPath parseString
 
 xsWrite :: XenStore -> String -> String -> IO ()
 xsWrite xs = xstWrite xs emptyTransaction
 
 xstWrite :: XenStore -> TransId -> String -> String -> IO ()
-xstWrite (XenStore commChan) tid k v =
-  standardRequest commChan tid (XSWrite k v) RTWrite (const ())
+xstWrite (XenStore xbs) tid k v =
+  standardRequest xbs tid (XSWrite k v) RTWrite (const ())
 
 xsMakeDirectory :: XenStore -> String -> IO ()
 xsMakeDirectory xs = xstMakeDirectory xs emptyTransaction
 
 xstMakeDirectory :: XenStore -> TransId -> String -> IO ()
-xstMakeDirectory (XenStore commChan) tid d =
-  standardRequest commChan tid (XSMkDir d) RTMkDir (const ())
+xstMakeDirectory (XenStore xbs) tid d =
+  standardRequest xbs tid (XSMkDir d) RTMkDir (const ())
 
 xsRemove :: XenStore -> String -> IO ()
 xsRemove xs = xstRemove xs emptyTransaction
 
 xstRemove :: XenStore -> TransId -> String -> IO ()
-xstRemove (XenStore commChan) tid k =
-  standardRequest commChan tid (XSRm k) RTRm (const ())
+xstRemove (XenStore xbs) tid k =
+  standardRequest xbs tid (XSRm k) RTRm (const ())
 
 xsSetPermissions :: XenStore -> String -> [XSPerm] -> IO ()
 xsSetPermissions xs = xstSetPermissions xs emptyTransaction
 
 xstSetPermissions :: XenStore -> TransId -> String -> [XSPerm] -> IO ()
-xstSetPermissions (XenStore commChan) tid k ps =
-  standardRequest commChan tid (XSSetPerms k ps) RTSetPerms (const ())
+xstSetPermissions (XenStore xbs) tid k ps =
+  standardRequest xbs tid (XSSetPerms k ps) RTSetPerms (const ())
 
 xsIsDomainIntroduced :: XenStore -> DomId -> IO Bool
 xsIsDomainIntroduced xs = xstIsDomainIntroduced xs emptyTransaction
 
 xstIsDomainIntroduced :: XenStore -> TransId -> DomId -> IO Bool
-xstIsDomainIntroduced (XenStore commChan) tid d =
-  standardRequest commChan tid (XSIsDomInt d) RTIsDomInt parseBool
+xstIsDomainIntroduced (XenStore xbs) tid d =
+  standardRequest xbs tid (XSIsDomInt d) RTIsDomInt parseBool
 
 xsResume :: XenStore -> DomId -> IO ()
 xsResume xs = xstResume xs emptyTransaction
 
 xstResume :: XenStore -> TransId -> DomId -> IO ()
-xstResume (XenStore commChan) tid d =
-  standardRequest commChan tid (XSResume d) RTResume (const ())
+xstResume (XenStore xbs) tid d =
+  standardRequest xbs tid (XSResume d) RTResume (const ())
 
 xsSetTarget :: XenStore -> DomId -> DomId -> IO ()
 xsSetTarget xs = xstSetTarget xs emptyTransaction
 
 xstSetTarget :: XenStore -> TransId -> DomId -> DomId -> IO ()
-xstSetTarget (XenStore commChan) tid d td =
-  standardRequest commChan tid (XSSetTarg d td) RTSetTarg (const ())
+xstSetTarget (XenStore xbs) tid d td =
+  standardRequest xbs tid (XSSetTarg d td) RTSetTarg (const ())
 
 xsRestrict :: XenStore -> DomId -> IO ()
 xsRestrict xs = xstRestrict xs emptyTransaction
 
 xstRestrict :: XenStore -> TransId -> DomId -> IO ()
-xstRestrict (XenStore commChan) tid d =
-  standardRequest commChan tid (XSRestrict d) RTRestrict (const ())
+xstRestrict (XenStore xbs) tid d =
+  standardRequest xbs tid (XSRestrict d) RTRestrict (const ())
 
 #ifdef XS_RESET_WATCHES
 xsResetWatches :: XenStore -> IO ()
 xsResetWatches xs = xstResetWatches xs emptyTransaction
 
 xstResetWatches :: XenStore -> TransId -> IO ()
-xstResetWatches (XenStore commChan) tid =
-  standardRequest commChan tid XSReset RTReset (const ())
+xstResetWatches (XenStore xbs) tid =
+  standardRequest xbs tid XSReset RTReset (const ())
 #endif
 
-standardRequest :: Chan DriverReq -> TransId ->
-                   XenbusRequest -> ResponseType -> (ByteString -> a) ->
+standardRequest :: MVar XenbusState ->
+                   TransId -> XenbusRequest ->
+                   ResponseType -> (ByteString -> a) ->
                    IO a
-standardRequest commChan tid req goodresp converter = do
-  respMV <- newEmptyMVar
-  writeChan commChan (Request tid req respMV)
-  processResponse goodresp converter =<< takeMVar respMV
+standardRequest stateMV tid req goodresp converter =
+  writeRequest stateMV tid req $ \ body ->
+    case body of
+      RespBody _ RTError bstr ->
+        case reads (parseString bstr) of
+          ((x,_):_)  -> throw (x :: ErrorCode)
+          _          -> throw EIO
+      RespBody _ rtype bstr | rtype == goodresp ->
+        return (converter bstr)
+      RespBody _ rtype _ ->
+        do writeDebugConsole ("ERROR: Xenbus: Expected " ++ show goodresp ++
+                              " but got " ++ show rtype ++ "\n")
+           throw EIO
 
 -- ----------------------------------------------------------------------------
 
-data DriverReq =
-    Advance
-  | WatchRequest String String (String -> String -> IO ()) (MVar ResponseBody)
-  | Request TransId XenbusRequest (MVar ResponseBody)
-
-data XenbusClientState = XenbusClientState {
-    nextRequestId :: ReqId
-  , waiterMap     :: Map ReqId (MVar ResponseBody)
-  , watches       :: [(String, String -> String -> IO ())]
-  , pendingReqs   :: [ByteString]
-  , unparsedData  :: ByteString
-  , shouldSignal  :: Bool
+data XenbusState = XBS {
+    xbPort          :: Port
+  , xbRing          :: XSRing
+  , nextRequestId   :: ReqId
+  , decodeStream    :: ByteString
+  , pendingWrites   :: ByteString
+  , waitingRequests :: Map ReqId (MVar ResponseBody)
+  , waitingWatches  :: [(String, String, String -> String -> IO ())]
   }
 
-initialClientState :: XenbusClientState
-initialClientState = XenbusClientState {
-    nextRequestId = ReqId 1
-  , waiterMap     = Map.empty
-  , watches       = []
-  , pendingReqs   = []
-  , unparsedData  = BS.empty
-  , shouldSignal  = False
+state0 :: Port -> XSRing -> XenbusState
+state0 port ring = XBS {
+    xbPort          = port
+  , xbRing          = ring
+  , nextRequestId   = ReqId 1000
+  , decodeStream    = BS.empty
+  , pendingWrites   = BS.empty
+  , waitingRequests = Map.empty
+  , waitingWatches  = []
   }
 
-updateState :: XenbusClientState -> DriverReq -> XenbusClientState
-updateState st Advance               = st
-updateState st (Request t r mv)      =
-  let newreq = buildRequest (nextRequestId st) t r
-  in st{ nextRequestId = advanceReqId (nextRequestId st)
-       , waiterMap     = Map.insert (nextRequestId st) mv (waiterMap st)
-       , pendingReqs   = pendingReqs st ++ [newreq]
-       }
-updateState st (WatchRequest s t v mv) =
-  let watchreq = buildRequest (nextRequestId st) (TransId 0) (XSWatch s t)
-  in st{ nextRequestId = advanceReqId (nextRequestId st)
-       , waiterMap     = Map.insert (nextRequestId st) mv (waiterMap st)
-       , watches       = (s, v) : watches st
-       , pendingReqs   = pendingReqs st ++ [watchreq]
-       }
+writeRequest :: MVar XenbusState ->
+                TransId -> XenbusRequest ->
+                (ResponseBody -> IO a) ->
+                IO a
+writeRequest stateMV tid req k =
+  do respMV <- newEmptyMVar
+     state <- takeMVar stateMV
+     let rid     = nextRequestId state
+         newbstr = buildRequest rid tid req
+         pend    = pendingWrites state `BS.append` newbstr
+         table'  = Map.insert rid respMV (waitingRequests state)
+     remain <- writeRequestData (xbPort state) (xbRing state) pend
+     putMVar stateMV $! state{ nextRequestId   = advanceReqId rid
+                             , pendingWrites   = remain
+                             , waitingRequests = table' }
+     takeMVar respMV >>= k
 
-addNewData :: XenbusClientState -> ByteString -> XenbusClientState
-addNewData st bstr = st{ unparsedData = unparsedData st `BS.append` bstr
-                       , shouldSignal = shouldSignal st || (not (BS.null bstr))}
+onXenbusEvent :: MVar XenbusState -> IO ()
+onXenbusEvent stateMV =
+  do state <- takeMVar stateMV
+     let port = xbPort state
+         ring = xbRing state
+     inputbstr <- readNewResponseData port ring (decodeStream state)
+     let (resps, inputbstr') = parseResponses inputbstr
+     tab <- foldM' (waitingRequests state) resps $ \ table resp ->
+       case resp of
+         -- Fire any watches associated with this event
+         RespBody _ RTEvent bstr ->
+           do let bsparts = BS.split 0 bstr
+                  parts   = map (map (chr . fromIntegral) . BS.unpack) bsparts
+                  (key:token:_) = parts
+              forM_ (waitingWatches state) $ \ (watchOn, _, action) ->
+                when (watchOn `isPrefixOf` key) $
+                  forkIO_ (action key token)
+              return table
+         -- Run any handlers associated with this id
+         RespBody rid _ _ ->
+           case Map.lookup rid table of
+             Nothing ->
+               do writeDebugConsole ("WARNING: Xenbus: Response with bad id: "
+                                      ++ (show rid) ++ "\n")
+                  return table
+             Just mvar ->
+               do putMVar mvar resp
+                  return (Map.delete rid table)
+     remn <- writeRequestData port ring (pendingWrites state)
+     putMVar stateMV $! state{ decodeStream = inputbstr'
+                             , pendingWrites = remn
+                             , waitingRequests = tab }
+ where
+  readNewResponseData port ring acc =
+    do newstuff <- readResponseData port ring
+       if BS.null newstuff
+         then return acc
+         else readNewResponseData port ring (acc `BS.append` newstuff)
 
-processRawData :: XenbusClientState -> (XenbusClientState, [ResponseBody])
-processRawData st =
-  case runGetOrFail parseResponse (unparsedData st) of
-    Left _ -> (st, [])
-    Right (bytesLeft, _, x) ->
-      let (st', rest) = processRawData st{ unparsedData = bytesLeft }
-      in (st', x : rest)
-
-processResponses :: XenbusClientState -> ResponseBody -> IO XenbusClientState
-processResponses state (RespBody rid rtype bstr) =
-  case Map.lookup rid (waiterMap state) of
-    Just resmv -> do
-      putMVar resmv (RespBody (ReqId 0) rtype bstr)
-      return state{ waiterMap = Map.delete rid (waiterMap state) }
-    Nothing    ->
-      return state
-
-processWatches :: XenbusClientState -> ResponseBody -> IO ()
-processWatches state (RespBody _ RTEvent bstr) = do
-  let bsparts = BS.split 0 bstr
-      parts   = map (map (chr . fromIntegral) . BS.unpack) bsparts
-  case parts of
-    (key:token:_) ->
-      forM_ (watches state) $ \ (watchOn, action) ->
-        when (watchOn `isPrefixOf` key) $
-          forkIO_ (action key token)
-    _ ->
-      writeDebugConsole "HaLVM/xenstore: Ignoring strange event notification.\n"
-processWatches _ _ = return ()
-
-writePendingRequests :: XenbusClientState -> XSRing -> IO XenbusClientState
-writePendingRequests state ring =
-  case pendingReqs state of
-    []       -> return state
-    (f:rest) -> do
-      canDo <- canWriteReqData ring f
-      if canDo
-        then do let state' = state{ pendingReqs = rest, shouldSignal = True }
-                writeNewReqData ring f >> writePendingRequests state' ring
-        else return state
-
-xenbusClient :: XSRing -> Port -> Chan DriverReq -> XenbusClientState -> IO ()
-xenbusClient ring port commChan state0 = do
-  state1 <- updateState state0 <$> readChan commChan
-  state2 <- addNewData state1 <$> readNewRespData ring
-  let (state3, resps) = processRawData state2
-  state4 <- foldM processResponses state3 resps
-  mapM_ (processWatches state4) resps
-  state5 <- writePendingRequests state4 ring
-  when (shouldSignal state5) $ sendOnPort port
-  xenbusClient ring port commChan state5{ shouldSignal = False }
-
--- ----------------------------------------------------------------------------
+parseResponses :: ByteString -> ([ResponseBody], ByteString)
+parseResponses bstr =
+  case runGetOrFail parseResponse bstr of
+    Left  (remain, _, _)   -> ([], remain)
+    Right (rest,   _, req) ->
+      let (res, remain) = parseResponses rest
+      in (req : res, remain)
 
 buildRequest :: ReqId -> TransId -> XenbusRequest -> ByteString
 buildRequest rid tid xbr = runPut $ do
@@ -355,16 +359,6 @@ buildRequest rid tid xbr = runPut $ do
   putLazyByteString body
  where body = runPut (renderBody xbr)
 
-data ResponseBody = RespBody ReqId ResponseType ByteString
-
-parseResponse :: Get ResponseBody
-parseResponse = do
-  rtype <- getResponseType <$> getWord32host
-  rid   <- getWord32host
-  _tid  <- getWord32host
-  len   <- getWord32host
-  body  <- getLazyByteString (fromIntegral len)
-  return (RespBody (ReqId rid) rtype body)
 
 -- ----------------------------------------------------------------------------
 
@@ -376,6 +370,17 @@ parseResponse = do
 #error "BAD BAD BAD"
 #endif
 
+data ResponseBody = RespBody ReqId ResponseType ByteString
+
+parseResponse :: Get ResponseBody
+parseResponse =
+  do rtype <- getResponseType <$> getWord32host
+     rid   <- getWord32host
+     _tid  <- getWord32host
+     len   <- getWord32host
+     body  <- getLazyByteString (fromIntegral len)
+     return (RespBody (ReqId rid) rtype body)
+
 data ResponseType = RTRead     | RTWrite  | RTMkDir   | RTRm       | RTDir
                   | RTSetPerms | RTWatch  | RTUnwatch | RTRestrict | RTTransSt
                   | RTTransEnd | RTIntro  | RTRelease | RTGetPath  | RTError
@@ -384,7 +389,7 @@ data ResponseType = RTRead     | RTWrite  | RTMkDir   | RTRm       | RTDir
                   | RTReset
 #endif
                   | RTUnknown Word32
- deriving (Eq)
+ deriving (Show, Eq)
 
 getResponseType :: Word32 -> ResponseType
 getResponseType (#const XS_DIRECTORY)            = RTDir
@@ -412,12 +417,6 @@ getResponseType (#const XS_RESET_WATCHES)        = RTReset
 #endif
 getResponseType x                                = RTUnknown x
 
-processResponse :: ResponseType -> (ByteString -> a) -> ResponseBody -> IO a
-processResponse goodtype converter (RespBody _ rtype body)
-  | rtype == goodtype = return (converter body)
-  | rtype == RTError  = throw (parseError body)
-  | otherwise         = throw EIO
-
 parseStrings :: ByteString -> [String]
 parseStrings bstr = map translateAscii (BS.split 0 bstr)
 
@@ -442,12 +441,6 @@ parsePerms bstr = map translateString (parseStrings bstr)
 translateAscii :: ByteString -> String
 translateAscii  = map castCUCharToChar . map CUChar . BS.unpack
 
-parseError :: ByteString -> ErrorCode
-parseError bstr =
-  case reads (parseString bstr) of
-    [(x, [])] -> x
-    _         -> EIO
-
 -- ----------------------------------------------------------------------------
 
 data XenbusRequest =
@@ -459,7 +452,7 @@ data XenbusRequest =
   | XSGetPerms String
   | XSSetPerms String [XSPerm]
   | XSWatch    String String
-  | XSUnwatch  String
+  | XSUnwatch  String String
 #ifdef XS_RESET_WATCHES
   | XSReset
 #endif
@@ -482,7 +475,7 @@ requestId (XSDir      _)     = (#const XS_DIRECTORY)
 requestId (XSGetPerms _)     = (#const XS_GET_PERMS)
 requestId (XSSetPerms _ _)   = (#const XS_SET_PERMS)
 requestId (XSWatch    _ _)   = (#const XS_WATCH)
-requestId (XSUnwatch  _)     = (#const XS_UNWATCH)
+requestId (XSUnwatch  _ _)   = (#const XS_UNWATCH)
 #ifdef XS_RESET_WATCHES
 requestId  XSReset           = (#const XS_RESET_WATCHES)
 #endif
@@ -513,8 +506,8 @@ renderBody (XSSetPerms str  perms)   =
   renderStr str >> addNull >> renderPerms perms
 renderBody (XSWatch    str  token)   =
   renderStr str >> addNull >> renderStr token >> addNull
-renderBody (XSUnwatch  str)          =
-  renderStr str >> addNull
+renderBody (XSUnwatch  str  token)   =
+  renderStr str >> addNull >> renderStr token >> addNull
 #ifdef XS_RESET_WATCHES
 renderBody  XSReset                  =
   addNull
@@ -567,56 +560,63 @@ addNull = putWord8 0
 
 -- ----------------------------------------------------------------------------
 
-readNewRespData :: XSRing -> IO ByteString
-readNewRespData ring = BS.pack <$> readBytes
+writeRequestData :: Port -> XSRing -> ByteString -> IO ByteString
+writeRequestData port ring bstr =
+  do cons <- reqConsumed ring
+     prod <- reqProduced ring
+     systemMB
+     when ((prod - cons) > reqRingSize) $ fail "XenStore invariant broke."
+     let (buf, len) = getOutputChunk cons prod
+     let (writeBuf, leftBuf) = BS.splitAt (fromIntegral len) bstr
+     let len' = min (fromIntegral len) (fromIntegral (BS.length writeBuf))
+     unless (len == 0) $
+       do writeBS writeBuf buf
+          systemWMB
+          setReqProduced ring (prod + len')
+          sendOnPort port
+     return leftBuf
  where
-  readBytes :: IO [Word8]
-  readBytes = do
-    mnext <- nextByte
-    case mnext of
-      Nothing -> return []
-      Just x  -> (x:) <$> readBytes
-  --
-  nextByte :: IO (Maybe Word8)
-  nextByte = do
-    cons <- respConsumed ring
-    prod <- respProduced ring
-    assert (prod >= cons) $ return ()
-    if cons == prod
-      then return Nothing
-      else do byte <- peekByteOff (responseRing ring)
-                                  (fromIntegral cons `mod` respRingSize)
-              setRespConsumed ring (cons + 1)
-              return (Just byte)
+  getOutputChunk cons prod =
+    let prodMask = prod .&. (reqRingSize - 1)
+        maxLen   = reqRingSize - prodMask
+        roomLeft = reqRingSize - (prod - cons)
+        len      = if roomLeft < maxLen then roomLeft else maxLen
+    in (requestRing ring `plusPtr` fromIntegral prodMask, len)
 
-canWriteReqData :: XSRing -> ByteString -> IO Bool
-canWriteReqData ring bstr = do
-  prod <- reqConsumed ring
-  cons <- reqProduced ring
-  return (((prod + amt) - cons) <= reqRingSize)
- where amt = fromIntegral (BS.length bstr)
-
-writeNewReqData :: XSRing -> ByteString -> IO ()
-writeNewReqData ring bstr = do
-  sane <- canWriteReqData ring bstr
-  assert sane $ return ()
-  writeBytes (BS.unpack bstr)
+readResponseData :: Port -> XSRing -> IO ByteString
+readResponseData port ring = handle printError $
+  do cons <- respConsumed ring
+     prod <- respProduced ring
+     systemMB
+     when ((prod - cons) > respRingSize) $ fail "XenStore invariant broke."
+     let (buf, len) = getInputChunk cons prod
+     if len == 0
+        then return BS.empty
+        else do systemRMB
+                bstr <- packCStringLen (buf, fromIntegral len)
+                systemMB
+                setRespConsumed ring (cons + len)
+                sendOnPort port
+                return (BS.fromStrict bstr)
  where
-  writeBytes []    = return ()
-  writeBytes (f:r) = do
-    prod <- reqProduced ring
-    pokeByteOff (requestRing ring) (fromIntegral prod `mod` reqRingSize) f
-    setReqProduced ring (prod + 1)
-    writeBytes r
+  printError :: SomeException -> IO ByteString
+  printError e =
+   do writeDebugConsole ("Xenbus: Caught exception: " ++ show e ++ "\n") 
+      return BS.empty
+  getInputChunk cons prod =
+    let consMask = cons .&. (respRingSize - 1)
+        maxLen   = respRingSize - consMask
+        len      = if (prod - cons) < maxLen then prod - cons else maxLen
+    in (responseRing ring `plusPtr` fromIntegral consMask, len)
 
 -- ----------------------------------------------------------------------------
 
 type XSRing = Ptr Word8
 
-reqRingSize :: Integral a => a
+reqRingSize :: Word32
 reqRingSize  = 1024
 
-respRingSize :: Integral a => a
+respRingSize :: Word32
 respRingSize  = 1024
 
 requestRing :: XSRing -> Ptr Word8
@@ -648,6 +648,18 @@ respProduced r = (#peek struct xenstore_domain_interface,rsp_prod) r
 forkIO_ :: IO () -> IO ()
 forkIO_ m = forkIO m >> return ()
 
+writeBS :: ByteString -> Ptr a -> IO ()
+writeBS bstr buf = go (BS.toChunks bstr) buf
+ where
+  go [] _ = return ()
+  go (f:rest) p = useAsCStringLen f $
+    \ (ptr, len) ->
+      do memcpy p (castPtr ptr) len
+         go rest (p `plusPtr` len)
+
+foldM' :: a -> [b] -> (a -> b -> IO a) -> IO a
+foldM' val0 ls f = foldM f val0 ls 
+
 -- ----------------------------------------------------------------------------
 
 foreign import ccall unsafe "domain_info.h get_xenstore_evtchn"
@@ -656,4 +668,6 @@ foreign import ccall unsafe "domain_info.h get_xenstore_evtchn"
 foreign import ccall unsafe "domain_info.h get_xenstore_mfn"
   get_xenstore_mfn :: IO Word
 
+foreign import ccall unsafe "string.h memcpy"
+  memcpy :: Ptr a -> Ptr a -> Int -> IO ()
 
