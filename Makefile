@@ -258,6 +258,7 @@ clean::
 
 install::
 	$(MAKE) -C halvm-ghc install ghclibdir=$(halvmlibdir)
+	$(CP) -rf halvm-ghc/rts/minlibc/include $(halvmlibdir)/include/minlibc
 
 ###############################################################################
 # HaLVM SCRIPTS ###############################################################

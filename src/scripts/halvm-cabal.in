@@ -2,7 +2,7 @@
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 bindir=@bindir@
-libdir=@libdir@/HaLVM/@PACKAGE_VERSION@
+libdir=@libdir@/HaLVM-@PACKAGE_VERSION@
 
 CABALBIN=@CABAL@
 CABALCMD=${1+"$@"}
@@ -15,13 +15,15 @@ fi
 
 INSTALL_FLAGS="--ghc ${BUILD_FLAGS}"
 CONFIGURE_FLAGS="--ghc ${BUILD_FLAGS}"
-INCLUDE_FLAGS=
+RESTRICT_FLAGS="--disable-library-profiling"
+INITIAL_FLAGS=
+FINAL_FLAGS=
 
 for opt in ${CABALCMD}; do
   case "$opt" in
-    configure) INCLUDE_FLAGS=${CONFIGURE_FLAGS} ;;
-    install)   INCLUDE_FLAGS=${INSTALL_FLAGS}   ;;
+    configure) INITIAL_FLAGS=${CONFIGURE_FLAGS}; FINAL_FLAGS=${RESTRICT_FLAGS};;
+    install)   INITIAL_FLAGS=${INSTALL_FLAGS}  ; FINAL_FLAGS=${RESTRICT_FLAGS};;
   esac
 done
 
-exec ${CABALBIN} ${INCLUDE_FLAGS} ${CABALCMD}
+exec ${CABALBIN} ${INITIAL_FLAGS} ${CABALCMD} ${FINAL_FLAGS}
