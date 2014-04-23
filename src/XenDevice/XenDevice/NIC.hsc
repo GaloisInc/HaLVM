@@ -30,6 +30,7 @@ import Control.Exception
 import Control.Monad
 import Data.Bits
 import qualified Data.ByteString as SBS
+import qualified Data.ByteString.Lazy as BS
 import Data.ByteString.Lazy(ByteString,fromChunks,toChunks)
 import Data.ByteString.Unsafe(unsafePackCStringFinalizer, unsafeUseAsCStringLen)
 import Data.Int
@@ -198,34 +199,47 @@ openNIC xs mac = do
 sendPacket :: NIC -> ByteString -> IO ()
 sendPacket nic bstr = do
   curId <- takeMVar (nicTxId nic)
-  (reqs,id')  <- createRecs curId (frbGetDomain (nicTxRing nic)) (toChunks bstr)
-  putMVar (nicTxId nic) $! id'
-  resMVs <- modifyMVar (nicTxTable nic) $ \ x -> foldM addLink (x, []) reqs
-  frbWriteRequests (nicTxRing nic) reqs
-  res <- mapM takeMVar resMVs
-  case catMaybes res of
-    []    -> return ()
-    (e:_) -> throw e
+  table <- takeMVar (nicTxTable nic)
+  go True curId chunks [] [] table
  where
-  createRecs myid _   [] = return ([], myid)
-  createRecs myid dom (chunk:rest)
-    | SBS.length chunk == 0 = createRecs myid dom rest
-    | otherwise =
-       unsafeUseAsCStringLen chunk $ \ (ptr, len) -> do
-         let ptrW   = ptrToWordPtr ptr
-             base   = wordPtrToPtr (ptrW .&. (complement 4095))
-             off    = fromIntegral (ptrW .&. 4095)
-             sz     = min len (4096 - fromIntegral off)
-             chunk' = SBS.drop (fromIntegral sz) chunk
-         [ref] <- grantAccess dom base 4096 False
-         (rest', myid') <- createRecs (myid + 1) dom (chunk' : rest)
-         let flags  = if null rest' then 0 else (#const NETTXF_more_data)
-             req   = TxRequest ref off flags myid (fromIntegral sz)
-         return ((req : rest'), myid')
+  odom    = frbGetDomain (nicTxRing nic)
+  chunks  = toChunks bstr
   --
-  addLink (table, mvars) req = do
-    mv <- newEmptyMVar
-    return (Map.insert (txrqId req) mv table, mv : mvars)
+  go _ newId [] reqs mvars table = 
+    do putMVar (nicTxId nic) $! newId
+       putMVar (nicTxTable nic) $! table
+       frbWriteRequests (nicTxRing nic) (reverse reqs)
+       results <- mapM takeMVar mvars
+       processErrors results
+  go isFirst newId (chunk : rest) reqs mvars table =
+     unsafeUseAsCStringLen chunk $ \ (ptr, len) ->
+       do -- If a chunk crosses a page boundary, then that's a problem for us
+          let ptrW     = ptrToWordPtr ptr
+              lenW     = fromIntegral len
+              basePage = ptrW .&. (complement 4095)
+              offset   = ptrW - basePage
+              size     = min lenW (4096 - offset)
+              crosses  = size < lenW
+              chunk'   = if crosses
+                            then [SBS.drop (fromIntegral size) chunk]
+                            else []
+              rest'    = chunk' ++ rest
+          -- compute the values for the request
+          let flags    = if null rest' then 0 else (#const NETTXF_more_data)
+          [ref] <- grantAccess odom (wordPtrToPtr basePage) 4096 False
+          mvar <- newEmptyMVar
+          let size'    = if (flags > 0) && isFirst
+                            then fromIntegral (BS.length bstr)
+                            else size
+              off16    = fromIntegral offset
+              size16   = fromIntegral size'
+              req      = TxRequest ref off16 flags newId size16
+              table'   = Map.insert newId mvar table
+          go False (newId + 1) rest' (req : reqs) (mvar : mvars) table'
+  --
+  processErrors []               = return ()
+  processErrors (Nothing : rest) = processErrors rest
+  processErrors (Just e  : _)    = throw e
 
 setReceiveHandler :: NIC -> (ByteString -> IO ()) -> IO ()
 setReceiveHandler nic handler = do
@@ -245,6 +259,7 @@ data TxResponse = TxResponse {
     txrsId     :: Word16
   , txrsStatus :: Maybe ErrorCode
   }
+ deriving (Show)
 
 readTxResponse :: Ptr TxResponse -> IO TxResponse
 readTxResponse ptr = do
@@ -263,6 +278,7 @@ data TxRequest = TxRequest {
   , txrqId     :: Word16
   , txrqSize   :: Word16
   }
+ deriving (Show)
 
 writeTxRequest :: Ptr TxRequest -> TxRequest -> IO ()
 writeTxRequest ptr req = do
