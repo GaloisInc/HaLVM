@@ -5,16 +5,6 @@ The Haskell Lightweight Virtual Machine (HALVM) Source Archive
 > three-clause BSD license. Please see the file LICENSE, distributed with
 > this software, for specific terms and conditions.
 
-**WARNING**        **WARNING**          **WARNING**
-
-You are on a development version of the HaLVM, currently in testing. This
-version may work great, but it may fail unexpectedly and in unexpected
-ways. If you find any bugs, please file them on the HaLVM GitHub page.
-We, the HaLVM development team, greatly appreciate your efforts!
-
-**WARNING**        **WARNING**          **WARNING**
-
-
 1. What is the HaLVM?
 ---------------------
 
@@ -49,6 +39,14 @@ keep the latest version we're using available, in src/misc/xen.spec. In
 addition, I will try to keep recent binary and source RPMs available at:
 
   http://uhsure.com/halvm-xen-rpms/
+
+In addition, you might want to check out Darrin Eden's build system,
+available on GitHub:
+
+  https://github.com/dje/halvm-test
+
+It may provide some information that you'd find useful, or may automate portions
+of this process for you.
 
 If you plan to do development work on the HaLVM itself, please fork the HaLVM.
 This allows us to more easily tell who is working on the HaLVM, and GitHub's
