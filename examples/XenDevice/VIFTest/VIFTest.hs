@@ -29,9 +29,10 @@ main = do
                                       0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                                       0x00, 0x4,  0xab, 0xab, 0xab, 0xab]
                   writeConsole con ("Sending packet.\n")
-                  sendPacket nic bstr
-                  writeConsole con ("Packet sent!\n")
-                  threadDelay (9 * 1000000)
+                  forM_ [0..90] $ \ _ ->
+                    do sendPacket nic bstr
+                       threadDelay 500000
+                  threadDelay (90 * 1000000)
                   writeConsole con ("Exitting nicely.\n")
 
 handlePacket :: MVar () -> Console -> BS.ByteString -> IO ()
