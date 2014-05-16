@@ -22,6 +22,7 @@ import Hypervisor.DomainInfo
 import Hypervisor.ErrorCodes
 import Hypervisor.Memory
 import Hypervisor.Port
+import System.IO(setXenPutStr, setXenGetChar)
 
 data ConsoleMsg = WriteString String (MVar ())
                 | ReadString Int (MVar String)
@@ -30,11 +31,16 @@ data ConsoleMsg = WriteString String (MVar ())
 newtype Console = Console (Chan ConsoleMsg)
 
 -- |Initialize the Xen console associated with this domain at boot time.
+-- This has the side effect of rewiring putStr, getChar, and friends to
+-- use the Xen console.
 initXenConsole :: IO Console
 initXenConsole  = do
   conMFN  <- (toMFN . fromIntegral) `fmap` get_console_mfn
   conPort <- toPort `fmap` get_console_evtchn
-  initConsole conMFN conPort
+  con <- initConsole conMFN conPort
+  setXenPutStr (writeConsole con)
+  setXenGetChar (head `fmap` readConsole con 1)
+  return con
 
 -- |Initialize a console built from the given machine frame and event
 -- channel.
