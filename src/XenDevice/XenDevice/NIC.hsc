@@ -210,6 +210,7 @@ sendPacket nic bstr = do
        putMVar (nicTxTable nic) $! table
        frbWriteRequests (nicTxRing nic) (reverse reqs)
        results <- mapM takeMVar mvars
+       forM_ reqs $ \ (TxRequest ref _ _ _ _) -> endAccess ref
        processErrors results
   go isFirst newId (chunk : rest) reqs mvars table =
      unsafeUseAsCStringLen chunk $ \ (ptr, len) ->
