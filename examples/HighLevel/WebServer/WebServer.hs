@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- Copyright 2014 Galois, Inc.
 -- This software is distributed under a standard, three-clause BSD license.
 -- Please see the file LICENSE, distributed with this software, for specific
@@ -8,17 +9,32 @@ import Control.Exception
 import Control.Monad
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BSC
+import Data.Char
+import Data.Time
+import Data.Version
+import Data.Word
+import GHC.Stats
+import Hans.Address.IP4
 import Hans.Device.Xen
 import Hans.DhcpClient
+import Hans.Layer.Dns(DnsException)
 import Hans.NetworkStack hiding (close)
 import qualified Hans.NetworkStack as Hans
 import Hypervisor.Console
 import Hypervisor.Debug
 import Hypervisor.XenStore
 import Network.HTTP.Base
+import Network.HTTP.Headers
 import Network.HTTP.Stream
+import Network.Socket.Internal(getNetworkHansStack)
 import Network.Stream
 import System.Exit
+import System.Info
+import System.Locale
+import Text.Blaze.Html5 as H hiding (map)
+import Text.Blaze.Html5.Attributes(href)
+import Text.Blaze.Html.Renderer.String
+import Text.Blaze.Internal(string)
 import XenDevice.NIC
 
 instance Stream Socket where
@@ -48,10 +64,21 @@ instance Stream Socket where
 
   closeOnEnd _ _ = return ()
 
+data ServerState = ServerState {
+    startTime     :: String
+  , responseCount :: MVar Word64
+  , lastHosts     :: MVar [(IP4, Maybe String)]
+  }
+
 main :: IO ()
 main =
   do con <- initXenConsole
      xs  <- initXenStore
+
+     startT <- formatTime defaultTimeLocale "%c" `fmap` getZonedTime
+     respC  <- newMVar 0
+     lastH  <- newMVar []
+     let state = ServerState startT respC lastH
 
      nics <- listNICs xs
      writeConsole con ("Found " ++ show (length nics) ++ " NIC" ++
@@ -60,37 +87,31 @@ main =
      mvs <- forM nics $ \ macstr ->
                do writeConsole con ("  " ++ macstr ++ "\n")
                   doneMV <- newEmptyMVar
-                  forkFinally (startServer (printer con) xs macstr)
+                  forkFinally (startServer (printer con) xs macstr state)
                               (\ _ -> putMVar doneMV ())
                   return doneMV
 
      -- block until everyone's done
      forM_ mvs takeMVar
 
-startServer :: (String -> IO ()) -> XenStore -> String -> IO ()
-startServer print xs macstr =
+startServer :: (String -> IO ()) -> XenStore -> String -> ServerState -> IO ()
+startServer print xs macstr state =
   do let mac = read macstr
-     writeDebugConsole "Starting Server!\n"
      ns <- newNetworkStack
      nic <- openNIC xs macstr
      print ("Starting server on device "++macstr++"\n")
      addDevice ns mac (xenSend nic) (xenReceiveLoop nic)
-     writeDebugConsole "deviceUp\n"
      deviceUp ns mac
-     writeDebugConsole "new mvar\n"
      ipMV <- newEmptyMVar
-     writeDebugConsole "dhcpDiscover\n"
      dhcpDiscover ns mac (putMVar ipMV)
-     writeDebugConsole "pulling ip\n"
      ipaddr <- takeMVar ipMV
      print ("Device "++macstr++" has IP "++show ipaddr++"\n")
      lsock <- listen ns undefined 80 `catch` handler
-     writeDebugConsole "Got lsock\n"
      forever $ do
-       writeDebugConsole "Waiting for connection...\n"
        sock <- accept lsock
-       writeDebugConsole "Got a connection! Passing it to a handler!\n"
-       forkIO (handleClient print sock)
+       writeDebugConsole ("Accepted socket.\n");
+       forkIO (handleClient print sock state)
+       forkIO (addHost ns (sockRemoteHost sock) (lastHosts state))
        return ()
  where
   handler ListenError{} =
@@ -98,22 +119,86 @@ startServer print xs macstr =
        threadDelay (5 * 1000000)
        exitFailure
 
-handleClient :: (String -> IO ()) -> Socket -> IO ()
-handleClient print sock =
+handleClient :: (String -> IO ()) -> Socket -> ServerState -> IO ()
+handleClient print sock state =
   do mreq <- receiveHTTP sock
-     writeDebugConsole ("Got request!\n")
-     print ("Got request!\n")
      case mreq of
        Left err -> writeDebugConsole ("ReqERROR: " ++ show err ++ "\n")
-       Right req -> 
-         do let resp = Response {
-                         rspCode = (2,0,0)
-                       , rspReason = "OK"
-                       , rspHeaders = []
-                       , rspBody = show req
-                       }
+       Right req ->
+         do body <- buildBody print req state
+            print ("Built response\n")
+            let lenstr = show (length body)
+                keepAlive = [ mkHeader HdrConnection "keep-alive"
+                            | hdr <- retrieveHeaders HdrConnection req
+                            , map toLower (hdrValue hdr) == "keep-alive" ]
+                conn | null keepAlive = [ mkHeader HdrConnection "Close" ]
+                     | otherwise      = keepAlive
+                resp = Response {
+                             rspCode = (2,0,0)
+                           , rspReason = "OK"
+                           , rspHeaders = mkHeader HdrContentLength lenstr
+                                        : mkHeader HdrContentType   "text/html"
+                                        : conn
+                           , rspBody = body
+                           }
             respondHTTP sock resp
-            Hans.close sock
+            if null keepAlive
+               then Hans.close sock
+               else handleClient print sock state
+
+buildBody :: (String -> IO ()) -> Request String -> ServerState -> IO String
+buildBody print req state =
+  do numReqs <- modifyMVar (responseCount state) (\ x -> return (x + 1, x))
+     prevHosts <- readMVar (lastHosts state)
+     writeDebugConsole ("prevHosts: " ++ show prevHosts ++ "\n")
+     return $ renderHtml $
+       docTypeHtml $ do
+         H.head (title "HaLVM Test Server")
+         body $ do
+           h1 "Hi!"
+           p $ do "I'm a HaLVM. Technically I'm " >> string compilerName
+                  " version " >> string (showVersion compilerVersion)
+                  ", ported to run on Xen. I started running on "
+                  string (startTime state) >> ". You didn't know there was a "
+                  "HaLVM standard time, did you? Well, there is. Really."
+           p $ do "I have responded to " >> (string (show numReqs)) >> " "
+                  "requests since I started, not including yours."
+           p $ do "I am using: "
+           ul $ do
+             li $    hans >> " to talk to you over TCP."
+             li $ do http >> " (modified to use the " >> network_hans
+                     " shim) to understand your request and respond to it."
+             li $ do blaze >> " (which built out of the box) to generate this " 
+                     "pretty HTML."
+             li $ do "... and a host of other libraries to do other, more "
+                     "standard, things."
+           p $ do "Here are the last 5 hosts that I did something for:"
+           ol $ forM_ prevHosts $ \ x -> li (renderHost x)
+ where
+  hans, http, blaze, network_hans :: Html
+  hans  = a ! href "http://hackage.haskell.org/package/hans" $ "HaNS"
+  http  = a ! href "http://hackage.haskell.org/package/HTTP" $ "HTTP"
+  blaze = a ! href "http://hackage.haskell.org/package/blaze-html"$"blaze-html"
+  network_hans = a ! href "http://github.com/GaloisInc/network-hans" $
+                   "network-hans"
+
+renderHost :: (IP4, Maybe String) -> Html
+renderHost (addr, Nothing) = string (show addr)
+renderHost (addr, Just n) = string (n ++ " (" ++ show addr ++ ")")
+
+addHost :: NetworkStack -> IP4 -> MVar [(IP4, Maybe String)] -> IO ()
+addHost ns addr hostsMV =
+  do writeDebugConsole ("addHost " ++ show addr ++ "\n")
+     entry <- catch (name `fmap` getHostByAddr ns addr) handleDnsError
+     list <- takeMVar hostsMV
+     writeDebugConsole ("list: " ++ show list ++ "\n")
+     case lookup addr list of
+       Just _  -> putMVar hostsMV list >> writeDebugConsole ("put old list\n")
+       Nothing -> putMVar hostsMV (take 5 ((addr, entry) : list )) >> writeDebugConsole ("put new list\n")
+ where
+  name = Just . hostName
+  handleDnsError :: DnsException -> IO (Maybe String)
+  handleDnsError e = writeDebugConsole (show e ++ "\n") >> return Nothing
 
 printer :: Console -> String -> IO ()
 printer target str =
