@@ -38,8 +38,15 @@ The example programs are roughly categorized by type:
 
   - Misc: Examples that don't fit elsewhere.
 
+Notes:
+
+Recent Xen deployments use oxenstore by default.  OXenStore enforces
+restrictive permissions on the store that prevent IVC operations.  This is
+trivial to disable by editing the configuration, usually
+`/etc/xen/oxenstore.conf`, to include:
+
+```
+perms-activate = false
+```
+
 ==============
-
-JL: temporarily added XenDevice/VBDTest/.skip because the test takes a long time
-
-
