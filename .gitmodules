@@ -1,3 +1,6 @@
 [submodule "halvm-ghc"]
 	path = halvm-ghc
 	url = git://github.com/GaloisInc/halvm-ghc.git
+[submodule "src/openlibm"]
+	path = src/openlibm
+	url = git://github.com/JuliaLang/openlibm

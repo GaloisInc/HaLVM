@@ -65,30 +65,17 @@ endif
 # LIBM ########################################################################
 ###############################################################################
 
-LIBM_C_FILES := $(shell find $(TOPDIR)/src/libm -name '*.c')
-LIBM_S_FILES := $(shell find $(TOPDIR)/src/libm -name '*.S')
-LIBM_O_FILES := $(LIBM_C_FILES:.c=.o) $(LIBM_S_FILES:.S=.o)
-LIBM_CFLAGS   = -Wall -Werror -Wno-unused-variable -O2 -fno-builtin -nostdinc
-LIBM_CFLAGS  += -I$(TOPDIR)/src/libm/include $(ARCH_CC_FLAGS)
-LIBM_ASFLAGS  = -Wall -Werror -O2 -fno-builtin -nostdinc
-LIBM_ASFLAGS += -I$(TOPDIR)/src/libm/include
+$(TOPDIR)/src/openlibm/libopenlibm.a: $(LIBM_O_FILES)
+	$(MAKE) -C $(TOPDIR)/src/openlibm all
 
-$(LIBM_C_FILES:.c=.o): %.o: %.c
-	$(CC) -o $@ $(LIBM_CFLAGS) -c $<
-
-$(LIBM_S_FILES:.S=.o): %.o: %.S
-	$(CC) -o $@ $(LIBM_ASFLAGS) -c $<
-
-$(TOPDIR)/src/libm/libm.a: $(LIBM_O_FILES)
-	$(AR) rcs $@ $(LIBM_O_FILES)
-
-all: $(TOPDIR)/src/libm/libm.a
+all: $(TOPDIR)/src/openlibm/libopenlibm.a
 
 clean::
-	$(RM) -f $(LIBM_O_FILES) libm/libm.a
+	$(MAKE) -C $(TOPDIR)/src/openlibm clean
 
-install:: $(TOPDIR)/src/libm/libm.a
-	$(INSTALL) -D $(TOPDIR)/src/libm/libm.a $(halvmlibdir)/rts-1.0/libm.a
+install:: $(TOPDIR)/src/openlibm/libopenlibm.a
+	$(INSTALL) -D $(TOPDIR)/src/openlibm/libopenlibm.a \
+	              $(halvmlibdir)/rts-1.0/libopenlibm.a
 
 ###############################################################################
 # LIBIVC ######################################################################
