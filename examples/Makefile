@@ -6,7 +6,7 @@
 # Author: Adam Wick <awick@galois.com>
 # BANNEREND
 
-SUBDIRS = $(dir $(wildcard */*/Makefile))
+SUBDIRS = $(filter-out HighLevel%,$(dir $(wildcard */*/Makefile)))
 
 .PHONY: all clean
 
