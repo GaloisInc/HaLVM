@@ -138,6 +138,10 @@ AC_CHECK_PROG_VER(ALEX, alex, --version, [version \([0-9.]*\)],
 AC_CHECK_PROG_VER(HAPPY, happy, --version, [Version \([0-9.]*\)], [1.19.*],
                   LOG_FAILURE("The HaLVM requires Happy 1.19+."))
 
+AC_SUBST(FORCE_PLATFORM_GHC,no)
+AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [7.8.*],
+                  AC_SUBST(FORCE_PLATFORM_GHC,yes))
+
 AC_CHECK_HEADER(ncurses.h, HAVE_NCURSES=y,
   [AC_CHECK_HEADER(curses.h, HAVE_NCURSES=y,
      LOG_FAILURE("The HaLVM requires the ncurses development library."))])
@@ -155,14 +159,18 @@ else
   AC_SUBST(XENSTORE_H_OPT, "")
 fi
 
-AC_MSG_CHECKING(for globally-installed GHC terminfo package)
-
-if ${GHC}-pkg list --simple-output --no-user-package-conf | grep -q terminfo;
-then
-  AC_MSG_RESULT(yes)
+if test "${FORCE_PLATFORM_GHC}" = "yes"; then
+  AC_FORCE_EXIST(CURL,curl)
+  AC_SUBST(GHC,"\$(TOPDIR)/platform_ghc/bin/ghc")
 else
-  AC_MSG_RESULT(no)
-  LOG_FAILURE("The HaLVM requires GHC's terminfo library to be installed globally.")
+  AC_MSG_CHECKING(for globally-installed GHC terminfo package)
+  if ${GHC}-pkg list --simple-output --no-user-package-conf | grep -q terminfo;
+  then
+    AC_MSG_RESULT(yes)
+  else
+    AC_MSG_RESULT(no)
+    LOG_FAILURE("The HaLVM requires GHC's terminfo library to be installed globally.")
+  fi
 fi
 
 dnl -------------------------------------------------------------------------
@@ -216,6 +224,12 @@ AC_ARG_ENABLE([gmp],
    fi],
   [int_library=integer-simple])
 AC_SUBST(INTEGER_LIBRARY, [$int_library])
+
+if test "${INTEGER_LIBRARY}" = "integer-gmp"; then
+  AC_CHECK_FILE(/etc/centos-release,
+                AC_SUBST(PLATFORM,"centos65"),
+                AC_SUBST(PLATFORM,"deb7"))
+fi
 
 dnl -------------------------------------------------------------------------
 dnl

@@ -142,6 +142,22 @@ install::$(TOPDIR)/src/bootloader/start.o
 # GHC BUILD PREP ##############################################################
 ###############################################################################
 
+ifeq (${FORCE_PLATFORM_GHC},yes)
+$(GHC_FILE):
+	$(CURL) -O $(GHC_LINK)
+
+$(GHC): $(GHC_FILE)
+	$(RM) -rf ghc-7.8.2
+	$(TAR) jxf $(GHC_FILE)
+	(cd ghc-7.8.2 && ./configure --prefix=$(TOPDIR)/platform_ghc)
+	$(MAKE) -C ghc-7.8.2 install
+	PATH=$(dir $(GHC)):${PATH} $(CABAL) install --global --prefix=$(TOPDIR)/platform_ghc terminfo
+	$(RM) -rf ghc-7.8.2
+
+clean::
+	$(RM) -rf ghc-7.8.2
+endif
+
 $(TOPDIR)/halvm-ghc/mk/build.mk: $(EVERYTHING_DOWNLOADED) \
                                  $(TOPDIR)/src/misc/build.mk
 	$(CP) $(TOPDIR)/src/misc/build.mk $@
@@ -157,7 +173,8 @@ $(TOPDIR)/halvm-ghc/.linked-rts: $(EVERYTHING_DOWNLOADED)
 
 $(TOPDIR)/halvm-ghc/configure: $(EVERYTHING_DOWNLOADED)                       \
                                $(TOPDIR)/halvm-ghc/configure.ac               \
-                               $(TOPDIR)/halvm-ghc/boot
+                               $(TOPDIR)/halvm-ghc/boot                       \
+							   $(GHC)
 	(cd halvm-ghc && ./boot)
 
 $(TOPDIR)/halvm-ghc/libraries/HALVMCore: $(EVERYTHING_DOWNLOADED)
@@ -216,8 +233,8 @@ RTS_SOURCES      := $(shell find $(TOPDIR)/halvm-ghc/rts          \
 
 $(TOPDIR)/halvm-ghc/config.log: $(EVERYTHING_PREPPED)                          \
                                 $(TOPDIR)/halvm-ghc/configure
-	(cd halvm-ghc                                                                \
-   && ./configure $(HALVM_GHC_CONFIGURE_FLAGS)                                 \
+	(cd halvm-ghc                                                              \
+   && PATH=$(dir $(GHC)):${PATH} ./configure $(HALVM_GHC_CONFIGURE_FLAGS)      \
    && $(TOUCH) $@)
 
 $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1:                                    \
@@ -247,6 +264,36 @@ install::
 	$(MAKE) -C halvm-ghc install ghclibdir=$(halvmlibdir)
 	$(MKDIR) -p $(halvmlibdir)/include/minlibc
 	$(CP) -rf halvm-ghc/rts/minlibc/include/* $(halvmlibdir)/include/minlibc/
+	$(SED) -i -e "s/^extra-ghci-libraries:/extra-ghci-libraries: minlibc/"   \
+           $(halvmlibdir)/package.conf.d/base*.conf
+
+###############################################################################
+# GHC BUILD ###################################################################
+###############################################################################
+
+MINLIBC_SRCS      = $(wildcard $(TOPDIR)/halvm-ghc/rts/minlibc/*.c)
+GHCI_MINLIBC_SRCS = $(filter-out %termios.c,$(MINLIBC_SRCS))
+GHCI_MINLIBC_OBJS = $(patsubst $(TOPDIR)/halvm-ghc/rts/minlibc/%.c,           \
+                               $(TOPDIR)/halvm-ghc/rts/dist/build/minlibc/%.o,\
+                               $(GHCI_MINLIBC_SRCS))
+GHCI_OBJS         = $(GHCI_MINLIBC_OBJS) $(TOPDIR)/src/misc/ghci_runtime.o
+BASE_CABAL_FILE   = $(TOPDIR)/halvm-ghc/libraries/base/base.cabal
+BASE_VERSION      = \
+  $(shell grep "^version:" $(BASE_CABAL_FILE) | sed 's/^version:[ ]*//')
+
+$(TOPDIR)/src/misc/ghci_runtime.o: $(TOPDIR)/src/misc/ghci_runtime.c
+	$(CC) -c -o $@ $<
+
+$(TOPDIR)/halvm-ghc/libminlibc.a:                                            \
+         $(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts.a                       \
+		 $(TOPDIR)/src/misc/ghci_runtime.o
+	$(AR) cr $@ $(GHCI_OBJS)
+
+all: $(TOPDIR)/halvm-ghc/libminlibc.a
+
+install::
+	$(INSTALL) -D $(TOPDIR)/halvm-ghc/libminlibc.a \
+	              $(halvmlibdir)/base-$(BASE_VERSION)/libminlibc.a
 
 ###############################################################################
 # HaLVM SCRIPTS ###############################################################
@@ -263,6 +310,7 @@ install:: $(TOPDIR)/src/scripts/halvm-ghc
 
 install:: $(TOPDIR)/src/scripts/halvm-ghc-pkg
 	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-ghc-pkg $(bindir)/halvm-ghc-pkg
+	$(bindir)/halvm-ghc-pkg recache
 
 install:: $(TOPDIR)/src/scripts/ldkernel
 	$(INSTALL) -D $(TOPDIR)/src/scripts/ldkernel $(halvmlibdir)/ldkernel

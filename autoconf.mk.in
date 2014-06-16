@@ -34,6 +34,7 @@ CC                      := @CC@
 CHMOD                   := @CHMOD@
 CP                      := @CP@
 CPP                     := @CPP@
+CURL                    := @CURL@
 ECHO                    := @ECHO@
 FIND                    := @FIND@
 GHC                     := @GHC@
@@ -71,6 +72,7 @@ XENSTORE_H_OPT         := @XENSTORE_H_OPT@
 ARCH_OPT               := @ARCH_OPTION@
 ARCH                   := @ARCHITECTURE@
 XEN_INCLUDE_DIR        := @XEN_INCLUDE_DIRECTORY@
+FORCE_PLATFORM_GHC     := @FORCE_PLATFORM_GHC@
 
 #
 # Derivations of the above.
@@ -97,3 +99,6 @@ CFLAGS                += $(ARCH_CC_FLAGS)
 
 GHCFLAGS              := -O2 -H32m
 GHCFLAGS              += $(ARCH_GHC_FLAGS)
+
+GHC_FILE              := ghc-7.8.2-@ARCHITECTURE@-unknown-linux-@PLATFORM@.tar.bz2
+GHC_LINK              := http://www.haskell.org/ghc/dist/7.8.2/$(GHC_FILE)

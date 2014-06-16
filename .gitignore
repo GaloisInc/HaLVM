@@ -1,4 +1,5 @@
 *.swp
+ghc*.tar.bz2
 autoconf.mk
 autom4te.cache
 config.log
@@ -6,6 +7,7 @@ config.status
 configure
 dist
 
+platform_ghc
 src/gmp
 
 src/HALVMCore/dist-install
@@ -17,5 +19,6 @@ src/libm/*/*.o
 src/libIVC/*/*.o
 
 src/libIVC/libIVC.a
-src/libm/libm.a
 *test*
+
+src/misc/*.o
