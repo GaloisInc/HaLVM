@@ -280,7 +280,9 @@ AC_ARG_WITH(xen-tree,
  [INCLUDE_DIRS="$withval"
   CURDIR=`pwd`
   CPPFLAGS="${CPPFLAGS} -I${withval}/dist/install/usr/include"
+  LDFLAGS="${CPPFLAGS} -L${withval}/dist/install/usr/lib"
   AC_SUBST(XEN_INCLUDE_DIRECTORY,"${withval}/dist/install/usr/include")
+  AC_SUBST(XEN_LIBRARY_DIRECTORY,"${withval}/dist/install/usr/lib")
   AC_SUBST(XEN_BIN_ROOT,"${withval}/dist/install/")],
  [AC_SUBST(XEN_BIN_ROOT,"/")
   AC_SUBST(XEN_INCLUDE_DIRECTORY,"/usr/include")])

@@ -112,7 +112,7 @@ $(MKREND_C_FILES:.c=.o): %.o: %.c $(MKREND_HEADERS)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
 $(TOPDIR)/src/mkrenddir/mkrenddir: $(MKREND_O_FILES)
-	$(CC) -o $@ $^ -lxenstore
+	$(CC) -o $@ $^ $(LDFLAGS) -lxenstore
 
 all: $(TOPDIR)/src/mkrenddir/mkrenddir
 
