@@ -146,19 +146,6 @@ AC_CHECK_HEADER(ncurses.h, HAVE_NCURSES=y,
   [AC_CHECK_HEADER(curses.h, HAVE_NCURSES=y,
      LOG_FAILURE("The HaLVM requires the ncurses development library."))])
 
-AC_CHECK_HEADER(xenstore.h, HAVE_XENSTORE_H=yes, HAVE_XENSTORE_H=no)
-AC_CHECK_HEADER(xs.h, HAVE_XS_H=yes, HAVE_XS_H=no)
-
-if test "${HAVE_XENSTORE_H}${HAVE_XS_H}" = "nono"; then
-  LOG_FAILURE("The HaLVM requires either xenstore.h or xs.h.")
-fi
-
-if test "${HAVE_XENSTORE_H}" = "yes"; then
-  AC_SUBST(XENSTORE_H_OPT, "-DHAVE_XENSTORE_H")
-else
-  AC_SUBST(XENSTORE_H_OPT, "")
-fi
-
 if test "${FORCE_PLATFORM_GHC}" = "yes"; then
   AC_FORCE_EXIST(CURL,curl)
   AC_SUBST(GHC,"\$(TOPDIR)/platform_ghc/bin/ghc")
@@ -293,7 +280,9 @@ AC_ARG_WITH(xen-tree,
  [INCLUDE_DIRS="$withval"
   CURDIR=`pwd`
   CPPFLAGS="${CPPFLAGS} -I${withval}/dist/install/usr/include"
+  LDFLAGS="${CPPFLAGS} -L${withval}/dist/install/usr/lib"
   AC_SUBST(XEN_INCLUDE_DIRECTORY,"${withval}/dist/install/usr/include")
+  AC_SUBST(XEN_LIBRARY_DIRECTORY,"${withval}/dist/install/usr/lib")
   AC_SUBST(XEN_BIN_ROOT,"${withval}/dist/install/")],
  [AC_SUBST(XEN_BIN_ROOT,"/")
   AC_SUBST(XEN_INCLUDE_DIRECTORY,"/usr/include")])
@@ -304,6 +293,19 @@ AC_CHECK_HEADER(xen/xen.h,[],[
   LOG_FAILUREC(["(they're probably in something like xen-devel), or use the"])
   LOG_FAILUREC(["--with-xen-tree configure flag to point this script at the"])
   LOG_FAILUREC(["base of a Xen source repository checkout."])])
+
+AC_CHECK_HEADER(xenstore.h, HAVE_XENSTORE_H=yes, HAVE_XENSTORE_H=no)
+AC_CHECK_HEADER(xs.h, HAVE_XS_H=yes, HAVE_XS_H=no)
+
+if test "${HAVE_XENSTORE_H}${HAVE_XS_H}" = "nono"; then
+  LOG_FAILURE("The HaLVM requires either xenstore.h or xs.h.")
+fi
+
+if test "${HAVE_XENSTORE_H}" = "yes"; then
+  AC_SUBST(XENSTORE_H_OPT, "-DHAVE_XENSTORE_H")
+else
+  AC_SUBST(XENSTORE_H_OPT, "")
+fi
 
 dnl Is this a 64-bit platform?
 if test `uname -m` = "x86_64"; then

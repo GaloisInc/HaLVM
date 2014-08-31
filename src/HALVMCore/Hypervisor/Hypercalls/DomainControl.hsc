@@ -97,12 +97,20 @@ buildCreateDomainCall sid hndl flags ptr = do
 
 readCPUAffinity :: Ptr a -> IO CPUMap
 readCPUAffinity p =
+#if XEN_DOMCTL_INTERFACE_VERSION < 0x0000000a
   readSerializedCPUMap (p `plusPtr` (#offset xen_domctl_vcpuaffinity_t,cpumap))
+#else
+  readSerializedCPUMap (p `plusPtr` (#offset xen_domctl_vcpuaffinity_t,cpumap_hard))
+#endif
 
 buildCPUAffinityReq :: VCPU -> (Ptr a -> IO ()) -> Ptr a -> IO ()
 buildCPUAffinityReq vcpu writer p = do
   (#poke xen_domctl_vcpuaffinity_t, vcpu) p (fromVCPU vcpu :: Word32)
+#if XEN_DOMCTL_INTERFACE_VERSION < 0x0000000a
   writer (p `plusPtr` (#offset xen_domctl_vcpuaffinity_t,cpumap))
+#else
+  writer (p `plusPtr` (#offset xen_domctl_vcpuaffinity_t,cpumap_hard))
+#endif
 
 buildIRQPermissionReq :: Word8 -> Bool -> Ptr a -> IO ()
 buildIRQPermissionReq pirq allow ptr = do
