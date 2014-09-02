@@ -212,11 +212,9 @@ AC_ARG_ENABLE([gmp],
   [int_library=integer-simple])
 AC_SUBST(INTEGER_LIBRARY, [$int_library])
 
-if test "${INTEGER_LIBRARY}" = "integer-gmp"; then
-  AC_CHECK_FILE(/etc/centos-release,
-                AC_SUBST(PLATFORM,"centos65"),
-                AC_SUBST(PLATFORM,"deb7"))
-fi
+AC_CHECK_FILE(/etc/centos-release,
+              AC_SUBST(PLATFORM,"centos65"),
+              AC_SUBST(PLATFORM,"deb7"))
 
 dnl -------------------------------------------------------------------------
 dnl
