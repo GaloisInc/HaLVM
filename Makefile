@@ -25,6 +25,7 @@ install::
 $(TOPDIR)/halvm-ghc/.sync: $(TOPDIR)/halvm-ghc/sync-all \
                            $(TOPDIR)/halvm-ghc/packages
 	(cd halvm-ghc && ./sync-all --no-dph -r http://darcs.haskell.org/ get \
+		&& ./sync-all checkout -t origin/ghc-7.8 \
                 && touch $@)
 
 $(TOPDIR)/halvm-ghc/.halvm-base: $(TOPDIR)/halvm-ghc/.sync
