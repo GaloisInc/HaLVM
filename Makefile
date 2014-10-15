@@ -192,8 +192,7 @@ EVERYTHING_PREPPED := $(TOPDIR)/halvm-ghc/mk/build.mk                         \
                       $(TOPDIR)/halvm-ghc/configure
 
 ifeq ($(INTEGER_LIBRARY),integer-gmp)
-$(TOPDIR)/halvm-ghc/.linked-gmp: \
-                                         $(TOPDIR)/src/gmp/.libs/libgmp.a
+$(TOPDIR)/halvm-ghc/.linked-gmp: $(TOPDIR)/src/gmp/.libs/libgmp.a
 	$(LN) -sf $(TOPDIR)/src/gmp/gmp.h \
             $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmp.h
 	$(LN) -sf $(TOPDIR)/src/gmp/gmp.h \
@@ -204,8 +203,16 @@ $(TOPDIR)/halvm-ghc/.fixed-gmp: $(EVERYTHING_DOWNLOADED)
 	(cd halvm-ghc/libraries/integer-gmp && $(PATCH) -p1 < $(TOPDIR)/src/misc/hsgmp.patch)
 	$(TOUCH) $@
 
+# Remove the symlinks to our gmp, and reset the changes that the patch adds
+clean::
+	$(RM) -f $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmp.h
+	$(RM) -f $(TOPDIR)/halvm-ghc/libraries/integer-gmp/cbits/gmp.h
+	(cd $(TOPDIR)/halvm-ghc/libraries/integer-gmp && git reset --hard)
+
 EVERYTHING_PREPPED += $(TOPDIR)/halvm-ghc/.linked-gmp \
                       $(TOPDIR)/halvm-ghc/.fixed-gmp
+
+
 endif
 
 clean::
