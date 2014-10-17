@@ -148,15 +148,15 @@ $(GHC_FILE):
 	$(CURL) -O $(GHC_LINK)
 
 $(GHC): $(GHC_FILE)
-	$(RM) -rf ghc-7.8.2
+	$(RM) -rf ghc-7.8.3
 	$(TAR) jxf $(GHC_FILE)
-	(cd ghc-7.8.2 && ./configure --prefix=$(TOPDIR)/platform_ghc)
-	$(MAKE) -C ghc-7.8.2 install
+	(cd ghc-7.8.3 && ./configure --prefix=$(TOPDIR)/platform_ghc)
+	$(MAKE) -C ghc-7.8.3 install
 	PATH=$(dir $(GHC)):${PATH} $(CABAL) install --global --prefix=$(TOPDIR)/platform_ghc terminfo
-	$(RM) -rf ghc-7.8.2
+	$(RM) -rf ghc-7.8.3
 
 clean::
-	$(RM) -rf ghc-7.8.2
+	$(RM) -rf ghc-7.8.3
 endif
 
 $(TOPDIR)/halvm-ghc/mk/build.mk: $(EVERYTHING_DOWNLOADED) \

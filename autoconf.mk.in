@@ -103,5 +103,5 @@ LDFLAGS               := -L$(XEN_LIBRARY_DIR)
 GHCFLAGS              := -O2 -H32m
 GHCFLAGS              += $(ARCH_GHC_FLAGS)
 
-GHC_FILE              := ghc-7.8.2-@ARCHITECTURE@-unknown-linux-@PLATFORM@.tar.bz2
-GHC_LINK              := http://www.haskell.org/ghc/dist/7.8.2/$(GHC_FILE)
+GHC_FILE              := ghc-7.8.3-@ARCHITECTURE@-unknown-linux-@PLATFORM@.tar.bz2
+GHC_LINK              := http://www.haskell.org/ghc/dist/7.8.3/$(GHC_FILE)
