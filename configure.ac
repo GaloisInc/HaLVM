@@ -130,13 +130,14 @@ AC_FORCE_EXIST(SED,sed)
 AC_FORCE_EXIST(TAR,tar)
 AC_FORCE_EXIST(TOUCH,touch)
 
-AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [[789].*],
-                  LOG_FAILURE("The HaLVM requires GHC 7 or higher."))
 AC_CHECK_PROG_VER(ALEX, alex, --version, [version \([0-9.]*\)],
                   [3.[1-9]*],
-                  LOG_FAILURE("The HaLVM requires alex 3.1+."))
+                  AC_SUBST(ALEX,"\$(TOPDIR)/platform_ghc/bin/alex"))
 AC_CHECK_PROG_VER(HAPPY, happy, --version, [Version \([0-9.]*\)], [1.19.*],
-                  LOG_FAILURE("The HaLVM requires Happy 1.19+."))
+                  AC_SUBST(HAPPY,"\$(TOPDIR)/platform_ghc/bin/happy"))
+AC_CHECK_PROG_VER(CABAL, cabal, --version, [cabal-install version \([0-9.]*\)],
+                  [1.[23456789][0123456789].*],
+                  AC_SUBST(CABAL,"\$(TOPDIR)/platform_ghc/bin/cabal"))
 
 AC_SUBST(FORCE_PLATFORM_GHC,no)
 AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [7.8.*],

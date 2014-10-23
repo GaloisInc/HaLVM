@@ -159,6 +159,12 @@ clean::
 	$(RM) -rf ghc-7.8.3
 endif
 
+$(ALEX): $(CABAL)
+	$(CABAL) install --prefix=$(TOPDIR)/platform_ghc alex
+
+$(HAPPY): $(HAPPY)
+	$(CABAL) install --prefix=$(TOPDIR)/platform_ghc happy
+
 $(TOPDIR)/halvm-ghc/mk/build.mk: $(EVERYTHING_DOWNLOADED) \
                                  $(TOPDIR)/src/misc/build.mk
 	$(CP) $(TOPDIR)/src/misc/build.mk $@
@@ -175,7 +181,7 @@ $(TOPDIR)/halvm-ghc/.linked-rts: $(EVERYTHING_DOWNLOADED)
 $(TOPDIR)/halvm-ghc/configure: $(EVERYTHING_DOWNLOADED)                       \
                                $(TOPDIR)/halvm-ghc/configure.ac               \
                                $(TOPDIR)/halvm-ghc/boot                       \
-							   $(GHC)
+							   $(GHC) $(CABAL) $(ALEX) $(HAPPY)
 	(cd halvm-ghc && ./boot)
 
 $(TOPDIR)/halvm-ghc/libraries/HALVMCore: $(EVERYTHING_DOWNLOADED)
