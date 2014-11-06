@@ -1,5 +1,6 @@
 *.swp
 ghc*.tar.bz2
+*.tar.gz
 autoconf.mk
 autom4te.cache
 config.log
