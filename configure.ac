@@ -104,7 +104,6 @@ dnl From this point on, we should use LOG_FAILURE instead of AC_FORCE_EXIST.
 AC_FORCE_EXIST(AR,ar)
 AC_FORCE_EXIST(AUTOMAKE,automake)
 AC_FORCE_EXIST(AUTORECONF,autoreconf)
-AC_FORCE_EXIST(CABAL,cabal)
 AC_FORCE_EXIST(CC,gcc)
 AC_FORCE_EXIST(CHMOD,chmod)
 AC_FORCE_EXIST(CP,cp)
@@ -142,6 +141,9 @@ AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [7.8.*],
 AC_CHECK_HEADER(ncurses.h, HAVE_NCURSES=y,
   [AC_CHECK_HEADER(curses.h, HAVE_NCURSES=y,
      LOG_FAILURE("The HaLVM requires the ncurses development library."))])
+
+AC_CHECK_LIB(gmp, __gmpz_init, ,
+  LOG_FAILURE("The HaLVM requires libgmp to build."))
 
 if test "${NEED_CURL}" = "yes"; then
   AC_FORCE_EXIST(CURL,curl)

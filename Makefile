@@ -26,10 +26,10 @@ install::
 ###############################################################################
 
 $(GHC_FILE):
-	$(CURL) -O $(GHC_LINK)
+	$(CURL) -LO $(GHC_LINK)
 
 $(CABAL_FILE):
-	$(CURL) -O $(CABAL_LINK)
+	$(CURL) -LO $(CABAL_LINK)
 
 mrproper::
 	$(RM) -f $(GHC_FILE)
@@ -80,7 +80,8 @@ ifeq ($(ALEX),no)
 PLATALEX = $(TOPDIR)/platform_ghc/bin/alex
 
 $(PLATALEX): $(PLATCABAL)
-	$(PLATCABAL) install --prefix=$(TOPDIR)/platform_ghc alex
+	env PATH=$(TOPDIR)/platform_ghc/bin:${PATH} \
+           $(PLATCABAL) install --prefix=$(TOPDIR)/platform_ghc alex
 else
 PLATALEX = $(ALEX)
 endif
@@ -89,7 +90,8 @@ ifeq ($(HAPPY),no)
 PLATHAPPY = $(TOPDIR)/platform_ghc/bin/happy
 
 $(PLATHAPPY): $(PLATCABAL)
-	$(PLATCABAL) install --prefix=$(TOPDIR)/platform_ghc happy
+	env PATH=$(TOPDIR)/platform_ghc/bin:${PATH} \
+	   $(PLATCABAL) install --prefix=$(TOPDIR)/platform_ghc happy
 else
 PLATHAPPY = $(HAPPY)
 endif
@@ -98,7 +100,8 @@ ifeq ($(HADDOCK),no)
 PLATHADDOCK = $(TOPDIR)/platform_ghc/bin/haddock
 
 $(PLATHADDOCK): $(PLATCABAL)
-	$(PLATCABAL) install --prefix=$(TOPDIR)/platform_ghc haddock
+	env PATH=$(TOPDIR)/platform_ghc/bin:${PATH} \
+	   $(PLATCABAL) install --prefix=$(TOPDIR)/platform_ghc haddock
 else
 PLATHADDOCK = $(HADDOCK)
 endif
@@ -107,7 +110,8 @@ ifeq ($(HSCOLOUR),no)
 PLATHSCOLOUR = $(TOPDIR)/platform_ghc/bin/hscolour
 
 $(PLATHSCOLOUR): $(PLATCABAL)
-	$(PLATCABAL) install --prefix=$(TOPDIR)/platform_ghc hscolour
+	env PATH=$(TOPDIR)/platform_ghc/bin:${PATH} \
+	   $(PLATCABAL) install --prefix=$(TOPDIR)/platform_ghc hscolour
 else
 PLATHSCOLOUR = $(HSCOLOUR)
 endif
@@ -137,18 +141,25 @@ $(TOPDIR)/halvm-ghc/mk/build.mk: $(TOPDIR)/src/misc/build.mk
 
 $(TOPDIR)/halvm-ghc/libraries/HALVMCore: \
        $(TOPDIR)/halvm-ghc/libraries/array/array.cabal
-	$(LN) -sf $(TOPDIR)/src/HALVMCore $@
+	if [ ! -h $@ ]; then \
+	  $(LN) -sf $(TOPDIR)/src/HALVMCore $@ ; \
+	fi
 
 $(TOPDIR)/halvm-ghc/libraries/XenDevice: \
        $(TOPDIR)/halvm-ghc/libraries/array/array.cabal
-	$(LN) -sf $(TOPDIR)/src/XenDevice $@
+	if [ ! -h $@ ]; then \
+	  $(LN) -sf $(TOPDIR)/src/XenDevice $@; \
+	fi
 
 $(TOPDIR)/halvm-ghc/libraries/base/libc-include: \
        $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs
-	$(LN) -sf $(TOPDIR)/halvm-ghc/rts/minlibc/include $@
+	if [ ! -h $@ ]; then \
+	  $(LN) -sf $(TOPDIR)/halvm-ghc/rts/minlibc/include $@ ; \
+	fi
 
 GHC_PREPPED = $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs \
               $(TOPDIR)/halvm-ghc/rts/xen/include/xen              \
+	      $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk            \
               $(TOPDIR)/halvm-ghc/mk/build.mk                      \
               $(TOPDIR)/halvm-ghc/libraries/HALVMCore              \
               $(TOPDIR)/halvm-ghc/libraries/XenDevice
