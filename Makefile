@@ -130,7 +130,8 @@ $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs: \
 	$(GIT) clone $(GIT_LIB_URL)/halvm-base.git -b halvm halvm-ghc/libraries/base
 
 $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk: \
-             $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs
+             $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs \
+			 $(TOPDIR)/halvm-ghc/mk/build.mk
 	(cd halvm-ghc && ./boot)
 
 $(TOPDIR)/halvm-ghc/rts/xen/include/xen:
@@ -159,7 +160,8 @@ $(TOPDIR)/halvm-ghc/libraries/base/libc-include: \
 
 GHC_PREPPED = $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs \
               $(TOPDIR)/halvm-ghc/rts/xen/include/xen              \
-	      $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk            \
+              $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk            \
+              $(TOPDIR)/halvm-ghc/libraries/base/libc-include      \
               $(TOPDIR)/halvm-ghc/mk/build.mk                      \
               $(TOPDIR)/halvm-ghc/libraries/HALVMCore              \
               $(TOPDIR)/halvm-ghc/libraries/XenDevice
