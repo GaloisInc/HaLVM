@@ -4,16 +4,22 @@ exec_prefix=@exec_prefix@
 bindir=@bindir@
 libdir=@libdir@/HaLVM-@PACKAGE_VERSION@
 
-CABALBIN=@CABAL@
+CABALBIN=${libdir}/bin/cabal
+HSC2HS=${libdir}/bin/hsc2hs
+ALEX=${libdir}/bin/alex
+HAPPY=${libdir}/bin/happy
+HADDOCK=${libdir}/bin/haddock
+
 CABALCMD=${1+"$@"}
-BUILD_FLAGS="--with-compiler=${bindir}/halvm-ghc --with-hc-pkg=${bindir}/halvm-ghc-pkg"
 
-HSC2HS=`which hsc2hs`
-if [ -f ${HSC2HS} ]; then
-  BUILD_FLAGS="${BUILD_FLAGS} --with-hsc2hs=${HSC2HS}"
-fi
+BUILD_FLAGS="--with-compiler=${bindir}/halvm-ghc "
+BUILD_FLAGS+="--with-hc-pkg=${bindir}/halvm-ghc-pkg "
+BUILD_FLAGS+="--with-hsc2hs=${HSC2HS} "
+BUILD_FLAGS+="--with-alex=${ALEX} "
+BUILD_FLAGS+="--with-happy=${HAPPY} "
+BUILD_FLAGS+="--with-haddock=${HADDOCK} "
 
-INSTALL_FLAGS="--ghc ${BUILD_FLAGS}"
+INSTALL_FLAGS="--ghc ${BUILD_FLAGS} -j1"
 CONFIGURE_FLAGS="--ghc ${BUILD_FLAGS}"
 RESTRICT_FLAGS="--disable-library-profiling"
 INITIAL_FLAGS=

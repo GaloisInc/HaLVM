@@ -40,7 +40,7 @@ mrproper::
 ###############################################################################
 
 ifeq ($(GHC),no)
-PLATGHC = $(TOPDIR)/platform_ghc/bin/ghc
+PLATGHC    = $(TOPDIR)/platform_ghc/bin/ghc
 
 $(PLATGHC): $(GHC_FILE)
 	$(eval gtmpdir = $(shell mktemp -d))
@@ -54,7 +54,7 @@ mrproper::
 	$(RM) $(HOME)/.ghc/$(ARCH)-linux-7.8.3
 else
 # Use the global GHC.
-PLATGHC = $(GHC)
+PLATGHC    = $(GHC)
 endif
 
 ifeq ($(CABAL),no)
@@ -230,7 +230,7 @@ clean::
 
 install:: $(TOPDIR)/src/openlibm/libopenlibm.a
 	$(INSTALL) -D $(TOPDIR)/src/openlibm/libopenlibm.a \
-	              $(halvmlibdir)/rts-*/libopenlibm.a
+	              $(halvmlibdir)/rts-1.0/libopenlibm.a
 
 ###############################################################################
 # LibIVC
@@ -380,3 +380,20 @@ install:: $(TOPDIR)/src/scripts/ldkernel
 
 install:: $(TOPDIR)/src/misc/kernel-$(ARCH).lds
 	$(INSTALL) -D $(TOPDIR)/src/misc/kernel-$(ARCH).lds $(halvmlibdir)/kernel.lds
+
+install:: ${PLATCABAL}
+	$(INSTALL) -D ${PLATCABAL} ${halvmlibdir}/bin/cabal
+
+PLATHSC2HS = $(shell $(PLATGHC) --print-libdir)/bin/hsc2hs
+install:: ${PLATHSC2HS}
+	$(INSTALL) -D ${PLATHSC2HS} ${halvmlibdir}/bin/hsc2hs
+
+install:: ${PLATALEX}
+	$(INSTALL) -D ${PLATALEX} ${halvmlibdir}/bin/alex
+
+install:: ${PLATHAPPY}
+	$(INSTALL) -D ${PLATHAPPY} ${halvmlibdir}/bin/happy
+
+install:: ${PLATHADDOCK}
+	$(INSTALL) -D ${PLATHADDOCK} ${halvmlibdir}/bin/haddock
+
