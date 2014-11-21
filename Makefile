@@ -176,18 +176,11 @@ mrproper::
 # GMP
 ################################################################################
 
+ifeq ($(INTEGER_LIBRARY),integer-gmp)
+
 $(TOPDIR)/src/gmp: | $(GHC_PREPPED)
 	$(TAR) jxf $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/tarball/*.bz2
 	$(MV) gmp-* $(TOPDIR)/src/gmp
-
-$(TOPDIR)/src/gmp/Makefile: | $(TOPDIR)/src/gmp
-	(cd src/gmp && ABI="$(ABI)" CFLAGS="$(CFLAGS)" \
-	    ./configure --disable-shared --enable-static)
-
-$(TOPDIR)/src/gmp/.libs/libgmp.a: $(TOPDIR)/src/gmp/Makefile
-	$(MAKE) -C src/gmp
-
-ifeq ($(INTEGER_LIBRARY),integer-gmp)
 
 $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmp.h: $(TOPDIR)/src/gmp/.libs/libgmp.a
 	$(LN) -sf $(TOPDIR)/src/gmp/gmp.h $@
@@ -195,8 +188,16 @@ $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmp.h: $(TOPDIR)/src/gmp/.libs/lib
 $(TOPDIR)/halvm-ghc/libraries/integer-gmp/cbits/gmp.h: $(TOPDIR)/src/gmp/.libs/libgmp.a
 	$(LN) -sf $(TOPDIR)/src/gmp/gmp.h $@
 
-$(TOPDIR)/halvm-ghc/libraries/integer-gmp/config.sub: $(TOPDIR)/src/misc/hsgmp.patch
+$(TOPDIR)/halvm-ghc/libraries/integer-gmp/.patched.config.sub: $(TOPDIR)/src/misc/hsgmp.patch
 	(cd halvm-ghc/libraries/integer-gmp && $(PATCH) -p1 < $(TOPDIR)/src/misc/hsgmp.patch)
+	$(TOUCH) $@
+
+$(TOPDIR)/src/gmp/Makefile: | $(TOPDIR)/src/gmp
+	(cd src/gmp && ABI="$(ABI)" CFLAGS="$(CFLAGS)" \
+	    ./configure --disable-shared --enable-static)
+
+$(TOPDIR)/src/gmp/.libs/libgmp.a: $(TOPDIR)/src/gmp/Makefile
+	$(MAKE) -C src/gmp
 
 all:: $(TOPDIR)/src/gmp/.libs/libgmp.a
 
@@ -210,7 +211,7 @@ clean::
 
 $(TOPDIR)/halvm-ghc/mk/config.mk: $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmp.h
 $(TOPDIR)/halvm-ghc/mk/config.mk: $(TOPDIR)/halvm-ghc/libraries/integer-gmp/cbits/gmp.h
-$(TOPDIR)/halvm-ghc/mk/config.mk: $(TOPDIR)/halvm-ghc/libraries/integer-gmp/config.sub
+$(TOPDIR)/halvm-ghc/mk/config.mk: $(TOPDIR)/halvm-ghc/libraries/integer-gmp/.patched.config.sub
 endif
 
 clean::
