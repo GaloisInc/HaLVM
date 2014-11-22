@@ -64,6 +64,7 @@ $(PLATCABAL): $(CABAL_FILE) $(PLATGHC)
 	$(eval ctmpdir = $(shell mktemp -d))
 	echo $(ctmpdir)
 	$(TAR) zxf $(CABAL_FILE) -C $(ctmpdir)
+	$(RM) -rf ${HOME}/.ghc/${ARCH}-linux-7.8.3
 	(cd $(ctmpdir)/cabal* && PREFIX=$(TOPDIR)/platform_ghc \
 	  						 GHC=$(PLATGHC)                \
 							 GHC_PKG=$(PLATGHC)-pkg ./bootstrap.sh --no-doc)
@@ -202,7 +203,7 @@ $(TOPDIR)/src/gmp/.libs/libgmp.a: $(TOPDIR)/src/gmp/Makefile
 all:: $(TOPDIR)/src/gmp/.libs/libgmp.a
 
 install:: $(TOPDIR)/src/gmp/.libs/libgmp.a
-	$(INSTALL) -D $(TOPDIR)/src/gmp.libs/libgmp.a $(halvmlibdir)/rts-1.0/libgmp.a
+	$(INSTALL) -D $(TOPDIR)/src/gmp/.libs/libgmp.a $(halvmlibdir)/rts-1.0/libgmp.a
 
 clean::
 	$(RM) -f $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmp.h
