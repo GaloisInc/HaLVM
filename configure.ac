@@ -142,6 +142,9 @@ AC_CHECK_HEADER(ncurses.h, HAVE_NCURSES=y,
   [AC_CHECK_HEADER(curses.h, HAVE_NCURSES=y,
      LOG_FAILURE("The HaLVM requires the ncurses development library."))])
 
+AC_CHECK_HEADER(zlib.h, HAVE_ZLIB=y,
+  [LOG_FAILURE("The HaLVM requires zlib in order to build.")])
+
 AC_CHECK_LIB(gmp, __gmpz_init, ,
   LOG_FAILURE("The HaLVM requires libgmp to build."))
 
