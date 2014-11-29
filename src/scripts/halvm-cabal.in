@@ -20,7 +20,7 @@ BUILD_FLAGS+="--with-happy=${HAPPY} "
 BUILD_FLAGS+="--with-haddock=${HADDOCK} "
 
 INSTALL_FLAGS="--ghc ${BUILD_FLAGS} -j1"
-CONFIGURE_FLAGS="--ghc ${BUILD_FLAGS}"
+CONFIGURE_FLAGS="--ghc ${BUILD_FLAGS} --enable-split-objs"
 RESTRICT_FLAGS="--disable-library-profiling"
 INITIAL_FLAGS=
 FINAL_FLAGS=
