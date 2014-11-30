@@ -52,6 +52,7 @@ while [ $# != 0 ] ; do
     -Wl,--reduce-memory-overheads) ARGS="${ARGS} --reduce-memory-overheads";shift;;
     -Wl,--hash-size*) BIT=`echo "$1"|cut -c 17-`;ARGS="$ARGS -u ${BIT}";shift;;
     -Wl,--version) ARGS="$ARGS --version"; shift;;
+    -Wl,--build-id=none) ARGS="$ARGS --build-id=none"; shift;;
     *) ARGS="$ARGS $1"; shift;;
   esac
 done
