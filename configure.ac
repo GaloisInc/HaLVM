@@ -81,7 +81,6 @@ dnl autoconf system won't work.
 dnl
 dnl -------------------------------------------------------------------------
 
-
 dnl Check for sed and echo first, with an abrupt failure if they're not found,
 dnl because we need these to show output.
 AC_PATH_PROGS(SED, sed, no)
@@ -105,7 +104,6 @@ dnl From this point on, we should use LOG_FAILURE instead of AC_FORCE_EXIST.
 AC_FORCE_EXIST(AR,ar)
 AC_FORCE_EXIST(AUTOMAKE,automake)
 AC_FORCE_EXIST(AUTORECONF,autoreconf)
-AC_FORCE_EXIST(CABAL,cabal)
 AC_FORCE_EXIST(CC,gcc)
 AC_FORCE_EXIST(CHMOD,chmod)
 AC_FORCE_EXIST(CP,cp)
@@ -130,26 +128,31 @@ AC_FORCE_EXIST(SED,sed)
 AC_FORCE_EXIST(TAR,tar)
 AC_FORCE_EXIST(TOUCH,touch)
 
-AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [[789].*],
-                  LOG_FAILURE("The HaLVM requires GHC 7 or higher."))
 AC_CHECK_PROG_VER(ALEX, alex, --version, [version \([0-9.]*\)],
-                  [3.[1-9]*],
-                  LOG_FAILURE("The HaLVM requires alex 3.1+."))
+                  [3.[1-9]*], AC_SUBST(ALEX, "no") NEED_CURL=yes)
 AC_CHECK_PROG_VER(HAPPY, happy, --version, [Version \([0-9.]*\)], [1.19.*],
-                  LOG_FAILURE("The HaLVM requires Happy 1.19+."))
-
-AC_SUBST(FORCE_PLATFORM_GHC,no)
+                  AC_SUBST(HAPPY,"no") NEED_CURL=yes)
+AC_CHECK_PROG_VER(CABAL, cabal, --version, [cabal-install version \([0-9.]*\)],
+                  [1.[23456789][0123456789].*],
+                  AC_SUBST(CABAL,"no") NEED_CURL=yes)
 AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [7.8.*],
-                  AC_SUBST(FORCE_PLATFORM_GHC,yes))
+                  AC_SUBST(GHC,no) NEED_CURL=yes)
 
 AC_CHECK_HEADER(ncurses.h, HAVE_NCURSES=y,
   [AC_CHECK_HEADER(curses.h, HAVE_NCURSES=y,
      LOG_FAILURE("The HaLVM requires the ncurses development library."))])
 
-if test "${FORCE_PLATFORM_GHC}" = "yes"; then
+AC_CHECK_HEADER(zlib.h, HAVE_ZLIB=y,
+  [LOG_FAILURE("The HaLVM requires zlib in order to build.")])
+
+AC_CHECK_LIB(gmp, __gmpz_init, ,
+  LOG_FAILURE("The HaLVM requires libgmp to build."))
+
+if test "${NEED_CURL}" = "yes"; then
   AC_FORCE_EXIST(CURL,curl)
-  AC_SUBST(GHC,"\$(TOPDIR)/platform_ghc/bin/ghc")
-else
+fi
+
+if test "${GHC}" != "no"; then
   AC_MSG_CHECKING(for globally-installed GHC terminfo package)
   if ${GHC}-pkg list --simple-output --no-user-package-conf | grep -q terminfo;
   then
@@ -231,18 +234,17 @@ AC_ARG_ENABLE(docs,
    fi
   ], [enable_docs="maybe"])
 
+AC_PATH_PROGS(HADDOCK,haddock,no)
+AC_PATH_PROGS(HSCOLOUR,hscolour,no)
+
 case "$enable_docs" in
   "yes")
-           AC_FORCE_EXIST(HADDOCK,haddock)
-           AC_FORCE_EXIST(HSCOLOUR,HsColour)
            AC_SUBST(ENABLE_DOCS,"YES")
            ;;
   "no")
            AC_SUBST(ENABLE_DOCS,"NO")
            ;;
   "maybe")
-           AC_PATH_PROGS(HADDOCK,haddock,no)
-           AC_PATH_PROGS(HSCOLOUR,HsColour,no)
            if test "${HADDOCK}" == "no"; then
              HADDOCK_TEST="no"
            else

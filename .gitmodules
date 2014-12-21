@@ -3,4 +3,4 @@
 	url = git://github.com/GaloisInc/halvm-ghc.git
 [submodule "src/openlibm"]
 	path = src/openlibm
-	url = git://github.com/JuliaLang/openlibm
+	url = git://github.com/acw/openlibm
