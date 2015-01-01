@@ -258,6 +258,21 @@ install:: $(TOPDIR)/src/libIVC/libIVC.a
 	$(INSTALL) -D $(TOPDIR)/src/libIVC/libIVC.h $(incdir)/libIVC.h
 
 ###############################################################################
+# convert-profile
+###############################################################################
+
+$(TOPDIR)/src/profiling/convert-profile: $(TOPDIR)/src/profiling/convert-profile.c
+	$(CC) -O2 -o $@ $<
+
+all:: $(TOPDIR)/src/profiling/convert-profile
+
+clean::
+	$(RM) -f $(TOPDIR)/src/profiling/convert-profile
+
+install:: $(TOPDIR)/src/profiling/convert-profile
+	$(INSTALL) -D $(TOPDIR)/src/profiling/convert-profile $(bindir)/convert-profile
+
+###############################################################################
 # MK_REND_DIR
 ###############################################################################
 
@@ -324,11 +339,16 @@ $(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts.a: $(TOPDIR)/halvm-ghc/mk/config.mk
 $(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts_thr.a: $(TOPDIR)/halvm-ghc/mk/config.mk
 	$(MAKE) -C halvm-ghc rts/dist/build/libHSrts_thr.a ghclibdir=$(halvmlibdir)
 
+$(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts_p.a: $(TOPDIR)/halvm-ghc/mk/config.mk
+	$(MAKE) -C halvm-ghc rts/dist/build/libHSrts_p.a ghclibdir=$(halvmlibdir)
+
 all:: $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1
 
 all:: $(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts.a
 
 all:: $(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts_thr.a
+
+all:: $(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts_p.a
 
 clean::
 	$(MAKE) -C halvm-ghc clean
