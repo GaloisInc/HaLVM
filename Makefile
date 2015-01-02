@@ -51,7 +51,7 @@ $(PLATGHC): $(GHC_FILE)
 
 mrproper::
 	$(RM) -rf $(TOPDIR)/platform_ghc
-	$(RM) $(HOME)/.ghc/$(ARCH)-linux-7.8.3
+	$(RM) $(HOME)/.ghc/$(ARCH)-linux-7.8.4
 else
 # Use the global GHC.
 PLATGHC    = $(GHC)
@@ -64,7 +64,7 @@ $(PLATCABAL): $(CABAL_FILE) $(PLATGHC)
 	$(eval ctmpdir = $(shell mktemp -d))
 	echo $(ctmpdir)
 	$(TAR) zxf $(CABAL_FILE) -C $(ctmpdir)
-	$(RM) -rf ${HOME}/.ghc/${ARCH}-linux-7.8.3
+	$(RM) -rf ${HOME}/.ghc/${ARCH}-linux-7.8.4
 	(cd $(ctmpdir)/cabal* && PREFIX=$(TOPDIR)/platform_ghc \
 	  						 GHC=$(PLATGHC)                \
 							 GHC_PKG=$(PLATGHC)-pkg ./bootstrap.sh --no-doc)
