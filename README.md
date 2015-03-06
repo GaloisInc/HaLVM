@@ -52,6 +52,10 @@ If you plan to do development work on the HaLVM itself, please fork the HaLVM.
 This allows us to more easily tell who is working on the HaLVM, and GitHub's
 tools make merging your changes much more easy.
 
+You'll need these dependencies:
+
+> autoconf gcc ghc cabal automake libtool patch ncurses-devel xen-devel zlib-devel
+
 Once checked out, the HaLVM builds as follows:
 
 > git submodule update --init --recursive
@@ -63,6 +67,8 @@ Once checked out, the HaLVM builds as follows:
 > make
 
 > make install
+
+> sudo mkrenddir
 
 The configure system will accept and honor the "--prefix" flag as per
 normal. We also strongly suggest using the "--enable-gmp" flag, in order
