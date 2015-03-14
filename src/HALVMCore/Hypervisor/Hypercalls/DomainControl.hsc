@@ -85,7 +85,7 @@ domainControlOp op target setter getter =
     if initres == 0
       then do rdom <- (#peek xen_domctl_t, domain) buffer
               getter rdom setterres argp
-      else throw (toEnum (-initres) :: ErrorCode)
+      else throwIO (toEnum (-initres) :: ErrorCode)
 
 buildCreateDomainCall :: SID -> DomainHandle -> [CreateFlag] ->
                          Ptr a ->

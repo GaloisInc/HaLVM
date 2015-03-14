@@ -68,7 +68,7 @@ updateVAMappingOtherDomain va newval flags dom = do
   res <- update_va_mapping_otherdomain va newval flags' dom'
   if res == 0
     then return ()
-    else throw (toEnum (fromIntegral (-res)) :: ErrorCode)
+    else throwIO (toEnum (fromIntegral (-res)) :: ErrorCode)
  where
   flags' = renderTLBEffect flags
   dom'   = fromDomId dom
@@ -83,7 +83,7 @@ populatePhysmap dom num ptr = do
   free rsvp
   if res == 0
     then return ()
-    else throw (toEnum (fromIntegral (-res)) :: ErrorCode)
+    else throwIO (toEnum (fromIntegral (-res)) :: ErrorCode)
 
 foreign import ccall unsafe
   "hypercalls.h HYPERCALL_update_va_mapping_otherdomain"

@@ -142,11 +142,11 @@ standardUnitReturn x
 standardPortReturn :: Integral a => a -> IO Port
 standardPortReturn x
   | x < 0     = throwXenError x
-  | x >= 1024 = throw ENOBUFS
+  | x >= 1024 = throwIO ENOBUFS
   | otherwise = return (Port (fromIntegral x))
 
 throwXenError :: Integral a => a -> IO b
-throwXenError x = throw errorCode
+throwXenError x = throwIO errorCode
   where
    errorCode :: ErrorCode
    errorCode = toEnum (fromIntegral (-x))

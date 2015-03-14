@@ -175,7 +175,7 @@ findDevice xs str = do
             name <- xsRead xs (backend ++ "/dev")
             return (name, ("device/vbd/" ++ ent, backend))
   case lookup str maps of
-    Nothing  -> throw ENODEV
+    Nothing  -> throwIO ENODEV
     Just res -> return res
 
 -- |Read data n bytes from the given sector on the disk. If n is not an even
@@ -192,7 +192,7 @@ readDisk disk inlen sector = do
   mapM_ endAccess (map bsGrant (concatMap segments reqs))
   case catMaybes errs of
     []    -> return bstr
-    (x:_) -> throw x
+    (x:_) -> throwIO x
  where
   numSecs     = (inlen + (diskSectorSize disk - 1)) `div` (diskSectorSize disk)
   length'     = numSecs * diskSectorSize disk
@@ -256,7 +256,7 @@ writeDisk disk bs sector = do
   mapM_ freePage pgs
   case catMaybes errs of
     []      -> return ()
-    (err:_) -> throw err
+    (err:_) -> throwIO err
  where
   dom         = frbGetDomain (diskRing disk)
   --
@@ -324,7 +324,7 @@ diskWriteBarrier disk = do
   err <- takeMVar mv
   case err of
     Nothing -> return ()
-    Just e  -> throw e
+    Just e  -> throwIO e
 
 -- |Flush any cached items out to disk.
 flushDiskCaches :: Disk -> IO ()
@@ -345,7 +345,7 @@ flushDiskCaches disk = do
   err <- takeMVar mv
   case err of
     Nothing -> return ()
-    Just e  -> throw e
+    Just e  -> throwIO e
 
 #ifdef BLKIF_OP_DISCARD
 -- |Indicate to the backend device that a region of storage is no longer in use
@@ -373,7 +373,7 @@ discardRegion disk sector num dosec = do
   err <- takeMVar mv
   case err of
     Nothing -> return ()
-    Just e  -> throw e
+    Just e  -> throwIO e
 #endif
 
 -- ----------------------------------------------------------------------------
@@ -407,7 +407,7 @@ instance Storable BlockOperation where
 #ifdef BLKIF_OP_DISCARD
       (#const BLKIF_OP_DISCARD)         -> return BlockOpDiscard
 #endif
-      _                                 -> throw EIO
+      _                                 -> throwIO EIO
   poke ptr BlockOpRead =
     poke (castPtr ptr) ((#const BLKIF_OP_READ) :: Word8)
   poke ptr BlockOpWrite =

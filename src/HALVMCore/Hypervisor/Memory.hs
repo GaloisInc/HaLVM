@@ -186,12 +186,12 @@ getProt flags =  flag (bit 0) protRead
 allocPageProt :: AllocProt -> IO (VPtr a)
 allocPageProt flags = do
   va <- allocMemory nullPtr 4096 (getProt flags) 1
-  if va == nullPtr then throw ENOMEM else return $! va
+  if va == nullPtr then throwIO ENOMEM else return $! va
 
 -- |Free a page allocated with allocPage.
 freePage :: VPtr a -> IO ()
 freePage x
-  | x /= (x `alignPtr` 4096) = throw EINVAL
+  | x /= (x `alignPtr` 4096) = throwIO EINVAL
   | otherwise                = freeMemory x 4096
 
 -- | Allocate a page, call a function with it, and free it.  Return the result
@@ -232,7 +232,7 @@ markAsPageTable l addr dom = do
 
 markFrameAsPageTable :: Int -> MFN -> DomId -> IO ()
 markFrameAsPageTable l mfn dom = do
-  unless (l `elem` [1..4]) $ throw EINVAL
+  unless (l `elem` [1..4]) $ throwIO EINVAL
   pin_frame l (fromMFN mfn) (fromDomId dom) >>= standardUnitRes
 
 -- |Map the given list of frames into a contiguous chunk of memory.
@@ -274,7 +274,7 @@ grantAccess dom ptr len writable = ga ptr (fromIntegral len)
         ro      = if writable then 0 else 1
     rptr <- malloc
     res <- allocGrant (fromDomId dom) p (fromIntegral clength) ro rptr
-    when (res < 0) $ free rptr >> throw (toEnum (-res) :: ErrorCode)
+    when (res < 0) $ free rptr >> throwIO (toEnum (-res) :: ErrorCode)
     i <- peek rptr
     ((GrantRef i):) `fmap` ga (p `plusPtr` fromIntegral clength) (l - clength)
 
@@ -282,7 +282,7 @@ grantAccess dom ptr len writable = ga ptr (fromIntegral len)
 endAccess :: GrantRef -> IO ()
 endAccess (GrantRef gr) = do
   res <- endGrant gr
-  when (res < 0) $ throw (toEnum (-res) :: ErrorCode)
+  when (res < 0) $ throwIO (toEnum (-res) :: ErrorCode)
 
 -- |The type of a grant handle, or (in other words), the handle to a
 -- grant from another domain that we've mapped.
@@ -304,8 +304,8 @@ mapGrants dom refs writable =
     res <- mapGrants' dom' readonly ptr count resptr hndlptr nullPtr
     when (res /= 0) $ do
       free resptr >> free hndlptr
-      when (res < 0) $ throw (toEnum (-res) :: ErrorCode)
-      when (res > 0) $ throw (toEnum res :: GrantErrorCode)
+      when (res < 0) $ throwIO (toEnum (-res) :: ErrorCode)
+      when (res > 0) $ throwIO (toEnum res :: GrantErrorCode)
     retptr <- peek resptr
     hnds   <- GrantHandle `fmap` peekArray count hndlptr
     free resptr >> free hndlptr
@@ -317,8 +317,8 @@ unmapGrant :: GrantHandle -> IO ()
 unmapGrant (GrantHandle gh) =
   withArray gh $ \ ptr -> do
     res <- unmapGrants ptr (length gh)
-    when (res < 0) $ throw (toEnum (-res) :: ErrorCode)
-    when (res > 0) $ throw (toEnum res :: GrantErrorCode)
+    when (res < 0) $ throwIO (toEnum (-res) :: ErrorCode)
+    when (res > 0) $ throwIO (toEnum res :: GrantErrorCode)
 
 --
 -- * Routines for transferring or copying pages to another domain.
@@ -331,7 +331,7 @@ unmapGrant (GrantHandle gh) =
 prepareTransfer :: DomId -> IO GrantRef
 prepareTransfer dom = do
   res <- prepTransfer (fromDomId dom)
-  when (res < 0) $ throw (toEnum (-res) :: ErrorCode)
+  when (res < 0) $ throwIO (toEnum (-res) :: ErrorCode)
   return (GrantRef (fromIntegral res))
 
 -- |Transfer the given frame to another domain, using the given grant
@@ -339,8 +339,8 @@ prepareTransfer dom = do
 transferFrame :: DomId -> GrantRef -> VPtr a -> IO ()
 transferFrame dom (GrantRef ref) ptr = do
   res <- transferGrant (fromDomId dom) ref ptr
-  when (res < 0) $ throw (toEnum (-res) :: ErrorCode)
-  when (res > 0) $ throw (toEnum   res  :: GrantErrorCode)
+  when (res < 0) $ throwIO (toEnum (-res) :: ErrorCode)
+  when (res > 0) $ throwIO (toEnum   res  :: GrantErrorCode)
 
 -- |Complete a grant transfer, returning the provided frame.
 --
@@ -360,7 +360,7 @@ completeTransfer gr@(GrantRef ref) block reset = do
   let ecode = toEnum (-res) :: ErrorCode
   case res of
     x | (x < 0) && block && (ecode == EAGAIN) -> completeTransfer gr block reset
-      | (x < 0)                               -> throw ecode
+      | (x < 0)                               -> throwIO ecode
       | otherwise                             -> return (MFN (fromIntegral x))
 
 -- |Perform a copy of one frame to another frame. If two frame numbers are
@@ -396,8 +396,8 @@ performFrameCopy src sd soff dest dd doff len = do
 virtualToMachine :: VPtr a -> IO (MPtr a)
 virtualToMachine x = do
   ent <- get_pt_entry x
-  when (ent == 0) $ throw EINVAL
-  unless (ent `testBit` 0) $ throw EINVAL
+  when (ent == 0) $ throwIO EINVAL
+  unless (ent `testBit` 0) $ throwIO EINVAL
   let inword = ptrToWordPtr x
       inoff  = fromIntegral (inword .&. 4095)
       base   = ent .&. (complement 4095)
@@ -407,7 +407,7 @@ virtualToMachine x = do
 -- SLOW.
 machineToVirtual :: MPtr a -> IO (VPtr a)
 machineToVirtual (MPtr x) = machine_to_virtual x >>= \ x' -> do
-  when (x' == nullPtr) $ throw EINVAL
+  when (x' == nullPtr) $ throwIO EINVAL
   return x'
 
 -- |Determine if the given address is actually backed with some
@@ -423,7 +423,7 @@ addressMapped addr = do
 --
 standardUnitRes :: Integral a => a -> IO ()
 standardUnitRes 0 = return ()
-standardUnitRes x = throw (toEnum (fromIntegral (-x)) :: ErrorCode)
+standardUnitRes x = throwIO (toEnum (fromIntegral (-x)) :: ErrorCode)
 
 #define C_PFN_T Word32
 
