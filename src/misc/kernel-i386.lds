@@ -44,6 +44,9 @@ SECTIONS
 	}
   _end = . ;
 
+  . = ALIGN(4096);
+  _mem_start = . ;
+
   /* Sections to be discarded */
   /DISCARD/ : {
 	*(.text.exit)

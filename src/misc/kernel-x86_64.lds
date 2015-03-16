@@ -43,7 +43,11 @@ SECTIONS
   .bss : {
 	*(.bss)
 	}
+
   _end = . ;
+
+  . = ALIGN(4096);
+  _mem_start = . ;
 
   /* Sections to be discarded */
   /DISCARD/ : {
