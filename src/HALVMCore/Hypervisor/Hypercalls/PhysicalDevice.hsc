@@ -38,7 +38,7 @@ physicalDeviceOp cmd setter getter =
     initres <- do_physdev_op (pdCmdVal cmd) buffer
     if initres == 0
       then getter setres buffer
-      else throw (toEnum (-initres) :: ErrorCode)
+      else throwIO (toEnum (-initres) :: ErrorCode)
 
 foreign import ccall unsafe "strings.h bzero"
   bzero :: Ptr a -> Word -> IO ()

@@ -103,7 +103,7 @@ makeNewInOutChannel :: (Binary a, Binary b) =>
                        DomId -> Word -> Float ->
                        IO (InOutChannel a b)
 makeNewInOutChannel target npages perc
-  | (perc < 0) || (perc > 1.0) = throw EINVAL
+  | (perc < 0) || (perc > 1.0) = throwIO EINVAL
   | otherwise                  = do
      (grs, p, (ich,och)) <- makeNewChan target npages (buildIOChan perc npages)
      return (InOutChannel (Just (target, grs, p, perc)) ich och target)
@@ -113,7 +113,7 @@ acceptNewInOutChannel :: (Binary a, Binary b) =>
                          DomId -> [GrantRef] -> Port -> Float ->
                          IO (InOutChannel a b)
 acceptNewInOutChannel target grants port perc
-  | (perc < 0) || (perc > 1.0) = throw EINVAL
+  | (perc < 0) || (perc > 1.0) = throwIO EINVAL
   | otherwise                  = do
      let npages = fromIntegral (length grants)
      (ichn, ochn) <- acceptNewChan target grants port (buildIOChan perc npages)

@@ -51,7 +51,7 @@ systemControlOp op setter getter =
     initres   <- do_sysctl_op buffer
     if initres == 0
       then getter setterres argp
-      else throw (toEnum (-initres) :: ErrorCode)
+      else throwIO (toEnum (-initres) :: ErrorCode)
 
 buildReadConsoleCommand :: Bool -> Word8 -> Word32 -> Word32 -> Ptr a ->
                            Ptr b ->
