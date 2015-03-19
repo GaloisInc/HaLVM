@@ -345,7 +345,7 @@ onXenbusEvent stateMV =
 parseResponses :: ByteString -> ([ResponseBody], ByteString)
 parseResponses bstr =
   case runGetOrFail parseResponse bstr of
-    Left  (remain, _, _)   -> ([], remain)
+    Left  (_, _, _)   -> ([], bstr)
     Right (rest,   _, req) ->
       let (res, remain) = parseResponses rest
       in (req : res, remain)
