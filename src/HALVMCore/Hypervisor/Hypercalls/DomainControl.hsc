@@ -15,10 +15,10 @@ module Hypervisor.Hypercalls.DomainControl(
        )
  where
 
-import Control.Exception
+import Control.Exception (throwIO)
 import Data.Bits
 import Data.Word
-import Foreign.Marshal.Alloc
+import Foreign.Marshal.Alloc (allocaBytes,mallocBytes)
 import Foreign.Ptr
 import Foreign.Storable
 import {-# SOURCE #-} Hypervisor.Control(CreateFlag(..))
@@ -73,7 +73,7 @@ domainControlOp :: DomainControlOp -> Word16 ->
                    (Word16 -> b -> Ptr a -> IO c)      ->
                    IO c
 domainControlOp op target setter getter =
-  bracket (mallocBytes (#size xen_domctl_t)) free $ \ buffer -> do
+  allocaBytes (#size xen_domctl_t) $ \ buffer -> do
     bzero buffer (#size xen_domctl_t)
     (#poke xen_domctl_t, cmd)               buffer (dcCmdVal op)
     (#poke xen_domctl_t, interface_version) buffer
@@ -85,7 +85,7 @@ domainControlOp op target setter getter =
     if initres == 0
       then do rdom <- (#peek xen_domctl_t, domain) buffer
               getter rdom setterres argp
-      else throw (toEnum (-initres) :: ErrorCode)
+      else throwIO (toEnum (-initres) :: ErrorCode)
 
 buildCreateDomainCall :: SID -> DomainHandle -> [CreateFlag] ->
                          Ptr a ->
@@ -152,6 +152,7 @@ instance Storable [CreateFlag] where
    where mAddFlag c x r | x `elem` v = c .|. r
                         | otherwise  = r
 
+-- | NOTE: the pointer returned must be freed.
 buildVCPUContextRequest :: Word32 -> Maybe ProcessorContext -> Ptr a ->
                            IO (Ptr ProcessorContext)
 buildVCPUContextRequest v mContext reqp = do

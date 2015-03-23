@@ -16,10 +16,9 @@ module Hypervisor.Platform(
        )
  where
 
-import Control.Exception
 import Data.Word
 import Foreign.C.String
-import Foreign.Marshal.Alloc
+import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Storable
 import Hypervisor.DomainInfo
 import Hypervisor.Hypercalls
@@ -32,11 +31,12 @@ import Hypervisor.Structures.PhysicalInfo
 -- to read and the amount to read, respectively.
 readEmergencyConsole :: Bool -> Maybe (Int,Int) -> IO String
 readEmergencyConsole clear mpartial =
-  bracket (mallocBytes (fromIntegral bufsize)) free $ \ buffer -> do
+  allocaBytes len $ \ buffer -> do
     systemControlOp SysCtlReadConsole
       (buildReadConsoleCommand clear incr (fromIntegral index) bufsize buffer)
-      (\ _ _ -> peekCAStringLen (buffer, fromIntegral bufsize))
+      (\ _ _ -> peekCAStringLen (buffer, len))
  where
+  len = fromIntegral bufsize
   (incr, index, bufsize) = case mpartial of
                              Nothing    -> (0, 0, (64 * 1024))
                              Just (i,s) -> (1, i, fromIntegral s)

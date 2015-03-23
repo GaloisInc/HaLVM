@@ -140,10 +140,11 @@ makeNewChan :: DomId -> Word ->
                (Bool -> Ptr Word8 -> Word -> Port -> IO a) ->
                IO ([GrantRef], Port, a)
 makeNewChan target npages buildChan = do
-  ptr  <- mallocBytes (fromIntegral npages * 4096)
-  refs <- grantAccess target ptr (fromIntegral npages * 4096) True
+  let len = npages * 4096
+  ptr  <- mallocBytes (fromIntegral len)
+  refs <- grantAccess target ptr len True
   port <- allocPort target
-  ichn <- buildChan True ptr ((npages * 4096) - bookkeepingOverhead) port
+  ichn <- buildChan True ptr (len - bookkeepingOverhead) port
   return (refs, port, ichn)
 
 acceptNewChan :: DomId -> [GrantRef] -> Port ->

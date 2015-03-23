@@ -17,7 +17,6 @@ module Hypervisor.OtherDomain(
 import Control.Exception
 import Data.Word
 import Foreign.Ptr
-import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
 import Foreign.Storable
 import Hypervisor.DomainInfo
@@ -45,16 +44,14 @@ data TLBTarget = AllTLBs
 -- of machine addresses. The arguments are the domain to create the memory for
 -- and the amount of memory (in KBytes) to give the new domain.
 allocForeignMachineFrames :: DomId -> Word32 -> IO [MFN]
-allocForeignMachineFrames dom maxMemKB = do
-  let num_pages = maxMemKB `div` 4
-      num_pagesI = fromIntegral num_pages
-      pfn_list = [0 .. num_pages-1]
-  ptr <- mallocArray num_pagesI
-  pokeArray ptr (map (toMFN . fromIntegral) pfn_list)
+allocForeignMachineFrames dom maxMemKB = allocaArray num_pagesI $ \ ptr -> do
+  pokeArray ptr (map toMFN pfn_list)
   populatePhysmap dom (fromIntegral num_pages) ptr
-  res <- peekArray num_pagesI ptr
-  free ptr
-  return res
+  peekArray num_pagesI ptr
+  where
+  num_pages = maxMemKB `div` 4
+  num_pagesI = fromIntegral num_pages
+  pfn_list = [0 .. fromIntegral num_pages - 1]
 
 -- |Update the virtual address mapping of another domain.
 updateOthersVAMapping :: DomId -> VPtr a -> Word64 -> TLBEffect -> IO ()

@@ -11,7 +11,7 @@ module Hypervisor.Hypercalls.SystemControl(
        )
  where
 
-import Control.Exception
+import Control.Exception (throwIO)
 import Data.Word
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
@@ -41,7 +41,7 @@ systemControlOp :: SystemControlOp      ->
                    (b -> Ptr a -> IO c) ->
                    IO c
 systemControlOp op setter getter =
-  bracket (mallocBytes (#size xen_sysctl_t)) free $ \ buffer -> do
+  allocaBytes (#size xen_sysctl_t) $ \ buffer -> do
     bzero buffer (#size xen_sysctl_t)
     (#poke xen_sysctl_t, cmd)               buffer (scCmdVal op)
     (#poke xen_sysctl_t, interface_version) buffer
@@ -51,7 +51,7 @@ systemControlOp op setter getter =
     initres   <- do_sysctl_op buffer
     if initres == 0
       then getter setterres argp
-      else throw (toEnum (-initres) :: ErrorCode)
+      else throwIO (toEnum (-initres) :: ErrorCode)
 
 buildReadConsoleCommand :: Bool -> Word8 -> Word32 -> Word32 -> Ptr a ->
                            Ptr b ->

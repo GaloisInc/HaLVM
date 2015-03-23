@@ -15,10 +15,10 @@ module Hypervisor.Hypercalls(
        )
  where
 
-import Control.Exception
+import Control.Exception (throwIO)
 import Data.Bits
 import Data.Word
-import Foreign.Marshal.Alloc
+import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr
 import Foreign.Storable
 import {-# SOURCE #-} Hypervisor.OtherDomain(TLBEffect(..),TLBTarget(..))
@@ -48,11 +48,12 @@ ptrToWord = fromIntegral . ptrToWordPtr
 
 #ifdef TESTING
 parseTLBEffect :: Word -> TLBEffect
-parseTLBEffect x
-  | ftype == (#const UVMF_NONE)      = NoFlush
-  | ftype == (#const UVMF_INVLPG)    = InvPage target
-  | ftype == (#const UVMF_TLB_FLUSH) = FlushTLB target
-  | otherwise                        = error "Bad input TLB effect value"
+parseTLBEffect x =
+  case ftype of
+    (#const UVMF_NONE)      -> NoFlush
+    (#const UVMF_INVLPG)    -> InvPage target
+    (#const UVMF_TLB_FLUSH) -> FlushTLB target
+    _                       -> error "parseTLBEffect: Bad input TLB effect value" 
  where
   ftype  = x .&. (#const UVMF_FLUSHTYPE_MASK)
   ttype  = x .&. (#const UVMF_ALL)
@@ -68,22 +69,21 @@ updateVAMappingOtherDomain va newval flags dom = do
   res <- update_va_mapping_otherdomain va newval flags' dom'
   if res == 0
     then return ()
-    else throw (toEnum (fromIntegral (-res)) :: ErrorCode)
+    else throwIO (toEnum (fromIntegral (-res)) :: ErrorCode)
  where
   flags' = renderTLBEffect flags
   dom'   = fromDomId dom
 
 populatePhysmap :: DomId -> Word -> Ptr a -> IO ()
-populatePhysmap dom num ptr = do
-  rsvp <- mallocBytes (#size xen_memory_reservation_t)
-  (#poke xen_memory_reservation_t, extent_start) rsvp ptr
-  (#poke xen_memory_reservation_t, nr_extents)   rsvp num
-  (#poke xen_memory_reservation_t, domid)        rsvp (fromDomId dom :: Word16)
-  res <- do_memory_op (#const XENMEM_populate_physmap) rsvp
-  free rsvp
-  if res == 0
-    then return ()
-    else throw (toEnum (fromIntegral (-res)) :: ErrorCode)
+populatePhysmap dom num ptr =
+  allocaBytes (#size xen_memory_reservation_t) $ \ rsvp -> do
+    (#poke xen_memory_reservation_t, extent_start) rsvp ptr
+    (#poke xen_memory_reservation_t, nr_extents)   rsvp num
+    (#poke xen_memory_reservation_t, domid)        rsvp (fromDomId dom :: Word16)
+    res <- do_memory_op (#const XENMEM_populate_physmap) rsvp
+    if res == 0
+      then return ()
+      else throwIO (toEnum (fromIntegral (-res)) :: ErrorCode)
 
 foreign import ccall unsafe
   "hypercalls.h HYPERCALL_update_va_mapping_otherdomain"

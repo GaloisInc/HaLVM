@@ -4,7 +4,7 @@
 -- terms and conditions.
 module Hypervisor.Hypercalls.PhysicalDevice where
 
-import Control.Exception
+import Control.Exception (throwIO)
 import Data.Word
 import Foreign.Marshal.Alloc
 import Foreign.Ptr
@@ -32,13 +32,15 @@ physicalDeviceOp :: PhysicalDeviceOp ->
                     (b -> Ptr a -> IO c) ->
                     IO c
 physicalDeviceOp cmd setter getter =
-  bracket (mallocBytes (pdCmdSize cmd)) free $ \ buffer -> do
-    bzero buffer (fromIntegral (pdCmdSize cmd))
+  allocaBytes len $ \ buffer -> do
+    bzero buffer (fromIntegral len)
     setres  <- setter buffer
     initres <- do_physdev_op (pdCmdVal cmd) buffer
     if initres == 0
       then getter setres buffer
-      else throw (toEnum (-initres) :: ErrorCode)
+      else throwIO (toEnum (-initres) :: ErrorCode)
+  where
+  len = pdCmdSize cmd
 
 foreign import ccall unsafe "strings.h bzero"
   bzero :: Ptr a -> Word -> IO ()
