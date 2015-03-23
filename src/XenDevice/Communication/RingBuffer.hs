@@ -46,7 +46,7 @@ import Hypervisor.Memory
 import Hypervisor.Port
 
 data FrontEndRingType reqt respt = FrontEndRingType {
-    entrySize    :: Word32
+    entrySize    :: {-# UNPACK #-} !Word32
   , pokeRequest  :: Ptr reqt -> reqt -> IO ()
   , peekResponse :: Ptr respt -> IO respt
   }
@@ -58,17 +58,17 @@ data FrontEndRingType reqt respt = FrontEndRingType {
 -- --------------------------------------------------------------------------
 
 data FrontEndRing reqt respt = FrontRing {
-    frbType       :: FrontEndRingType reqt respt
-  , frbGetDomain  :: DomId
-  , frbGetRef     :: GrantRef
-  , frbGetPort    :: Port
-  , frbRingSize   :: Word32
-  , frbBase       :: Ptr Word8
-  , frbLock       :: MVar ()
-  , frbWriteReqs  :: IORef (Seq (reqt, MVar ()))
-  , frbReadReqs   :: IORef (Seq (MVar [respt]))
-  , frbReqProdPvt :: IORef Word32
-  , frbRespCons   :: IORef Word32
+    frbType       :: !(FrontEndRingType reqt respt)
+  , frbGetDomain  :: {-# UNPACK #-} !DomId
+  , frbGetRef     :: {-# UNPACK #-} !GrantRef
+  , frbGetPort    :: {-# UNPACK #-} !Port
+  , frbRingSize   :: {-# UNPACK #-} !Word32
+  , frbBase       :: {-# UNPACK #-} !(Ptr Word8)
+  , frbLock       :: !(MVar ())
+  , frbWriteReqs  :: !(IORef (Seq (reqt, MVar ())))
+  , frbReadReqs   :: !(IORef (Seq (MVar [respt])))
+  , frbReqProdPvt :: !(IORef Word32)
+  , frbRespCons   :: !(IORef Word32)
   }
 
 -- |Create a new ring buffer front end to the given domain. This will return

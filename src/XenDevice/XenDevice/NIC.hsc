@@ -15,11 +15,15 @@
 -- to the network device. If successful, it can then use it to send and 
 -- receive packets.
 --
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module XenDevice.NIC (
          NIC
        , listNICs
        , openNIC
        , sendPacket
+       , RxHandler
        , setReceiveHandler
        )
  where
@@ -28,11 +32,12 @@ import Communication.RingBuffer
 import Control.Concurrent
 import Control.Exception
 import Control.Monad
+import Data.Array (Array, listArray, (!), indices)
 import Data.Bits
 import qualified Data.ByteString as SBS
 import qualified Data.ByteString.Lazy as BS
-import Data.ByteString.Lazy(ByteString,fromChunks,toChunks)
-import Data.ByteString.Unsafe(unsafePackCStringFinalizer, unsafeUseAsCStringLen)
+import Data.ByteString.Lazy(ByteString,toChunks)
+import Data.ByteString.Unsafe(unsafeUseAsCStringLen)
 import Data.Int
 import Data.Map.Strict(Map)
 import qualified Data.Map.Strict as Map
@@ -54,10 +59,10 @@ import Hypervisor.XenStore
 #include "xen/io/xenbus.h"
 
 data NIC = NIC {
-    nicTxRing    :: FrontEndRing TxRequest TxResponse
-  , nicTxId      :: MVar Word16
-  , nicTxTable   :: MVar (Map Word16 (MVar (Maybe ErrorCode)))
-  , nicRxHandler :: MVar (ByteString -> IO ())
+    nicTxRing    :: !TxRing
+  , nicTxId      :: !(MVar Word16)
+  , nicTxTable   :: !(MVar (Map Word16 (MVar (Maybe ErrorCode))))
+  , nicRxHandler :: !(MVar RxHandler)
   }
 
 listNICs :: XenStore -> IO [String]
@@ -98,15 +103,13 @@ openNIC xs mac = do
   waitForState (beDir ++ "/state") (show ((#const XenbusStateConnected)::Word))
   xsWrite xs (feDir ++ "/state") (show ((#const XenbusStateConnected)::Word))
   --
-  initRxTable <- foldM (buildRequest domid) Map.empty [0..255]
+  initRxTable <- newRxTable domid
   txIdMV <- newMVar 0
   txTableMV <- newMVar Map.empty
   rxHandlerMV <- newMVar (\ _ -> return ())
-  let reqs = Map.foldlWithKey (\ l i (g, _) -> RxRequest i g : l) [] initRxTable
-  frbWriteRequests rxRing reqs
   --
   _ <- forkIO $ forever $ processTxResponses txRing txTableMV
-  _ <- forkIO $ processRxResponses rxRing rxHandlerMV initRxTable False []
+  _ <- forkIO $ processRxResponses rxRing rxHandlerMV initRxTable
   return NIC {
     nicTxRing    = txRing
   , nicTxId      = txIdMV
@@ -127,12 +130,6 @@ openNIC xs mac = do
       threadDelay 100000
       waitForState key val
   --
-  buildRequest domid table i = do
-    pg <- allocPage
-    memset pg 0 4096
-    [ref] <- grantAccess domid pg 4096 True
-    return (Map.insert i (ref, pg) table)
-  --
   processTxResponses txRing tableMV = do
     resps <- frbReadResponses txRing
     modifyMVar_ tableMV $ \ table -> do
@@ -145,56 +142,6 @@ openNIC xs mac = do
       Just retMV -> do
         putMVar retMV (txrsStatus resp)
         return (Map.delete (txrsId resp) table)
-  --
-  processRxResponses rxRing handlerMV table st1 st2 = do
-    rawresps <- frbReadResponses rxRing
-    -- convert the raw responses into more useful items
-    (ids, bstrs, table', st1', st2') <-
-      convertRxResponses table st1 st2 rawresps
-    --
-    handler <- readMVar handlerMV
-    forM_ bstrs $ \ x -> forkIO (handler x)
-    --
-    (reqs, table'') <- resendRequests (frbGetDomain rxRing) table' ids
-    frbWriteRequests rxRing reqs
-    processRxResponses rxRing handlerMV table'' st1' st2'
-  --
-  -- FIXME: What if we end with more data?
-  convertRxResponses table st1 st2 [] = return ([], [], table, st1, st2)
-  -- case #1: we're expecting an extra_info, which we don't handle
-  convertRxResponses table True _ (_:rest) =
-    convertRxResponses table False [] rest
-  -- case #2: this is real data
-  convertRxResponses table False acc (rresp:rest) = do
-    let err = rxrsStatus rresp
-    case Map.lookup (rxrsId rresp) table of
-      Nothing -> do
-        writeDebugConsole "WARNING: Received response to unsent NIC rx req.\n"
-        convertRxResponses table False [] rest
-      Just (grant, pg) | err > 0 -> do
-        endAccess grant
-        let ptr    = pg `plusPtr` fromIntegral (rxrsOffset rresp)
-            len    = fromIntegral err
-            table' = Map.delete (rxrsId rresp) table
-        bstr <- unsafePackCStringFinalizer ptr len (freePage pg)
-        if rxrsFlags rresp .&. (#const NETRXF_more_data) /= 0
-          then convertRxResponses table' False (bstr : acc) rest
-          else do (idr, bstrr, table'', s1, s2) <-
-                    convertRxResponses table' False [] rest
-                  let bstr' = fromChunks (bstr : reverse acc)
-                  return (rxrsId rresp : idr, bstr' : bstrr, table'', s1, s2)
-      Just (_, _) -> do
-        writeDebugConsole ("WARNING: Receive request error: "++show err++"\n")
-        convertRxResponses table False [] rest
-  --
-  resendRequests _   table [] = return ([], table)
-  resendRequests dom table (i:rest) = do
-    pg <- allocPage
-    memset pg 0 4096
-    [ref] <- grantAccess dom pg 4096 True
-    let table' = Map.insert i (ref, pg) table
-    (rest', table'') <- resendRequests dom table' rest
-    return (RxRequest i ref : rest', table'')
 
 sendPacket :: NIC -> ByteString -> IO ()
 sendPacket nic bstr = do
@@ -242,12 +189,112 @@ sendPacket nic bstr = do
   processErrors (Nothing : rest) = processErrors rest
   processErrors (Just e  : _)    = throw e
 
-setReceiveHandler :: NIC -> (ByteString -> IO ()) -> IO ()
+-- Receive ---------------------------------------------------------------------
+
+type RxTable = Array Word16 (GrantRef, VPtr ())
+
+-- | Generate a new RX table, containing 256 pages and grant references to the
+-- given domain id.
+newRxTable :: DomId -> IO RxTable
+newRxTable domid =
+  do entries <- replicateM 256 $
+       do page  <- allocPage
+          [ref] <- grantAccess domid page 4096 True
+          return (ref,page)
+
+     return (listArray (0,255) entries)
+
+
+-- | Loop forever, processing events from the receive ring.
+processRxResponses :: RxRing -> MVar RxHandler -> RxTable -> IO ()
+processRxResponses rxRing handler table =
+  do frbWriteRequests rxRing [ RxRequest i grant | i <- indices table
+                                                 , let (grant,_) = table ! i ]
+     go False []
+
+  where
+
+  -- the state we keep here is whether or not we're expecting an extra_info
+  -- packet next, as well as the chunks that make up a partial packet.
+  go extraInfo bstrs =
+    do (reqs,pkts,extraInfo',bstrs') <-
+           handleRxResponses table extraInfo bstrs =<< frbReadResponses rxRing
+
+       -- handle all packets in a separate thread
+       k <- readMVar handler
+       _ <- forkIO (mapM_ k pkts)
+
+       -- re-issue freed requests
+       frbWriteRequests rxRing reqs
+
+       go extraInfo' bstrs'
+
+
+-- | Produce a set of packets and responses.
+handleRxResponses :: RxTable -> Bool -> [SBS.ByteString] -> [RxResponse]
+                  -> IO ([RxRequest],[ByteString],Bool,[SBS.ByteString])
+handleRxResponses table = go [] []
+  where
+
+  -- case #1: we're expecting an extra_info, which we ignore.  Recover the
+  -- resources associated with the original request.
+  go reqs pkts True chunks (RxResponse { .. } : rest) =
+    do let (grant,_) = table ! rxrsId
+           req       = RxRequest rxrsId grant
+       -- XXX: we need to process the fields of the netif_extra_info struct
+       go (req:reqs) pkts False chunks rest
+
+  -- case #2: this is real data
+  go reqs pkts False chunks (RxResponse { .. } : rest)
+
+    | rxrsStatus > 0 =
+      do let ptr = pg `plusPtr` fromIntegral rxrsOffset
+
+         -- copy the relevant data out of the page
+         bstr <- if rxrsStatus > 0
+                    then SBS.packCStringLen (ptr,fromIntegral rxrsStatus)
+                    else return SBS.empty
+
+         if testBit rxrsFlags (#const _NETRXF_more_data)
+            -- this was a partial packet, continue reading data
+            then go reqs' pkts extraInfo (bstr:chunks) rest
+
+            -- the packet is complete, start processing new ones
+            else
+              do let pkt = BS.fromChunks (reverse (bstr : chunks))
+                 go reqs' (pkt:pkts) extraInfo [] rest
+
+    | otherwise =
+      do writeDebugConsole $ "WARNING: Receive request error: "
+                          ++ show rxrsStatus
+                          ++ "\n"
+         go reqs' pkts False chunks rest
+
+    where
+
+    (grant,pg) = table ! rxrsId
+    req        = RxRequest rxrsId grant
+    reqs'      = req : reqs
+    extraInfo  = testBit rxrsFlags (#const _NETRXF_extra_info)
+
+  -- all responses are processed
+  go reqs pkts extraInfo chunks [] =
+    return (reqs, reverse pkts, extraInfo, chunks)
+
+
+type RxHandler = ByteString -> IO ()
+
+-- | Install a handler for incoming packets.  There can only ever be one handler
+-- installed; subsequent calls to setReceiveHandler will replace previous
+-- handlers.
+setReceiveHandler :: NIC -> RxHandler -> IO ()
 setReceiveHandler nic handler = do
   _ <- takeMVar (nicRxHandler nic)
   putMVar (nicRxHandler nic) handler
 
 -- ----------------------------------------------------------------------------
+
+type TxRing = FrontEndRing TxRequest TxResponse
 
 nicTxRingType :: FrontEndRingType TxRequest TxResponse
 nicTxRingType  = FrontEndRingType {
@@ -257,7 +304,7 @@ nicTxRingType  = FrontEndRingType {
   }
 
 data TxResponse = TxResponse {
-    txrsId     :: Word16
+    txrsId     :: {-# UNPACK #-} !Word16
   , txrsStatus :: Maybe ErrorCode
   }
  deriving (Show)
@@ -267,17 +314,17 @@ readTxResponse ptr = do
   i  <- (#peek netif_tx_response_t, id)     ptr
   st <- (#peek netif_tx_response_t, status) ptr
   case st :: Int16 of
-    (#const NETIF_RSP_DROPPED) -> return $ TxResponse i Nothing
-    (#const NETIF_RSP_ERROR)   -> return $ TxResponse i (Just EIO)
-    (#const NETIF_RSP_OKAY)    -> return $ TxResponse i Nothing
-    _                          -> return $ TxResponse i (Just EPROTO)
+    (#const NETIF_RSP_DROPPED) -> return $! TxResponse i Nothing
+    (#const NETIF_RSP_ERROR)   -> return $! TxResponse i (Just EIO)
+    (#const NETIF_RSP_OKAY)    -> return $! TxResponse i Nothing
+    _                          -> return $! TxResponse i (Just EPROTO)
 
 data TxRequest = TxRequest {
-    txrqGrant  :: GrantRef
-  , txrqOffset :: Word16
-  , txrqFlags  :: Word16
-  , txrqId     :: Word16
-  , txrqSize   :: Word16
+    txrqGrant  :: {-# UNPACK #-} !GrantRef
+  , txrqOffset :: {-# UNPACK #-} !Word16
+  , txrqFlags  :: {-# UNPACK #-} !Word16
+  , txrqId     :: {-# UNPACK #-} !Word16
+  , txrqSize   :: {-# UNPACK #-} !Word16
   }
  deriving (Show)
 
@@ -291,6 +338,8 @@ writeTxRequest ptr req = do
 
 -- ----------------------------------------------------------------------------
 
+type RxRing = FrontEndRing RxRequest RxResponse
+
 nicRxRingType :: FrontEndRingType RxRequest RxResponse
 nicRxRingType  = FrontEndRingType {
     entrySize     = max (#size netif_rx_request_t) (#size netif_rx_response_t)
@@ -299,10 +348,10 @@ nicRxRingType  = FrontEndRingType {
   }
 
 data RxResponse = RxResponse {
-    rxrsId     :: Word16
-  , rxrsOffset :: Word16
-  , rxrsFlags  :: Word16
-  , rxrsStatus :: Int16
+    rxrsId     :: {-# UNPACK #-} !Word16
+  , rxrsOffset :: {-# UNPACK #-} !Word16
+  , rxrsFlags  :: {-# UNPACK #-} !Word16
+  , rxrsStatus :: {-# UNPACK #-} !Int16
   }
  deriving (Show)
 
@@ -312,11 +361,11 @@ readRxResponse ptr = do
   o <- (#peek netif_rx_response_t,offset) ptr
   f <- (#peek netif_rx_response_t,flags)  ptr
   s <- (#peek netif_rx_response_t,status) ptr
-  return (RxResponse i o f s)
+  return $! RxResponse i o f s
 
 data RxRequest = RxRequest {
-    rxrqId    :: Word16
-  , rxrqGrant :: GrantRef
+    rxrqId    :: {-# UNPACK #-} !Word16
+  , rxrqGrant :: {-# UNPACK #-} !GrantRef
   }
 
 writeRxRequest :: Ptr RxRequest -> RxRequest -> IO ()
@@ -324,5 +373,5 @@ writeRxRequest ptr req = do
   (#poke netif_rx_request_t,id) ptr   (rxrqId req)
   (#poke netif_rx_request_t,gref) ptr (unGrantRef (rxrqGrant req))
 
-foreign import ccall unsafe "memset"
-  memset :: Ptr a -> Word8 -> Word -> IO ()
+-- foreign import ccall unsafe "memset"
+--   memset :: Ptr a -> Word8 -> Word -> IO ()
