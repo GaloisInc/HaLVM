@@ -3,7 +3,7 @@ INTEGER_LIBRARY      := @INTEGER_LIBRARY@
 DYNAMIC_GHC_PROGRAMS := NO
 
 GhcLibWays = v p
-GhcRTSWays = thr v p
+GhcRTSWays = thr v p debug
 
 # These are copied from the "perf" option
 SRC_HC_OPTS     = -O -H64m
