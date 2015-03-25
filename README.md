@@ -68,11 +68,16 @@ Once checked out, the HaLVM builds as follows:
 
 > make install
 
-> sudo mkrenddir
-
 The configure system will accept and honor the "--prefix" flag as per
 normal. We also strongly suggest using the "--enable-gmp" flag, in order
 to enable the (much faster) GMP library for large integer math.
+
+If you intend on using inter-domain communication (specified in
+`Communication.Rendezvous` and `Communication.IVC`), run the `mkrenddir` script
+(located wherever you installed the HaLVM, `/usr/local/bin` by default) as root. 
+This creates a top-level `/rendezvous` directory in the XenStore with
+appropriate permissions.
+
 
 3. Where To Look Next
 ---------------------
