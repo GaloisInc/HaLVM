@@ -187,7 +187,7 @@ sendPacket nic bstr = do
   --
   processErrors []               = return ()
   processErrors (Nothing : rest) = processErrors rest
-  processErrors (Just e  : _)    = throw e
+  processErrors (Just e  : _)    = throwIO e
 
 -- Receive ---------------------------------------------------------------------
 

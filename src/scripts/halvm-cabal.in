@@ -12,16 +12,16 @@ HADDOCK=${libdir}/bin/haddock
 
 CABALCMD=${1+"$@"}
 
-BUILD_FLAGS="--with-compiler=${bindir}/halvm-ghc "
-BUILD_FLAGS+="--with-hc-pkg=${bindir}/halvm-ghc-pkg "
-BUILD_FLAGS+="--with-hsc2hs=${HSC2HS} "
-BUILD_FLAGS+="--with-alex=${ALEX} "
-BUILD_FLAGS+="--with-happy=${HAPPY} "
-BUILD_FLAGS+="--with-haddock=${HADDOCK} "
+BUILD_FLAGS="--with-compiler=${bindir}/halvm-ghc"
+BUILD_FLAGS="${BUILD_FLAGS} --with-hc-pkg=${bindir}/halvm-ghc-pkg"
+BUILD_FLAGS="${BUILD_FLAGS} --with-hsc2hs=${HSC2HS}"
+BUILD_FLAGS="${BUILD_FLAGS} --with-alex=${ALEX}"
+BUILD_FLAGS="${BUILD_FLAGS} --with-happy=${HAPPY}"
+BUILD_FLAGS="${BUILD_FLAGS} --with-haddock=${HADDOCK}"
 
 INSTALL_FLAGS="--ghc ${BUILD_FLAGS} -j1 --enable-split-objs"
 CONFIGURE_FLAGS="--ghc ${BUILD_FLAGS} --enable-split-objs"
-RESTRICT_FLAGS="--disable-library-profiling"
+RESTRICT_FLAGS=
 INITIAL_FLAGS=
 FINAL_FLAGS=
 

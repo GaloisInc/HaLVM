@@ -65,9 +65,9 @@ allocPortForDomain :: DomId -> DomId -> IO Port
 allocPortForDomain forDom remoteDom = do
   res <- evtchn_alloc_unbound (fromDomId forDom) (fromDomId remoteDom)
   case () of
-    () | res < 0    -> throw (toEnum (fromIntegral (-res)) :: ErrorCode)
+    () | res < 0    -> throwIO (toEnum (fromIntegral (-res)) :: ErrorCode)
        | res < 1024 -> return (toPort res)
-       | otherwise  -> throw ENOBUFS
+       | otherwise  -> throwIO ENOBUFS
 
 -- |Set the maximum amount of memory a domain can use. The amount should be
 -- given in kilobytes.

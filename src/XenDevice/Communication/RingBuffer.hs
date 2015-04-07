@@ -82,7 +82,7 @@ frbCreate t dom = allocPort dom >>= frbCreateWithEC t dom
 -- share an event channel for scalability reasons.
 frbCreateWithEC ::FrontEndRingType a b -> DomId -> Port -> IO (FrontEndRing a b)
 frbCreateWithEC t dom port = do
-  unless (entrySize t <= maxEntrySize) $ throw EINVAL
+  unless (entrySize t <= maxEntrySize) $ throwIO EINVAL
   page <- allocPage
   [ref] <- grantAccess dom page 4096 True
   setRingRequestsProduced  page 0

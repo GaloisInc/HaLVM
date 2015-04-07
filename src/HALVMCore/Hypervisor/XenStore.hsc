@@ -103,7 +103,7 @@ xsGetDomId xs = do
   val <- xsRead xs "domid"
   case reads val :: [(Word16, String)] of
     [(domid, "")] -> return (toDomId domid)
-    _             -> throw EPROTO
+    _             -> throwIO EPROTO
 
 xsDirectory :: XenStore -> String -> IO [String]
 xsDirectory xs = xstDirectory xs emptyTransaction
@@ -254,14 +254,14 @@ standardRequest stateMV tid req goodresp converter =
     case body of
       RespBody _ RTError bstr ->
         case reads (parseString bstr) of
-          ((x,_):_)  -> throw (x :: ErrorCode)
-          _          -> throw EIO
+          ((x,_):_)  -> throwIO (x :: ErrorCode)
+          _          -> throwIO EIO
       RespBody _ rtype bstr | rtype == goodresp ->
         return (converter bstr)
       RespBody _ rtype _ ->
         do writeDebugConsole ("ERROR: Xenbus: Expected " ++ show goodresp ++
                               " but got " ++ show rtype ++ "\n")
-           throw EIO
+           throwIO EIO
 
 -- ----------------------------------------------------------------------------
 
@@ -345,7 +345,7 @@ onXenbusEvent stateMV =
 parseResponses :: ByteString -> ([ResponseBody], ByteString)
 parseResponses bstr =
   case runGetOrFail parseResponse bstr of
-    Left  (remain, _, _)   -> ([], remain)
+    Left  (_, _, _)   -> ([], bstr)
     Right (rest,   _, req) ->
       let (res, remain) = parseResponses rest
       in (req : res, remain)
