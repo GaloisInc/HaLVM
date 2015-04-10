@@ -14,7 +14,7 @@ virtual machines that can run directly on the Xen hypervisor.
 
 While Galois initially designed the HaLVM to allow for quick and easy
 prototyping of operating systems components, the HaLVM has grown over time to
-allow for a much wider variety of use cases. When connected with the appopriate
+allow for a much wider variety of use cases. When connected with the appropriate
 libraries, the HaLVM can, for example, operate as a network appliance.
 
 Writing for the Haskell Lightweight Virtual Machine is just like writing
@@ -54,7 +54,7 @@ tools make merging your changes much more easy.
 
 You'll need these dependencies:
 
-> autoconf gcc ghc cabal automake libtool patch ncurses-devel xen-devel zlib-devel
+> autoconf gcc ghc automake libtool patch ncurses-devel xen-devel zlib-devel
 
 Once checked out, the HaLVM builds as follows:
 
