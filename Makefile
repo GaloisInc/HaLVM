@@ -203,7 +203,7 @@ $(TOPDIR)/src/gmp/.libs/libgmp.a: $(TOPDIR)/src/gmp/Makefile
 all:: $(TOPDIR)/src/gmp/.libs/libgmp.a
 
 install:: $(TOPDIR)/src/gmp/.libs/libgmp.a
-	$(INSTALL) -D $(TOPDIR)/src/gmp/.libs/libgmp.a $(halvmlibdir)/rts-1.0/libgmp.a
+	$(INSTALL) -D $(TOPDIR)/src/gmp/.libs/libgmp.a $(DESTDIR)$(halvmlibdir)/rts-1.0/libgmp.a
 
 clean::
 	$(RM) -f $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmp.h
@@ -232,7 +232,7 @@ clean::
 
 install:: $(TOPDIR)/src/openlibm/libopenlibm.a
 	$(INSTALL) -D $(TOPDIR)/src/openlibm/libopenlibm.a \
-	              $(halvmlibdir)/rts-1.0/libopenlibm.a
+	              $(DESTDIR)$(halvmlibdir)/rts-1.0/libopenlibm.a
 
 ###############################################################################
 # LibIVC
@@ -254,8 +254,8 @@ clean::
 	$(RM) -f $(LIBIVC_O_FILES) $(TOPDIR)/src/libIVC/libIVC.a
 
 install:: $(TOPDIR)/src/libIVC/libIVC.a
-	$(INSTALL) -D $(TOPDIR)/src/libIVC/libIVC.a $(libdir)/libIVC.a
-	$(INSTALL) -D $(TOPDIR)/src/libIVC/libIVC.h $(incdir)/libIVC.h
+	$(INSTALL) -D $(TOPDIR)/src/libIVC/libIVC.a $(DESTDIR)$(libdir)/libIVC.a
+	$(INSTALL) -D $(TOPDIR)/src/libIVC/libIVC.h $(DESTDIR)$(incdir)/libIVC.h
 
 ###############################################################################
 # convert-profile
@@ -270,7 +270,7 @@ clean::
 	$(RM) -f $(TOPDIR)/src/profiling/convert-profile
 
 install:: $(TOPDIR)/src/profiling/convert-profile
-	$(INSTALL) -D $(TOPDIR)/src/profiling/convert-profile $(bindir)/convert-profile
+	$(INSTALL) -D $(TOPDIR)/src/profiling/convert-profile $(DESTDIR)$(bindir)/convert-profile
 
 ###############################################################################
 # MK_REND_DIR
@@ -292,7 +292,7 @@ clean::
 	$(RM) -f $(MKREND_O_FILES) $(TOPDIR)/src/mkrenddir/mkrenddir
 
 install:: $(TOPDIR)/src/mkrenddir/mkrenddir
-	$(INSTALL) -D $(TOPDIR)/src/mkrenddir/mkrenddir $(bindir)/mkrenddir
+	$(INSTALL) -D $(TOPDIR)/src/mkrenddir/mkrenddir $(DESTDIR)$(bindir)/mkrenddir
 
 ###############################################################################
 # Boot loader
@@ -308,7 +308,7 @@ clean::
 	rm -f $(TOPDIR)/src/bootloader/start.o
 
 install::$(TOPDIR)/src/bootloader/start.o
-	$(INSTALL) -D $(TOPDIR)/src/bootloader/start.o $(halvmlibdir)/rts-1.0/start.o
+	$(INSTALL) -D $(TOPDIR)/src/bootloader/start.o $(DESTDIR)$(halvmlibdir)/rts-1.0/start.o
 
 ###############################################################################
 # The HaLVM!
@@ -354,11 +354,11 @@ clean::
 	$(MAKE) -C halvm-ghc clean
 
 install::
-	$(MAKE) -C halvm-ghc install ghclibdir=$(halvmlibdir)
-	$(MKDIR) -p $(halvmlibdir)/include/minlibc
-	$(CP) -rf halvm-ghc/rts/minlibc/include/* $(halvmlibdir)/include/minlibc
+	$(MAKE) -C halvm-ghc install ghclibdir=$(halvmlibdir) DESTDIR=$(DESTDIR)
+	$(MKDIR) -p $(DESTDIR)$(halvmlibdir)/include/minlibc
+	$(CP) -rf halvm-ghc/rts/minlibc/include/* $(DESTDIR)$(halvmlibdir)/include/minlibc
 	$(SED) -i -e "s/^extra-ghci-libraries:/extra-ghci-libraries: minlibc/" \
-	  $(halvmlibdir)/package.conf.d/base*.conf
+	  $(DESTDIR)$(halvmlibdir)/package.conf.d/base*.conf
 
 MINLIBC_SRCS      = $(wildcard $(TOPDIR)/halvm-ghc/rts/minlibc/*.c)
 GHCI_MINLIBC_SRCS = $(filter-out %termios.c,$(MINLIBC_SRCS))
@@ -382,40 +382,39 @@ all:: $(TOPDIR)/halvm-ghc/libminlibc.a
 
 install::
 	$(INSTALL) -D $(TOPDIR)/halvm-ghc/libminlibc.a \
-	              $(halvmlibdir)/base-$(BASE_VERSION)/libminlibc.a
+	              $(DESTDIR)$(halvmlibdir)/base-$(BASE_VERSION)/libminlibc.a
 
 install:: $(TOPDIR)/src/scripts/halvm-cabal
-	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-cabal $(bindir)/halvm-cabal
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-cabal $(DESTDIR)$(bindir)/halvm-cabal
 
 install:: $(TOPDIR)/src/scripts/halvm-config
-	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-cabal $(bindir)/halvm-config
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-cabal $(DESTDIR)$(bindir)/halvm-config
 
 install:: $(TOPDIR)/src/scripts/halvm-ghc
-	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-ghc $(bindir)/halvm-ghc
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-ghc $(DESTDIR)$(bindir)/halvm-ghc
 
 install:: $(TOPDIR)/src/scripts/halvm-ghc-pkg
-	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-ghc-pkg $(bindir)/halvm-ghc-pkg
-	$(bindir)/halvm-ghc-pkg recache
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-ghc-pkg $(DESTDIR)$(bindir)/halvm-ghc-pkg
+	# XXX recache should be a post-install job
+	#$(DESTDIR)$(bindir)/halvm-ghc-pkg recache
 
 install:: $(TOPDIR)/src/scripts/ldkernel
-	$(INSTALL) -D $(TOPDIR)/src/scripts/ldkernel $(halvmlibdir)/ldkernel
+	$(INSTALL) -D $(TOPDIR)/src/scripts/ldkernel $(DESTDIR)$(halvmlibdir)/ldkernel
 
 install:: $(TOPDIR)/src/misc/kernel-$(ARCH).lds
-	$(INSTALL) -D $(TOPDIR)/src/misc/kernel-$(ARCH).lds $(halvmlibdir)/kernel.lds
+	$(INSTALL) -D $(TOPDIR)/src/misc/kernel-$(ARCH).lds $(DESTDIR)$(halvmlibdir)/kernel.lds
 
 install:: ${PLATCABAL}
-	$(INSTALL) -D ${PLATCABAL} ${halvmlibdir}/bin/cabal
+	$(INSTALL) -D ${PLATCABAL} $(DESTDIR)${halvmlibdir}/bin/cabal
 
 PLATHSC2HS = $(shell $(PLATGHC) --print-libdir)/bin/hsc2hs
 install:: ${PLATHSC2HS}
-	$(INSTALL) -D ${PLATHSC2HS} ${halvmlibdir}/bin/hsc2hs
+	$(INSTALL) -D ${PLATHSC2HS} $(DESTDIR)${halvmlibdir}/bin/hsc2hs
 
-install:: ${PLATALEX}
-	$(INSTALL) -D ${PLATALEX} ${halvmlibdir}/bin/alex
-
-install:: ${PLATHAPPY}
-	$(INSTALL) -D ${PLATHAPPY} ${halvmlibdir}/bin/happy
+install:: ${PLATALEX} ${PLATHAPPY}
+	mkdir -p ${halvmlibdir}
+	cp -rf $(TOPDIR)/platform_ghc/* $(DESTDIR)${halvmlibdir}
 
 install:: ${PLATHADDOCK}
-	$(INSTALL) -D ${PLATHADDOCK} ${halvmlibdir}/bin/haddock
+	$(INSTALL) -D ${PLATHADDOCK} $(DESTDIR)${halvmlibdir}/bin/haddock
 
