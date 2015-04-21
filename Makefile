@@ -95,7 +95,8 @@ $$($1): $$(PLATCABAL)
 		cd $$(BUILDDIR)/$2-$3 && \
 		$$(PLATCABAL) sandbox init --sandbox $$(BUILDBOX) && \
 		$$(PLATCABAL) install --only-dependencies && \
-		$$(PLATCABAL) configure --prefix=$$(halvmlibdir) && \
+		$$(PLATCABAL) configure --prefix=$$(halvmlibdir) \
+			--disable-shared --disable-executable-dynamic && \
 		$$(PLATCABAL) build && \
 		$$(PLATCABAL) copy --destdir=$$(TOPDIR)/platform_ghc
 endef
@@ -110,10 +111,13 @@ $(eval $(call sandbox-build,PLATHSCOLOUR,hscolour,$(HSCOLOUR_VERSION)))
 # Prepping / supporting the GHC build
 ################################################################################
 
+# array.cabal is the witness for the presence of all GHC's libraries
 $(TOPDIR)/halvm-ghc/libraries/array/array.cabal:
 	(cd halvm-ghc && ./sync-all --no-dph -r http://darcs.haskell.org get)
 	(cd halvm-ghc && ./sync-all checkout -t origin/ghc-7.8)
 
+# Replace GHC's base with halvm-base.
+# When NoIO.hs exists, we know this step has succeeded
 $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs: \
              $(TOPDIR)/halvm-ghc/libraries/array/array.cabal
 	$(RM) -rf $(TOPDIR)/halvm-ghc/libraries/base
@@ -124,24 +128,31 @@ $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk: \
 			 $(TOPDIR)/halvm-ghc/mk/build.mk
 	(cd halvm-ghc && ./boot)
 
+# Link Xen headers into the HaLVM runtime include dir
 $(TOPDIR)/halvm-ghc/rts/xen/include/xen:
 	$(LN) -sf $(XEN_INCLUDE_DIR)/xen $(TOPDIR)/halvm-ghc/rts/xen/include/xen
 
+# Link our custom build.mk - controls the GHC build, forces Stage1Only etc
 $(TOPDIR)/halvm-ghc/mk/build.mk: $(TOPDIR)/src/misc/build.mk
 	$(LN) -sf $(TOPDIR)/src/misc/build.mk $@
 
+# Link HALVMCore into GHC's library path, where it will be found and built
+# by the GHC build system.
 $(TOPDIR)/halvm-ghc/libraries/HALVMCore: \
        $(TOPDIR)/halvm-ghc/libraries/array/array.cabal
 	if [ ! -h $@ ]; then \
 	  $(LN) -sf $(TOPDIR)/src/HALVMCore $@ ; \
 	fi
 
+# Link XenDevice into GHC's library path, where it will be found and built
+# by the GHC build system.
 $(TOPDIR)/halvm-ghc/libraries/XenDevice: \
        $(TOPDIR)/halvm-ghc/libraries/array/array.cabal
 	if [ ! -h $@ ]; then \
 	  $(LN) -sf $(TOPDIR)/src/XenDevice $@; \
 	fi
 
+# Replace libc headers with minlibc
 $(TOPDIR)/halvm-ghc/libraries/base/libc-include: \
        $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs
 	if [ ! -h $@ ]; then \
@@ -319,6 +330,7 @@ $(TOPDIR)/halvm-ghc/mk/config.mk: $(GHC_PREPPED) $(PLATGHC) $(PLATALEX) \
 	  env PATH=$(TOPDIR)/platform_ghc/bin:${PATH} \
 	    ./configure $(HALVM_GHC_CONFIGURE_FLAGS))
 
+# The GHC build system picks up everything linked into halvm-ghc/libraries
 $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1: $(TOPDIR)/halvm-ghc/mk/config.mk
 	$(MAKE) -C halvm-ghc ghclibdir=$(halvmlibdir)
 
