@@ -109,7 +109,7 @@ GHC_LINK              := http://www.haskell.org/ghc/dist/${GHC_VERSION}/$(GHC_FI
 
 HACKAGE               := http://hackage.haskell.org/package
 
-CABAL_VERSION         := 1.20.0.3
+CABAL_VERSION         := 1.22.3.0
 CABAL_FILE            := cabal-install-${CABAL_VERSION}.tar.gz
 CABAL_LINK            := ${HACKAGE}/cabal-install-${CABAL_VERSION}/${CABAL_FILE}
 

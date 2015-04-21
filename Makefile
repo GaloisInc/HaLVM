@@ -40,8 +40,8 @@ mrproper::
 ###############################################################################
 
 # We ship cabal, alex, happy, haddock, hscolour with the HaLVM environment,
-# since they depend on 'unix' etc. 
-# User shouldn't need a Haskell ecosystem in order to build HaLVMs.
+# since they depend on 'unix' and other libraries halvm-ghc can't build. 
+# (User might not have a preexisting Haskell ecosystem installed)
 BUILDENV := env PATH=$(TOPDIR)/platform_ghc/bin:${PATH}
 BUILDDIR := $(TOPDIR)/build
 BUILDBOX := $(BUILDDIR)/sandbox
@@ -71,10 +71,10 @@ else
 PLATGHC    = $(GHC)
 endif
 
-PLATCABAL := $(TOPDIR)/platform_ghc/${halvmlibdir}/bin/cabal
+PLATCABAL := $(TOPDIR)/platform_ghc${halvmlibdir}/bin/cabal
 $(PLATCABAL): $(CABAL_FILE) $(PLATGHC) | $(BUILDDIR) 
 	$(TAR) zxf $(CABAL_FILE) -C $(BUILDDIR)
-	# XXX Why is this necessary? This is terrifying
+	# XXX Why is this necessary?
 	$(RM) -rf ${HOME}/.ghc/${ARCH}-linux-7.8.4
 	cd $(BUILDDIR)/cabal-install-$(CABAL_VERSION) && \
 		PREFIX=${halvmlibdir} GHC=$(PLATGHC) GHC_PKG=$(PLATGHC)-pkg \
@@ -85,8 +85,7 @@ mrproper::
 	$(RM) -rf $(TOPDIR)/platform_ghc
 
 # We need to cabal configure; build; copy to force the right cabal datadir.
-# We use sandboxes to avoid changing the user package db.
-
+# We use the sandbox created by bootstrap.sh to avoid changing the user pkgdb.
 define sandbox-build
 $1 = $$(TOPDIR)/platform_ghc$${halvmlibdir}/bin/$2
 $$($1): $$(PLATCABAL)
@@ -101,59 +100,11 @@ $$($1): $$(PLATCABAL)
 		$$(PLATCABAL) copy --destdir=$$(TOPDIR)/platform_ghc
 endef
 
+# Add targets for alex, happy, haddock, hscolour using the sandbox-build macro
 $(eval $(call sandbox-build,PLATALEX,alex,$(ALEX_VERSION)))
 $(eval $(call sandbox-build,PLATHAPPY,happy,$(HAPPY_VERSION)))
 $(eval $(call sandbox-build,PLATHADDOCK,haddock,$(HADDOCK_VERSION)))
 $(eval $(call sandbox-build,PLATHSCOLOUR,hscolour,$(HSCOLOUR_VERSION)))
-
-# PLATALEX := $(TOPDIR)/platform_ghc${halvmlibdir}/bin/alex
-# $(PLATALEX): $(PLATCABAL)
-# 	$(BUILDENV) cd $(BUILDDIR) && \
-# 		$(PLATCABAL) fetch alex-$(ALEX_VERSION) && \
-# 		$(PLATCABAL) unpack -d $(BUILDDIR) alex-$(ALEX_VERSION) && \
-# 		cd $(BUILDDIR)/alex-$(ALEX_VERSION) && \
-# 		$(PLATCABAL) sandbox init --sandbox $(BUILDBOX) && \
-# 		$(PLATCABAL) install --only-dependencies && \
-# 		$(PLATCABAL) configure --prefix=${halvmlibdir} && \
-# 		$(PLATCABAL) build && \
-# 		$(PLATCABAL) copy --destdir=$(TOPDIR)/platform_ghc
-# 
-# PLATHAPPY := $(TOPDIR)/platform_ghc${halvmlibdir}/bin/happy
-# $(PLATHAPPY): $(PLATCABAL)
-# 	$(BUILDENV) cd $(BUILDDIR) && \
-# 		$(PLATCABAL) fetch happy-$(HAPPY_VERSION) && \
-# 		$(PLATCABAL) unpack -d $(BUILDDIR) happy-$(HAPPY_VERSION) && \
-# 		cd $(BUILDDIR)/happy-$(HAPPY_VERSION) && \
-# 		$(PLATCABAL) sandbox init --sandbox $(BUILDBOX) && \
-# 		$(PLATCABAL) install --only-dependencies && \
-# 		$(PLATCABAL) configure --prefix=${halvmlibdir} && \
-# 		$(PLATCABAL) build && \
-# 		$(PLATCABAL) copy --destdir=$(TOPDIR)/platform_ghc
-# 
-# PLATHADDOCK := $(TOPDIR)/platform_ghc${halvmlibdir}/bin/haddock
-# $(PLATHADDOCK): $(PLATCABAL)
-# 	$(BUILDENV) cd $(BUILDDIR) && \
-# 		$(PLATCABAL) fetch haddock-$(HADDOCK_VERSION) && \
-# 		$(PLATCABAL) unpack -d $(BUILDDIR) haddock-$(HADDOCK_VERSION) && \
-# 		cd $(BUILDDIR)/haddock-$(HADDOCK_VERSION) && \
-# 		$(PLATCABAL) sandbox init --sandbox $(BUILDBOX) && \
-# 		$(PLATCABAL) install --only-dependencies && \
-# 		$(PLATCABAL) configure --prefix=${halvmlibdir} && \
-# 		$(PLATCABAL) build && \
-# 		$(PLATCABAL) copy --destdir=$(TOPDIR)/platform_ghc
-# 
-# PLATHSCOLOUR := $(TOPDIR)/platform_ghc${halvmlibdir}/bin/hscolour
-# $(PLATHSCOLOUR): $(PLATCABAL)
-# 	$(BUILDENV) cd $(BUILDDIR) && \
-# 		$(PLATCABAL) fetch hscolour-$(HSCOLOUR_VERSION) && \
-# 		$(PLATCABAL) unpack -d $(BUILDDIR) hscolour-$(HSCOLOUR_VERSION) && \
-# 		cd $(BUILDDIR)/hscolour-$(HSCOLOUR_VERSION) && \
-# 		$(PLATCABAL) sandbox init --sandbox $(BUILDBOX) && \
-# 		$(PLATCABAL) install --only-dependencies && \
-# 		$(PLATCABAL) configure --prefix=${halvmlibdir} && \
-# 		$(PLATCABAL) build && \
-# 		$(PLATCABAL) copy --destdir=$(TOPDIR)/platform_ghc
-
 
 ###############################################################################
 # Prepping / supporting the GHC build
@@ -444,6 +395,7 @@ PLATHSC2HS = $(shell $(PLATGHC) --print-libdir)/bin/hsc2hs
 install:: ${PLATHSC2HS}
 	$(INSTALL) -D ${PLATHSC2HS} $(DESTDIR)${halvmlibdir}/bin/hsc2hs
 
+# Need to be sure we grab datadirs for alex and happy, /usr/share w.r.t. their prefix
 install:: $(PLATALEX) $(PLATCABAL) $(PLATHAPPY) $(PLATHADDOCK) $(PLATHSCOLOUR)
 	mkdir -p $(DESTDIR)${halvmlibdir}
 	cp -rf $(TOPDIR)/platform_ghc/* $(DESTDIR)
