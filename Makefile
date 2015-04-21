@@ -105,7 +105,7 @@ endef
 $(eval $(call sandbox-build,PLATALEX,alex,$(ALEX_VERSION)))
 $(eval $(call sandbox-build,PLATHAPPY,happy,$(HAPPY_VERSION)))
 $(eval $(call sandbox-build,PLATHADDOCK,haddock,$(HADDOCK_VERSION)))
-$(eval $(call sandbox-build,PLATHSCOLOUR,hscolour,$(HSCOLOUR_VERSION)))
+$(eval $(call sandbox-build,PLATHSCOLOUR,HsColour,$(HSCOLOUR_VERSION)))
 
 ###############################################################################
 # Prepping / supporting the GHC build
