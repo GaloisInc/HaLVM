@@ -27,13 +27,9 @@ autoconf
 make 
 
 %install
-# Strip rpath from all binaries (they are all static anyway)
-chrpath -d platform_ghc/usr/local/lib/HaLVM-%{version}/bin/cabal
-chrpath -d platform_ghc/usr/local/lib/HaLVM-%{version}/bin/alex
-chrpath -d platform_ghc/usr/local/lib/HaLVM-%{version}/bin/happy
-chrpath -d platform_ghc/usr/local/lib/HaLVM-%{version}/bin/haddock
-chrpath -d platform_ghc/usr/local/lib/HaLVM-%{version}/bin/HsColour
 make install DESTDIR=%{buildroot}
+# Strip rpath from all binaries (they are all static anyway)
+chrpath -d %{buildroot}/usr/local/lib/HaLVM-2.0.0/bin/*
 
 %post
 /usr/local/bin/halvm-ghc-pkg recache
