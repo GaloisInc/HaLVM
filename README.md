@@ -68,6 +68,8 @@ Once checked out, the HaLVM builds as follows:
 
 > make install
 
+> halvm-ghc-pkg recache
+
 The configure system will accept and honor the "--prefix" flag as per
 normal. We also strongly suggest using the "--enable-gmp" flag, in order
 to enable the (much faster) GMP library for large integer math.
