@@ -89,16 +89,16 @@ mrproper::
 define sandbox-build
 $1 = $$(TOPDIR)/platform_ghc$${halvmlibdir}/bin/$3
 $$($1): $$(PLATCABAL)
-        $$(BUILDENV) cd $$(BUILDDIR) && \
-                $$(PLATCABAL) fetch $2-$4 && \
-                $$(PLATCABAL) unpack -d $$(BUILDDIR) $2-$4 && \
-                cd $$(BUILDDIR)/$2-$4 && \
-                $$(PLATCABAL) sandbox init --sandbox $$(BUILDBOX) && \
-                $$(PLATCABAL) install --only-dependencies && \
-                $$(PLATCABAL) configure --prefix=$$(halvmlibdir) \
-                        --disable-shared --disable-executable-dynamic && \
-                $$(PLATCABAL) build && \
-                $$(PLATCABAL) copy --destdir=$$(TOPDIR)/platform_ghc
+	$(BUILDENV) cd $$(BUILDDIR) && \
+		$$(PLATCABAL) fetch $2-$4 && \
+		$$(PLATCABAL) unpack -d $$(BUILDDIR) $2-$4 && \
+		cd $$(BUILDDIR)/$2-$4 && \
+		$$(PLATCABAL) sandbox init --sandbox $$(BUILDBOX) && \
+		$$(PLATCABAL) install --only-dependencies && \
+		$$(PLATCABAL) configure --prefix=$$(halvmlibdir) \
+		        --disable-shared --disable-executable-dynamic && \
+		$$(PLATCABAL) build && \
+		$$(PLATCABAL) copy --destdir=$$(TOPDIR)/platform_ghc
 endef
 
 # Add targets for alex, happy, haddock, hscolour using the sandbox-build macro
