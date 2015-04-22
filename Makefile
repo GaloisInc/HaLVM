@@ -87,25 +87,25 @@ mrproper::
 # We need to cabal configure; build; copy to force the right cabal datadir.
 # We use the sandbox created by bootstrap.sh to avoid changing the user pkgdb.
 define sandbox-build
-$1 = $$(TOPDIR)/platform_ghc$${halvmlibdir}/bin/$2
+$1 = $$(TOPDIR)/platform_ghc$${halvmlibdir}/bin/$3
 $$($1): $$(PLATCABAL)
-	$$(BUILDENV) cd $$(BUILDDIR) && \
-		$$(PLATCABAL) fetch $2-$3 && \
-		$$(PLATCABAL) unpack -d $$(BUILDDIR) $2-$3 && \
-		cd $$(BUILDDIR)/$2-$3 && \
-		$$(PLATCABAL) sandbox init --sandbox $$(BUILDBOX) && \
-		$$(PLATCABAL) install --only-dependencies && \
-		$$(PLATCABAL) configure --prefix=$$(halvmlibdir) \
-			--disable-shared --disable-executable-dynamic && \
-		$$(PLATCABAL) build && \
-		$$(PLATCABAL) copy --destdir=$$(TOPDIR)/platform_ghc
+        $$(BUILDENV) cd $$(BUILDDIR) && \
+                $$(PLATCABAL) fetch $2-$4 && \
+                $$(PLATCABAL) unpack -d $$(BUILDDIR) $2-$4 && \
+                cd $$(BUILDDIR)/$2-$4 && \
+                $$(PLATCABAL) sandbox init --sandbox $$(BUILDBOX) && \
+                $$(PLATCABAL) install --only-dependencies && \
+                $$(PLATCABAL) configure --prefix=$$(halvmlibdir) \
+                        --disable-shared --disable-executable-dynamic && \
+                $$(PLATCABAL) build && \
+                $$(PLATCABAL) copy --destdir=$$(TOPDIR)/platform_ghc
 endef
 
 # Add targets for alex, happy, haddock, hscolour using the sandbox-build macro
-$(eval $(call sandbox-build,PLATALEX,alex,$(ALEX_VERSION)))
-$(eval $(call sandbox-build,PLATHAPPY,happy,$(HAPPY_VERSION)))
-$(eval $(call sandbox-build,PLATHADDOCK,haddock,$(HADDOCK_VERSION)))
-$(eval $(call sandbox-build,PLATHSCOLOUR,HsColour,$(HSCOLOUR_VERSION)))
+$(eval $(call sandbox-build,PLATALEX,alex,alex,$(ALEX_VERSION)))
+$(eval $(call sandbox-build,PLATHAPPY,happy,happy,$(HAPPY_VERSION)))
+$(eval $(call sandbox-build,PLATHADDOCK,haddock,haddock,$(HADDOCK_VERSION)))
+$(eval $(call sandbox-build,PLATHSCOLOUR,hscolour,HsColour,$(HSCOLOUR_VERSION)))
 
 ###############################################################################
 # Prepping / supporting the GHC build
