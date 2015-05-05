@@ -39,92 +39,85 @@ mrproper::
 # Platform GHC Preparation
 ###############################################################################
 
-ifeq ($(GHC),no)
-PLATGHC    = $(TOPDIR)/platform_ghc/bin/ghc
+# We ship cabal, alex, happy, haddock, hscolour with the HaLVM environment,
+# since they depend on 'unix' and other libraries halvm-ghc can't build. 
+# (User might not have a preexisting Haskell ecosystem installed)
+BUILDENV := env PATH=$(TOPDIR)/platform_ghc/bin:${PATH}
+BUILDDIR := $(TOPDIR)/build
+BUILDBOX := $(BUILDDIR)/sandbox
 
-$(PLATGHC): $(GHC_FILE)
-	$(eval gtmpdir = $(shell mktemp -d))
-	$(TAR) jxf $(GHC_FILE) -C $(gtmpdir)
-	(cd $(gtmpdir)/ghc* && ./configure --prefix=$(TOPDIR)/platform_ghc)
-	$(MAKE) -C $(gtmpdir)/ghc*/ install
-	$(RM) -rf $(gtmpdir)
+$(BUILDDIR):
+	mkdir -p $@
+
+clean::
+	$(RM) -rf $(BUILDDIR)
+	$(RM) -rf $(TOPDIR)/platform_ghc
+
+# Prepare an ordinary version of GHC if none available.
+# We don't ship this - we just need it to build halvm-ghc etc.
+ifeq ($(GHC),no)
+PLATGHC    = $(BUILDDIR)/platform_ghc/bin/ghc
+
+$(PLATGHC): $(GHC_FILE) | $(BUILDDIR) 
+	$(TAR) jxf $(GHC_FILE) -C $(BUILDDIR)
+	(cd $(BUILDDIR)/ghc* && ./configure --prefix=$(BUILDDIR)/platform_ghc)
+	$(MAKE) -C $(BUILDDIR)/ghc*/ install
 
 mrproper::
-	$(RM) -rf $(TOPDIR)/platform_ghc
+	$(RM) -rf $(BUILDDIR)/platform_ghc
 	$(RM) $(HOME)/.ghc/$(ARCH)-linux-7.8.4
 else
 # Use the global GHC.
 PLATGHC    = $(GHC)
 endif
 
-ifeq ($(CABAL),no)
-PLATCABAL = $(TOPDIR)/platform_ghc/bin/cabal
-
-$(PLATCABAL): $(CABAL_FILE) $(PLATGHC)
-	$(eval ctmpdir = $(shell mktemp -d))
-	echo $(ctmpdir)
-	$(TAR) zxf $(CABAL_FILE) -C $(ctmpdir)
+PLATCABAL := $(TOPDIR)/platform_ghc${halvmlibdir}/bin/cabal
+$(PLATCABAL): $(CABAL_FILE) $(PLATGHC) | $(BUILDDIR) 
+	$(TAR) zxf $(CABAL_FILE) -C $(BUILDDIR)
+	# XXX Why is this necessary?
 	$(RM) -rf ${HOME}/.ghc/${ARCH}-linux-7.8.4
-	(cd $(ctmpdir)/cabal* && PREFIX=$(TOPDIR)/platform_ghc \
-	  						 GHC=$(PLATGHC)                \
-							 GHC_PKG=$(PLATGHC)-pkg ./bootstrap.sh --no-doc)
-	$(RM) -rf $(ctmpdir)
-	$(PLATCABAL) update
+	cd $(BUILDDIR)/cabal-install-$(CABAL_VERSION) && \
+		PREFIX=${halvmlibdir} GHC=$(PLATGHC) GHC_PKG=$(PLATGHC)-pkg \
+		./bootstrap.sh --no-doc --sandbox $(BUILDBOX)
+	$(INSTALL) -D $(BUILDBOX)/bin/cabal $(PLATCABAL)
 
 mrproper::
 	$(RM) -rf $(TOPDIR)/platform_ghc
-else
-PLATCABAL = $(CABAL)
-endif
 
-ifeq ($(ALEX),no)
-PLATALEX = $(TOPDIR)/platform_ghc/bin/alex
+# We need to cabal configure; build; copy to force the right cabal datadir.
+# We use the sandbox created by bootstrap.sh to avoid changing the user pkgdb.
+define sandbox-build
+$1 = $$(TOPDIR)/platform_ghc$${halvmlibdir}/bin/$3
+$$($1): $$(PLATCABAL)
+	$(BUILDENV) cd $$(BUILDDIR) && \
+		$$(PLATCABAL) fetch $2-$4 && \
+		$$(PLATCABAL) unpack -d $$(BUILDDIR) $2-$4 && \
+		cd $$(BUILDDIR)/$2-$4 && \
+		$$(PLATCABAL) sandbox init --sandbox $$(BUILDBOX) && \
+		$$(PLATCABAL) install --only-dependencies && \
+		$$(PLATCABAL) configure --prefix=$$(halvmlibdir) \
+		        --disable-shared --disable-executable-dynamic && \
+		$$(PLATCABAL) build && \
+		$$(PLATCABAL) copy --destdir=$$(TOPDIR)/platform_ghc
+endef
 
-$(PLATALEX): $(PLATCABAL)
-	env PATH=$(TOPDIR)/platform_ghc/bin:${PATH} \
-           $(PLATCABAL) install --prefix=$(TOPDIR)/platform_ghc alex
-else
-PLATALEX = $(ALEX)
-endif
-
-ifeq ($(HAPPY),no)
-PLATHAPPY = $(TOPDIR)/platform_ghc/bin/happy
-
-$(PLATHAPPY): $(PLATCABAL)
-	env PATH=$(TOPDIR)/platform_ghc/bin:${PATH} \
-	   $(PLATCABAL) install --prefix=$(TOPDIR)/platform_ghc happy
-else
-PLATHAPPY = $(HAPPY)
-endif
-
-ifeq ($(HADDOCK),no)
-PLATHADDOCK = $(TOPDIR)/platform_ghc/bin/haddock
-
-$(PLATHADDOCK): $(PLATCABAL)
-	env PATH=$(TOPDIR)/platform_ghc/bin:${PATH} \
-	   $(PLATCABAL) install --prefix=$(TOPDIR)/platform_ghc haddock
-else
-PLATHADDOCK = $(HADDOCK)
-endif
-
-ifeq ($(HSCOLOUR),no)
-PLATHSCOLOUR = $(TOPDIR)/platform_ghc/bin/hscolour
-
-$(PLATHSCOLOUR): $(PLATCABAL)
-	env PATH=$(TOPDIR)/platform_ghc/bin:${PATH} \
-	   $(PLATCABAL) install --prefix=$(TOPDIR)/platform_ghc hscolour
-else
-PLATHSCOLOUR = $(HSCOLOUR)
-endif
+# Add targets for alex, happy, haddock, hscolour using the sandbox-build macro
+$(eval $(call sandbox-build,PLATALEX,alex,alex,$(ALEX_VERSION)))
+$(eval $(call sandbox-build,PLATHAPPY,happy,happy,$(HAPPY_VERSION)))
+$(eval $(call sandbox-build,PLATHADDOCK,haddock,haddock,$(HADDOCK_VERSION)))
+$(eval $(call sandbox-build,PLATHSCOLOUR,hscolour,HsColour,$(HSCOLOUR_VERSION)))
 
 ###############################################################################
 # Prepping / supporting the GHC build
 ################################################################################
 
+# array.cabal is the witness for the presence of all GHC's libraries
 $(TOPDIR)/halvm-ghc/libraries/array/array.cabal:
 	(cd halvm-ghc && ./sync-all --no-dph -r http://darcs.haskell.org get)
 	(cd halvm-ghc && ./sync-all checkout -t origin/ghc-7.8)
 
+# Replace GHC's base with halvm-base.
+# When NoIO.hs exists, we know this step has succeeded
 $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs: \
              $(TOPDIR)/halvm-ghc/libraries/array/array.cabal
 	$(RM) -rf $(TOPDIR)/halvm-ghc/libraries/base
@@ -135,24 +128,31 @@ $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk: \
 			 $(TOPDIR)/halvm-ghc/mk/build.mk
 	(cd halvm-ghc && ./boot)
 
+# Link Xen headers into the HaLVM runtime include dir
 $(TOPDIR)/halvm-ghc/rts/xen/include/xen:
 	$(LN) -sf $(XEN_INCLUDE_DIR)/xen $(TOPDIR)/halvm-ghc/rts/xen/include/xen
 
+# Link our custom build.mk - controls the GHC build, forces Stage1Only etc
 $(TOPDIR)/halvm-ghc/mk/build.mk: $(TOPDIR)/src/misc/build.mk
 	$(LN) -sf $(TOPDIR)/src/misc/build.mk $@
 
+# Link HALVMCore into GHC's library path, where it will be found and built
+# by the GHC build system.
 $(TOPDIR)/halvm-ghc/libraries/HALVMCore: \
        $(TOPDIR)/halvm-ghc/libraries/array/array.cabal
 	if [ ! -h $@ ]; then \
 	  $(LN) -sf $(TOPDIR)/src/HALVMCore $@ ; \
 	fi
 
+# Link XenDevice into GHC's library path, where it will be found and built
+# by the GHC build system.
 $(TOPDIR)/halvm-ghc/libraries/XenDevice: \
        $(TOPDIR)/halvm-ghc/libraries/array/array.cabal
 	if [ ! -h $@ ]; then \
 	  $(LN) -sf $(TOPDIR)/src/XenDevice $@; \
 	fi
 
+# Replace libc headers with minlibc
 $(TOPDIR)/halvm-ghc/libraries/base/libc-include: \
        $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs
 	if [ ! -h $@ ]; then \
@@ -203,7 +203,7 @@ $(TOPDIR)/src/gmp/.libs/libgmp.a: $(TOPDIR)/src/gmp/Makefile
 all:: $(TOPDIR)/src/gmp/.libs/libgmp.a
 
 install:: $(TOPDIR)/src/gmp/.libs/libgmp.a
-	$(INSTALL) -D $(TOPDIR)/src/gmp/.libs/libgmp.a $(halvmlibdir)/rts-1.0/libgmp.a
+	$(INSTALL) -D $(TOPDIR)/src/gmp/.libs/libgmp.a $(DESTDIR)$(halvmlibdir)/rts-1.0/libgmp.a
 
 clean::
 	$(RM) -f $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmp.h
@@ -232,7 +232,7 @@ clean::
 
 install:: $(TOPDIR)/src/openlibm/libopenlibm.a
 	$(INSTALL) -D $(TOPDIR)/src/openlibm/libopenlibm.a \
-	              $(halvmlibdir)/rts-1.0/libopenlibm.a
+	              $(DESTDIR)$(halvmlibdir)/rts-1.0/libopenlibm.a
 
 ###############################################################################
 # LibIVC
@@ -254,8 +254,8 @@ clean::
 	$(RM) -f $(LIBIVC_O_FILES) $(TOPDIR)/src/libIVC/libIVC.a
 
 install:: $(TOPDIR)/src/libIVC/libIVC.a
-	$(INSTALL) -D $(TOPDIR)/src/libIVC/libIVC.a $(libdir)/libIVC.a
-	$(INSTALL) -D $(TOPDIR)/src/libIVC/libIVC.h $(incdir)/libIVC.h
+	$(INSTALL) -D $(TOPDIR)/src/libIVC/libIVC.a $(DESTDIR)$(libdir)/libIVC.a
+	$(INSTALL) -D $(TOPDIR)/src/libIVC/libIVC.h $(DESTDIR)$(incdir)/libIVC.h
 
 ###############################################################################
 # convert-profile
@@ -270,7 +270,7 @@ clean::
 	$(RM) -f $(TOPDIR)/src/profiling/convert-profile
 
 install:: $(TOPDIR)/src/profiling/convert-profile
-	$(INSTALL) -D $(TOPDIR)/src/profiling/convert-profile $(bindir)/convert-profile
+	$(INSTALL) -D $(TOPDIR)/src/profiling/convert-profile $(DESTDIR)$(bindir)/convert-profile
 
 ###############################################################################
 # MK_REND_DIR
@@ -292,7 +292,7 @@ clean::
 	$(RM) -f $(MKREND_O_FILES) $(TOPDIR)/src/mkrenddir/mkrenddir
 
 install:: $(TOPDIR)/src/mkrenddir/mkrenddir
-	$(INSTALL) -D $(TOPDIR)/src/mkrenddir/mkrenddir $(bindir)/mkrenddir
+	$(INSTALL) -D $(TOPDIR)/src/mkrenddir/mkrenddir $(DESTDIR)$(bindir)/mkrenddir
 
 ###############################################################################
 # Boot loader
@@ -308,7 +308,7 @@ clean::
 	rm -f $(TOPDIR)/src/bootloader/start.o
 
 install::$(TOPDIR)/src/bootloader/start.o
-	$(INSTALL) -D $(TOPDIR)/src/bootloader/start.o $(halvmlibdir)/rts-1.0/start.o
+	$(INSTALL) -D $(TOPDIR)/src/bootloader/start.o $(DESTDIR)$(halvmlibdir)/rts-1.0/start.o
 
 ###############################################################################
 # The HaLVM!
@@ -330,6 +330,7 @@ $(TOPDIR)/halvm-ghc/mk/config.mk: $(GHC_PREPPED) $(PLATGHC) $(PLATALEX) \
 	  env PATH=$(TOPDIR)/platform_ghc/bin:${PATH} \
 	    ./configure $(HALVM_GHC_CONFIGURE_FLAGS))
 
+# The GHC build system picks up everything linked into halvm-ghc/libraries
 $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1: $(TOPDIR)/halvm-ghc/mk/config.mk
 	$(MAKE) -C halvm-ghc ghclibdir=$(halvmlibdir)
 
@@ -354,11 +355,11 @@ clean::
 	$(MAKE) -C halvm-ghc clean
 
 install::
-	$(MAKE) -C halvm-ghc install ghclibdir=$(halvmlibdir)
-	$(MKDIR) -p $(halvmlibdir)/include/minlibc
-	$(CP) -rf halvm-ghc/rts/minlibc/include/* $(halvmlibdir)/include/minlibc
+	$(MAKE) -C halvm-ghc install ghclibdir=$(halvmlibdir) DESTDIR=$(DESTDIR)
+	$(MKDIR) -p $(DESTDIR)$(halvmlibdir)/include/minlibc
+	$(CP) -rf halvm-ghc/rts/minlibc/include/* $(DESTDIR)$(halvmlibdir)/include/minlibc
 	$(SED) -i -e "s/^extra-ghci-libraries:/extra-ghci-libraries: minlibc/" \
-	  $(halvmlibdir)/package.conf.d/base*.conf
+	  $(DESTDIR)$(halvmlibdir)/package.conf.d/base*.conf
 
 MINLIBC_SRCS      = $(wildcard $(TOPDIR)/halvm-ghc/rts/minlibc/*.c)
 GHCI_MINLIBC_SRCS = $(filter-out %termios.c,$(MINLIBC_SRCS))
@@ -382,40 +383,32 @@ all:: $(TOPDIR)/halvm-ghc/libminlibc.a
 
 install::
 	$(INSTALL) -D $(TOPDIR)/halvm-ghc/libminlibc.a \
-	              $(halvmlibdir)/base-$(BASE_VERSION)/libminlibc.a
+	              $(DESTDIR)$(halvmlibdir)/base-$(BASE_VERSION)/libminlibc.a
 
 install:: $(TOPDIR)/src/scripts/halvm-cabal
-	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-cabal $(bindir)/halvm-cabal
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-cabal $(DESTDIR)$(bindir)/halvm-cabal
 
 install:: $(TOPDIR)/src/scripts/halvm-config
-	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-cabal $(bindir)/halvm-config
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-cabal $(DESTDIR)$(bindir)/halvm-config
 
 install:: $(TOPDIR)/src/scripts/halvm-ghc
-	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-ghc $(bindir)/halvm-ghc
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-ghc $(DESTDIR)$(bindir)/halvm-ghc
 
 install:: $(TOPDIR)/src/scripts/halvm-ghc-pkg
-	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-ghc-pkg $(bindir)/halvm-ghc-pkg
-	$(bindir)/halvm-ghc-pkg recache
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-ghc-pkg $(DESTDIR)$(bindir)/halvm-ghc-pkg
 
 install:: $(TOPDIR)/src/scripts/ldkernel
-	$(INSTALL) -D $(TOPDIR)/src/scripts/ldkernel $(halvmlibdir)/ldkernel
+	$(INSTALL) -D $(TOPDIR)/src/scripts/ldkernel $(DESTDIR)$(halvmlibdir)/ldkernel
 
 install:: $(TOPDIR)/src/misc/kernel-$(ARCH).lds
-	$(INSTALL) -D $(TOPDIR)/src/misc/kernel-$(ARCH).lds $(halvmlibdir)/kernel.lds
-
-install:: ${PLATCABAL}
-	$(INSTALL) -D ${PLATCABAL} ${halvmlibdir}/bin/cabal
+	$(INSTALL) -D $(TOPDIR)/src/misc/kernel-$(ARCH).lds $(DESTDIR)$(halvmlibdir)/kernel.lds
 
 PLATHSC2HS = $(shell $(PLATGHC) --print-libdir)/bin/hsc2hs
 install:: ${PLATHSC2HS}
-	$(INSTALL) -D ${PLATHSC2HS} ${halvmlibdir}/bin/hsc2hs
+	$(INSTALL) -D ${PLATHSC2HS} $(DESTDIR)${halvmlibdir}/bin/hsc2hs
 
-install:: ${PLATALEX}
-	$(INSTALL) -D ${PLATALEX} ${halvmlibdir}/bin/alex
-
-install:: ${PLATHAPPY}
-	$(INSTALL) -D ${PLATHAPPY} ${halvmlibdir}/bin/happy
-
-install:: ${PLATHADDOCK}
-	$(INSTALL) -D ${PLATHADDOCK} ${halvmlibdir}/bin/haddock
+# Need to be sure we grab datadirs for alex and happy, /usr/share w.r.t. their prefix
+install:: $(PLATALEX) $(PLATCABAL) $(PLATHAPPY) $(PLATHADDOCK) $(PLATHSCOLOUR)
+	mkdir -p $(DESTDIR)${halvmlibdir}
+	cp -rf $(TOPDIR)/platform_ghc/* $(DESTDIR)/
 

@@ -33,6 +33,7 @@ library
                     Hypervisor.OtherDomain,
                     Hypervisor.Platform,
                     Hypervisor.Port,
+                    Hypervisor.Shutdown
                     Hypervisor.Structures.CPUMap,
                     Hypervisor.Structures.DomainInfo,
                     Hypervisor.Structures.PhysicalInfo,
