@@ -41,10 +41,11 @@ mrproper::
 
 # We ship cabal, alex, happy, haddock, hscolour with the HaLVM environment,
 # since they depend on 'unix' and other libraries halvm-ghc can't build. 
-# (User might not have a preexisting Haskell ecosystem installed)
-BUILDENV := env PATH=$(TOPDIR)/platform_ghc/bin:${PATH}
+# (User might not have a preexisting Haskell ecosystem installed).
+# A cabal sandbox is used to minimise the effect on the user's machine.
 BUILDDIR := $(TOPDIR)/build
 BUILDBOX := $(BUILDDIR)/sandbox
+BUILDENV := PATH=$(TOPDIR)/platform_ghc/bin:$(BUILDBOX)/bin:$(PATH)
 
 $(BUILDDIR):
 	mkdir -p $@
@@ -53,22 +54,25 @@ clean::
 	$(RM) -rf $(BUILDDIR)
 	$(RM) -rf $(TOPDIR)/platform_ghc
 
+mrproper::
+	$(RM) -rf $(BUILDDIR)
+
 # Prepare an ordinary version of GHC if none available.
 # We don't ship this - we just need it to build halvm-ghc etc.
 ifeq ($(GHC),no)
-PLATGHC    = $(BUILDDIR)/platform_ghc/bin/ghc
+PLATGHC := $(TOPDIR)/platform_ghc/bin/ghc
 
 $(PLATGHC): $(GHC_FILE) | $(BUILDDIR) 
 	$(TAR) jxf $(GHC_FILE) -C $(BUILDDIR)
-	(cd $(BUILDDIR)/ghc* && ./configure --prefix=$(BUILDDIR)/platform_ghc)
+	(cd $(BUILDDIR)/ghc* && ./configure --prefix=$(TOPDIR)/platform_ghc)
 	$(MAKE) -C $(BUILDDIR)/ghc*/ install
 
 mrproper::
-	$(RM) -rf $(BUILDDIR)/platform_ghc
+	$(RM) -rf $(TOPDIR)/platform_ghc
 	$(RM) $(HOME)/.ghc/$(ARCH)-linux-7.8.4
 else
 # Use the global GHC.
-PLATGHC    = $(GHC)
+PLATGHC := $(GHC)
 endif
 
 PLATCABAL := $(TOPDIR)/platform_ghc${halvmlibdir}/bin/cabal
@@ -76,37 +80,76 @@ $(PLATCABAL): $(CABAL_FILE) $(PLATGHC) | $(BUILDDIR)
 	$(TAR) zxf $(CABAL_FILE) -C $(BUILDDIR)
 	# XXX Why is this necessary?
 	$(RM) -rf ${HOME}/.ghc/${ARCH}-linux-7.8.4
-	cd $(BUILDDIR)/cabal-install-$(CABAL_VERSION) && \
-		PREFIX=${halvmlibdir} GHC=$(PLATGHC) GHC_PKG=$(PLATGHC)-pkg \
+	$(BUILDENV) && cd $(BUILDDIR)/cabal-install-$(CABAL_VERSION) && \
+		PREFIX=${halvmlibdir} \
 		./bootstrap.sh --no-doc --sandbox $(BUILDBOX)
 	$(INSTALL) -D $(BUILDBOX)/bin/cabal $(PLATCABAL)
 
 mrproper::
 	$(RM) -rf $(TOPDIR)/platform_ghc
 
-# We need to cabal configure; build; copy to force the right cabal datadir.
-# We use the sandbox created by bootstrap.sh to avoid changing the user pkgdb.
-define sandbox-build
-$1 = $$(TOPDIR)/platform_ghc$${halvmlibdir}/bin/$3
-$$($1): $$(PLATCABAL)
-	$(BUILDENV) cd $$(BUILDDIR) && \
-		$$(PLATCABAL) fetch $2-$4 && \
-		$$(PLATCABAL) unpack -d $$(BUILDDIR) $2-$4 && \
-		cd $$(BUILDDIR)/$2-$4 && \
-		$$(PLATCABAL) sandbox init --sandbox $$(BUILDBOX) && \
-		$$(PLATCABAL) install --only-dependencies && \
-		$$(PLATCABAL) configure --prefix=$$(halvmlibdir) \
-		        --disable-shared --disable-executable-dynamic && \
-		$$(PLATCABAL) build && \
-		$$(PLATCABAL) copy --destdir=$$(TOPDIR)/platform_ghc
-endef
+# `cabal update` stores package lists in ~/.cabal by default, even with sandbox.
+# We override this with a config file to prevent unwanted build effects.
+$(BUILDDIR)/cabal.config: $(PLATCABAL)
+	echo "require-sandbox: True" >> $@
+	echo "remote-repo: hackage.haskell.org:http://hackage.haskell.org/packages/archive" >> $@
+	echo "remote-repo-cache: $(BUILDBOX)/packages" >> $@
+	$(BUILDENV) && cd $(BUILDBOX) && \
+		$(PLATCABAL) --config-file=$@ sandbox init --sandbox=$(BUILDBOX) && \
+		$(PLATCABAL) --config-file=$@ update
 
-# Add targets for alex, happy, haddock, hscolour using the sandbox-build macro
-$(eval $(call sandbox-build,PLATALEX,alex,alex,$(ALEX_VERSION)))
-$(eval $(call sandbox-build,PLATHAPPY,happy,happy,$(HAPPY_VERSION)))
-$(eval $(call sandbox-build,PLATHADDOCK,haddock,haddock,$(HADDOCK_VERSION)))
-$(eval $(call sandbox-build,PLATHSCOLOUR,hscolour,HsColour,$(HSCOLOUR_VERSION)))
-all:: $(PLATALEX) $(PLATHAPPY) $(PLATHADDOCK) $(PLATHSCOLOUR) 
+# Force Cabal to use our config file
+CABAL := $(PLATCABAL) --config-file="$(BUILDDIR)/cabal.config"
+
+# Fetch sources for alex, happy, hscolour, haddock from Hackage.
+# This produces targets $(ALEX_SRC) $(HAPPY_SRC) etc
+define hackage-fetch
+$2_SRC := $$(BUILDDIR)/$1-$3
+$$($2_SRC): $$(PLATCABAL) | $$(BUILDDIR)
+	$$(BUILDENV) && cd $$(BUILDDIR) && \
+		$$(CABAL) fetch $1-$3 && \
+		$$(CABAL) unpack $1-$3
+endef
+$(eval $(call hackage-fetch,alex,ALEX,$(ALEX_VERSION)))
+$(eval $(call hackage-fetch,happy,HAPPY,$(HAPPY_VERSION)))
+$(eval $(call hackage-fetch,haddock,HADDOCK,$(HADDOCK_VERSION)))
+$(eval $(call hackage-fetch,hscolour,HSCOLOUR,$(HSCOLOUR_VERSION)))
+
+# Build regular versions of alex and happy in our sandbox, for building GHC.
+# We pass $(BUILDBOX)/bin via $(BUILDENV) while building GHC and libraries.
+define hackage-sandbox-build
+$1_BIN := $$(BUILDBOX)/bin/$2
+$$($1_BIN): $$(PLATCABAL) | $$($1_SRC)
+	$$(BUILDENV) && cd $$($1_SRC) && \
+		$$(CABAL) sandbox init --sandbox $$(BUILDBOX) && \
+		$$(CABAL) install
+endef
+$(eval $(call hackage-sandbox-build,ALEX,alex))
+$(eval $(call hackage-sandbox-build,HAPPY,happy))
+$(eval $(call hackage-sandbox-build,HSCOLOUR,HsColour))
+$(eval $(call hackage-sandbox-build,HADDOCK,haddock))
+
+# For each of the tools we distribute with the HaLVM, build static versions
+# with the correct prefix burned in. This is only necessary because of
+# cabal #462 https://github.com/haskell/cabal/issues/462.
+# Without this, the built tools will only work on the builder's machine.
+# Targets $(PLATALEX) $(PLATHSCOLOUR) etc will be created.
+define hackage-static-build
+PLAT$1 = $$(TOPDIR)/platform_ghc$${halvmlibdir}/bin/$2
+$$(PLAT$1): $$(PLATCABAL) $$(BUILDDIR)/cabal.config $$($1_BIN)
+	$$(BUILDENV) && cd $$($1_SRC) && \
+		$$(CABAL) configure --prefix=$$(halvmlibdir) \
+			--disable-shared --disable-executable-dynamic && \
+		$$(CABAL) build && \
+		$$(CABAL) copy --destdir=$$(TOPDIR)/platform_ghc
+endef
+$(eval $(call hackage-static-build,ALEX,alex))
+$(eval $(call hackage-static-build,HAPPY,happy))
+$(eval $(call hackage-static-build,HADDOCK,haddock))
+$(eval $(call hackage-static-build,HSCOLOUR,HsColour))
+
+# Require static and ordinary builds for each tool.
+all:: $(PLATHAPPY) $(PLATHADDOCK) $(PLATHSCOLOUR) $(PLATALEX) 
 
 ###############################################################################
 # Prepping / supporting the GHC build
@@ -328,8 +371,7 @@ HALVM_GHC_CONFIGURE_FLAGS += --prefix=$(prefix)
 $(TOPDIR)/halvm-ghc/mk/config.mk: $(GHC_PREPPED) $(PLATGHC) $(PLATALEX) \
                                   $(PLATHAPPY) $(PLATHADDOCK) $(PLATHAPPY)
 	(cd halvm-ghc && \
-	  env PATH=$(TOPDIR)/platform_ghc/bin:${PATH} \
-	    ./configure $(HALVM_GHC_CONFIGURE_FLAGS))
+	    $(BUILDENV) && ./configure $(HALVM_GHC_CONFIGURE_FLAGS))
 
 # The GHC build system picks up everything linked into halvm-ghc/libraries
 $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1: $(TOPDIR)/halvm-ghc/mk/config.mk
@@ -404,12 +446,10 @@ install:: $(TOPDIR)/src/scripts/ldkernel
 install:: $(TOPDIR)/src/misc/kernel-$(ARCH).lds
 	$(INSTALL) -D $(TOPDIR)/src/misc/kernel-$(ARCH).lds $(DESTDIR)$(halvmlibdir)/kernel.lds
 
-PLATHSC2HS = $(shell $(PLATGHC) --print-libdir)/bin/hsc2hs
-install:: ${PLATHSC2HS}
-	$(INSTALL) -D ${PLATHSC2HS} $(DESTDIR)${halvmlibdir}/bin/hsc2hs
+install:: ${PLATGHC}
+	$(INSTALL) -D $(shell $(PLATGHC) --print-libdir)/bin/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs
 
 # Need to be sure we grab datadirs for alex and happy, /usr/share w.r.t. their prefix
 install:: $(PLATALEX) $(PLATCABAL) $(PLATHAPPY) $(PLATHADDOCK) $(PLATHSCOLOUR)
 	mkdir -p $(DESTDIR)${halvmlibdir}
-	cp -rf $(TOPDIR)/platform_ghc/* $(DESTDIR)/
-
+	cp -rf $(TOPDIR)/platform_ghc/usr $(DESTDIR)/

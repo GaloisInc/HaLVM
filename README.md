@@ -54,7 +54,14 @@ tools make merging your changes much more easy.
 
 You'll need these dependencies:
 
-> autoconf gcc ghc automake libtool patch ncurses-devel xen-devel zlib-devel
+> autoconf gcc automake libtool patch ncurses-devel xen-devel zlib-devel
+
+Additionally, make sure `alex >= 3.1` and `happy >= 1.19` are installed and
+in your PATH. This is a workaround for a 
+[Cabal bug](https://github.com/haskell/cabal/issues/2462).
+
+If GHC 7.8.4 is not present, a version of it will be downloaded for
+use during the build process.
 
 Once checked out, the HaLVM builds as follows:
 
