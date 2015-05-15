@@ -137,8 +137,8 @@ acceptNewInOutChannel target grants port perc
      ((i, o), gh) <- acceptNewChan target grants port (buildIOChan perc npages)
      return (InOutChannel (Borrow gh) i o target)
 
-closeInOutChannel :: Binary a => InOutChannel a -> IO ()
-closeInOutChannel bch = case bchSetupData och of
+closeInOutChannel :: (Binary a, Binary b) => InOutChannel a b -> IO ()
+closeInOutChannel bch = case bchSetupData bch of
   Lend _ grants _ -> mapM_ endAccess grants
   Borrow gh       -> unmapGrant gh 
 

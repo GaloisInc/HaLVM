@@ -11,5 +11,5 @@ include ../../standard.mk
 
 run: Shutdown
 	-sudo xl destroy Shutdown
-	(sleep 5 && sudo xl shutdown Shutdown) &
+	(sleep 15 && sudo xl shutdown Shutdown) &
 	sudo xl create Shutdown.config -c

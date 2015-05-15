@@ -20,10 +20,10 @@ newtype ShutdownReason = ShutdownReason { unReason :: CInt }
  }
 
 onPoweroff :: XenStore -> IO () -> IO ()
-onPoweroff xs fun = shutdownCase xs "poweroff" $ fun >> shutdown srPoweroff
+onPoweroff xs = shutdownCase xs "poweroff"
 
 onReboot :: XenStore -> IO () -> IO ()
-onReboot xs fun = shutdownCase xs "reboot" $ fun >> shutdown srReboot
+onReboot xs = shutdownCase xs "reboot"
 
 -- | If the shutdown reason matches the @String@ argument, execute the handler.
 -- Handler will only fire once. Intended for cleanup and shutdown routines.
@@ -37,6 +37,12 @@ shutdownCase xs match go = do
     handler mv path _ = do
       str <- xsRead xs path
       when (str == match) (takeMVar mv >> go)
+
+poweroff :: IO ()
+poweroff = shutdown srPoweroff
+
+reboot :: IO ()
+poweroff = shutdown srReboot
 
 foreign import ccall unsafe "entryexit.c shutdown"
   shutdown :: ShutdownReason -> IO ()
