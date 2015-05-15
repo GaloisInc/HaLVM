@@ -50,11 +50,12 @@ library
                     CPP,
                     DeriveDataTypeable,
                     DeriveGeneric,
+                    FlexibleInstances,
                     ForeignFunctionInterface,
                     FunctionalDependencies,
                     GeneralizedNewtypeDeriving,
-                    FlexibleInstances,
                     MultiParamTypeClasses,
+                    MultiWayIf
                     ScopedTypeVariables
   ghc-options:      -Wall -fno-warn-orphans
   cc-options:       -nostdinc

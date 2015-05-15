@@ -15,9 +15,9 @@
 module Communication.IVC(
          InChannel, OutChannel, InOutChannel
        , ReadableChan, WriteableChan
-       , makeNewInChannel, acceptNewInChannel
-       , makeNewOutChannel, acceptNewOutChannel
-       , makeNewInOutChannel, acceptNewInOutChannel
+       , makeNewInChannel, acceptNewInChannel, closeInChannel
+       , makeNewOutChannel, acceptNewOutChannel, closeOutChannel
+       , makeNewInOutChannel, acceptNewInOutChannel, closeInOutChannel
        , get, put, peer
        )
  where
@@ -40,8 +40,12 @@ import Hypervisor.ErrorCodes
 import Hypervisor.Memory
 import Hypervisor.Port
 
+data IVCSetup
+  = Lend DomId [GrantRef] Port
+  | Borrow GrantHandle
+
 data InChannel a = InChannel {
-    ichSetupData :: Maybe (DomId, [GrantRef], Port)
+    ichSetupData :: IVCSetup
   , ichInChannel :: InChan
   , ichPeer      :: DomId
   }
@@ -53,18 +57,26 @@ data InChannel a = InChannel {
 makeNewInChannel :: Binary a => DomId -> Word -> IO (InChannel a)
 makeNewInChannel target npages = do
   (grefs, port, ichn) <- makeNewChan target npages buildRawInChan
-  return (InChannel (Just (target, grefs, port)) ichn target)
+  return (InChannel (Lend target grefs port) ichn target)
 
 -- |Accept a new input channel, given the input data.
 acceptNewInChannel :: Binary a =>
                       DomId -> [GrantRef] -> Port ->
                       IO (InChannel a)
 acceptNewInChannel target grants port = do
-  ichn <- acceptNewChan target grants port buildRawInChan
-  return (InChannel Nothing ichn target)
+  (ichn, gh) <- acceptNewChan target grants port buildRawInChan
+  return (InChannel (Borrow gh) ichn target)
+
+-- |Ungracefully revoke or unmap the channel's grants.
+-- This may cause a page fault if used without coordination.
+-- throws @ErrorCode@ in case of failure.
+closeInChannel :: Binary a => InChannel a -> IO ()
+closeInChannel ich = case ichSetupData ich of
+  Lend _ grants _ -> mapM_ endAccess grants
+  Borrow gh       -> unmapGrant gh 
 
 data OutChannel a = OutChannel {
-    ochSetupData  :: Maybe (DomId, [GrantRef], Port)
+    ochSetupData  :: IVCSetup
   , ochOutChannel :: OutChan
   , ochPeer       :: DomId
   }
@@ -78,22 +90,28 @@ makeNewOutChannel :: Binary a =>
                      IO (OutChannel a)
 makeNewOutChannel target npages = do
   (grefs, port, ochn) <- makeNewChan target npages buildRawOutChan
-  return (OutChannel (Just (target, grefs, port)) ochn target)
+  return (OutChannel (Lend target grefs port) ochn target)
 
 -- |Accept a new output channel, given the input data
 acceptNewOutChannel :: Binary a =>
                        DomId -> [GrantRef] -> Port ->
                        IO (OutChannel a)
 acceptNewOutChannel target grants port = do
-  ochn <- acceptNewChan target grants port buildRawOutChan
-  return (OutChannel Nothing ochn target)
+  (ochn, gh) <- acceptNewChan target grants port buildRawOutChan
+  return (OutChannel (Borrow gh) ochn target)
 
 data InOutChannel a b = InOutChannel {
-    bchSetupData  :: Maybe (DomId, [GrantRef], Port, Float)
+    bchSetupData  :: IVCSetup
+  , bchInPercent  :: Float
   , bchInChannel  :: InChan
   , bchOutChannel :: OutChan
   , bchPeer       :: DomId
   }
+
+closeOutChannel :: Binary a => OutChannel a -> IO ()
+closeOutChannel och = case ochSetupData och of
+  Lend _ grants _ -> mapM_ endAccess grants
+  Borrow gh       -> unmapGrant gh 
 
 -- |Make a new input / output channel targetting the given domain. The second
 -- argument is the number of pages to use, while the third argument tells the
@@ -106,7 +124,7 @@ makeNewInOutChannel target npages perc
   | (perc < 0) || (perc > 1.0) = throwIO EINVAL
   | otherwise                  = do
      (grs, p, (ich,och)) <- makeNewChan target npages (buildIOChan perc npages)
-     return (InOutChannel (Just (target, grs, p, perc)) ich och target)
+     return (InOutChannel (Lend target grs p) perc ich och target)
 
 -- |Accept a new input / out channel, given the input data
 acceptNewInOutChannel :: (Binary a, Binary b) =>
@@ -116,8 +134,13 @@ acceptNewInOutChannel target grants port perc
   | (perc < 0) || (perc > 1.0) = throwIO EINVAL
   | otherwise                  = do
      let npages = fromIntegral (length grants)
-     (ichn, ochn) <- acceptNewChan target grants port (buildIOChan perc npages)
-     return (InOutChannel Nothing ichn ochn target)
+     ((i, o), gh) <- acceptNewChan target grants port (buildIOChan perc npages)
+     return (InOutChannel (Borrow gh) i o target)
+
+closeInOutChannel :: Binary a => InOutChannel a -> IO ()
+closeInOutChannel bch = case bchSetupData och of
+  Lend _ grants _ -> mapM_ endAccess grants
+  Borrow gh       -> unmapGrant gh 
 
 buildIOChan :: Float -> Word ->
                Bool -> Ptr Word8 -> Word -> Port ->
@@ -149,19 +172,20 @@ makeNewChan target npages buildChan = do
 
 acceptNewChan :: DomId -> [GrantRef] -> Port ->
                  (Bool -> Ptr Word8 -> Word -> Port -> IO a) ->
-                 IO a
+                 IO (a, GrantHandle)
 acceptNewChan target grefs port buildChan = do
   myport <- bindRemotePort target port
-  (ptr, _) <- mapGrants target grefs True
+  (ptr, gh) <- mapGrants target grefs True
   let size = (length grefs * 4096) - bookkeepingOverhead
-  buildChan False ptr (fromIntegral size) myport
+  chan <- buildChan False ptr (fromIntegral size) myport
+  return (chan, gh)
 
 -- -----------------------------------------------------------------------------
 
 instance Binary a => RendezvousCapable Word (InChannel a) (OutChannel a) where
   makeConnection other size = do
     res <- makeNewOutChannel other size
-    let Just (_, grs, ps) = ochSetupData res
+    let Lend _ grs ps = ochSetupData res
     return (grs, [ps], return res)
   acceptConnection other refs [port] _ = acceptNewInChannel other refs port
   acceptConnection _ _ _ _ = fail "Should only have received one port!"
@@ -169,7 +193,7 @@ instance Binary a => RendezvousCapable Word (InChannel a) (OutChannel a) where
 instance Binary a => RendezvousCapable Word (OutChannel a) (InChannel a) where
   makeConnection other size = do
     res <- makeNewInChannel other size
-    let Just (_, grs, ps) = ichSetupData res
+    let Lend _ grs ps = ichSetupData res
     return (grs, [ps], return res)
   acceptConnection other refs [port] _ = acceptNewOutChannel other refs port
   acceptConnection _ _ _ _ = fail "Should only have received one port!"
@@ -179,7 +203,7 @@ instance (Binary a, Binary b) =>
  where
   makeConnection other (perc, size) = do
     res <- makeNewInOutChannel other size perc
-    let Just (_, grs, ps, _) = bchSetupData res
+    let Lend _ grs ps = bchSetupData res
     return (grs, [ps], return res)
   acceptConnection other refs [port] (perc, _) =
     acceptNewInOutChannel other refs port perc
@@ -310,23 +334,21 @@ tryWriteData och = do
         overflow = prod + (ocModulus och - cons)
         avail = bufferSize - unread
         bstrLn  = fromIntegral (BS.length bstr)
-    case () of
       -- In this case, the buffer is full.
-      () | avail == 0 ->
-        return (ls, prod)
+    if | avail == 0 -> return (ls, prod)
       -- In this case, we have enough space to write the full bytestring.
-      () | avail > bstrLn -> do
-        writeBS (ocBuffer och) (ocSize och) prod bstr
-        putMVar resMV ()
-        let prod' = (prod + fromIntegral bstrLn) `mod` ocModulus och
-        doPossibleWrites prod' cons rest
+       | avail > bstrLn -> do
+           writeBS (ocBuffer och) (ocSize och) prod bstr
+           putMVar resMV ()
+           let prod' = (prod + fromIntegral bstrLn) `mod` ocModulus och
+           doPossibleWrites prod' cons rest
       -- In this case, we have space to do a write, but not the whole
       -- bytestring
-      () | otherwise -> do
-        let (h,t)   = BS.splitAt (fromIntegral avail) bstr
-        writeBS (ocBuffer och) (ocSize och) prod h
-        let prod' = fromIntegral (prod + avail) `mod` ocModulus och
-        return ((t, resMV) : rest, prod')
+       | otherwise -> do
+           let (h,t)   = BS.splitAt (fromIntegral avail) bstr
+           writeBS (ocBuffer och) (ocSize och) prod h
+           let prod' = fromIntegral (prod + avail) `mod` ocModulus och
+           return ((t, resMV) : rest, prod')
 
 writeBS :: Ptr Word8 -> Word -> Word32 -> ByteString -> IO ()
 writeBS buffer size logical_off lbstr =
