@@ -24,3 +24,5 @@ src/libIVC/libIVC.a
 
 src/misc/*.o
 src/profiling/convert-profile
+
+*.disk
