@@ -25,11 +25,11 @@ import Control.Exception
 import Control.Monad
 import Hypervisor.Console
 import Hypervisor.ErrorCodes
-
+import Control.Concurrent (threadDelay)
 import Prelude hiding (getLine)
 
 
-{- ST
+{- ST-based Block Device Test
 main :: IO ()
 main = do
     mbBlockDevice <- stToIO $ newSTBlockDevice 1024 512 -- Initialize a block device as ST
@@ -44,7 +44,7 @@ main = do
         Nothing -> writeDebugConsole "device error"
 -}
 
-{- Memory
+{- Memory-based Block Device Test
 main :: IO ()
 main = do
     mbBlockDevice <- newMemoryBlockDevice 1024 512 -- Initialize a block device as Memory
@@ -57,10 +57,9 @@ main = do
 	Nothing -> writeDebugConsole "device error"
 -}
 
--- {- Disk
--- Create a new in-memory block device, with the given number of
--- sectors and sector size.
+-- A Simple FS Shell with Disk Backend
 
+-- Implement the Device Interface
 newDiskBlockDevice :: Disk -> IO (Maybe (BlockDevice IO))
 newDiskBlockDevice disk = return $! Just BlockDevice {
         bdBlockSize  = fromIntegral $ diskSectorSize disk
@@ -69,8 +68,8 @@ newDiskBlockDevice disk = return $! Just BlockDevice {
             bl <- readDisk disk (fromIntegral $ diskSectorSize disk) (fromIntegral sector)
             return $ bLtoBS bl
       , bdWriteBlock = \sector bs -> writeDisk disk (bStoBL bs) $ fromIntegral sector
-      , bdFlush      = flushDiskCaches disk
-      , bdShutdown   = return ()
+      , bdFlush      = return () -- `flushDiskCaches` is not actaully usable
+      , bdShutdown   = return () -- not found in XenDevice.Disk
       }
 
 bLtoBS :: BL.ByteString -> BS.ByteString
@@ -86,31 +85,30 @@ main = do
     xs <- initXenStore
     con <- initXenConsole
     diskNames <- listDisks xs
-    writeDebugConsole $ "Disks: " ++ show diskNames ++ "\n"
+    threadDelay (1000000)
+    writeDebugConsole $ "Disks Found: " ++ show diskNames ++ "\n"
     case diskNames of
-      (diskName:_) -> do
+      (diskName:_) -> do -- Use the first available disk
         disk <- openDisk xs diskName
---        mdiskBD <- newDiskBlockDevice disk -- This is buggy, I need to tune it when I got some extra time
-        mdiskBD <- newMemoryBlockDevice 1024 1024
+        mdiskBD <- newDiskBlockDevice disk
         case mdiskBD of
           Just diskBD -> do
             fsState <- mountFS diskBD
             
-            feedback <- runHalfs fsState $ do
+            feedback <- runHalfs fsState $ do -- Create root and return
               mkdir "/" defaultPerm
               return "/"
             case feedback of
               Right fp -> repl xs con fp fsState
               Left err -> writeDebugConsole $ "Fail: " ++ show err ++ "\n"
+
             unmountInfo <- runHalfs fsState unmount
             case unmountInfo of
               Left err -> writeDebugConsole $ "Error in unmounting: " ++ show err
               Right () -> return ()
+
           Nothing -> writeDebugConsole "Error in initializing disk block device!"
       [] -> writeDebugConsole "No available disks!"
-
-newFS :: (Monad m, HalfsCapable b t r l m) => BlockDevice m -> m SuperBlock
-newFS diskBD = execNoEnv $ newfs diskBD 0 0 defaultPerm
 
 mountFS :: (Monad m, HalfsCapable b t r l m) => BlockDevice m -> m (HalfsState b r l m)
 mountFS diskBD = execNoEnv $ mount diskBD 0 0 defaultPerm
@@ -121,6 +119,7 @@ execNoEnv act = do
     Left e  -> fail $ show e
     Right x -> return x
 
+-- The REPL shell loop
 repl xs con here fsState = do
   me <- xsGetDomId xs
   writeConsole con ("Hello! This is an interactive Unix-like file-system shell for " ++
