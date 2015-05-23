@@ -1,14 +1,18 @@
 Halfs Examples
 ===
 
-## Library
-This is intended to be used when Halfs's HaLVM compatible branch is built and installed to HaLVM.
-
-Checkout the [main branch of Halfs]()
-
-Checkout the [HaLVM version of Halfs]()
+## Library-Support
+You need to go to [Halfs](https://github.com/GaloisInc/halfs) and installed the top-level library `Halfs` with `halvm-cabal install`.
 
 After installation, you can `make` and `make run` here like other examples.
 
-## Examples
-Due to the lack of file system, so although the `File.hs` is reserved in `System/Device`, it will not be used. Instead, we will use the memory backed block device model as well as the ST-backed. They are all arrays of memory in fact, to simulate the FS concepts such as "sectors" etc.
+## Structure
+The sole script `Halfs.hs` contains three sections:
+
+1. ST Monad Based Block Device RW Check
+2. Memory Monad Based Block Device RW Check
+3. `XenDevice.Disk` Based Simple Unix-Style File System Shell
+
+When you compile one of them, commented out others.
+
+Some `Halfs` interfaces, esp. `Flush` and `Shutdown` are mostly left empty. You might be interested to fix this bugs.
