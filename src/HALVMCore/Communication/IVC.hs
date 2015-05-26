@@ -15,9 +15,10 @@
 module Communication.IVC(
          InChannel, OutChannel, InOutChannel
        , ReadableChan, WriteableChan
-       , makeNewInChannel, acceptNewInChannel, closeInChannel
-       , makeNewOutChannel, acceptNewOutChannel, closeOutChannel
-       , makeNewInOutChannel, acceptNewInOutChannel, closeInOutChannel
+       , makeNewInChannel, acceptNewInChannel, 
+       , makeNewOutChannel, acceptNewOutChannel, 
+       , makeNewInOutChannel, acceptNewInOutChannel, 
+       -- , closeInChannel, closeOutChannel, closeInOutChannel
        , get, put, peer
        )
  where
@@ -67,6 +68,8 @@ acceptNewInChannel target grants port = do
   (ichn, gh) <- acceptNewChan target grants port buildRawInChan
   return (InChannel (Borrow gh) ichn target)
 
+{- These close functions seem correct, but cause occasional access violations.
+ -
 -- |Ungracefully revoke or unmap the channel's grants.
 -- This may cause a page fault if used without coordination.
 -- throws @ErrorCode@ in case of failure.
@@ -74,6 +77,7 @@ closeInChannel :: Binary a => InChannel a -> IO ()
 closeInChannel ich = case ichSetupData ich of
   Lend _ grants _ -> mapM_ endAccess grants
   Borrow gh       -> unmapGrant gh 
+-}
 
 data OutChannel a = OutChannel {
     ochSetupData  :: IVCSetup
@@ -108,10 +112,12 @@ data InOutChannel a b = InOutChannel {
   , bchPeer       :: DomId
   }
 
+{-
 closeOutChannel :: Binary a => OutChannel a -> IO ()
 closeOutChannel och = case ochSetupData och of
   Lend _ grants _ -> mapM_ endAccess grants
   Borrow gh       -> unmapGrant gh 
+-}
 
 -- |Make a new input / output channel targetting the given domain. The second
 -- argument is the number of pages to use, while the third argument tells the
@@ -137,10 +143,12 @@ acceptNewInOutChannel target grants port perc
      ((i, o), gh) <- acceptNewChan target grants port (buildIOChan perc npages)
      return (InOutChannel (Borrow gh) i o target)
 
+{-
 closeInOutChannel :: (Binary a, Binary b) => InOutChannel a b -> IO ()
 closeInOutChannel bch = case bchSetupData bch of
   Lend _ grants _ -> mapM_ endAccess grants
   Borrow gh       -> unmapGrant gh 
+-}
 
 buildIOChan :: Float -> Word ->
                Bool -> Ptr Word8 -> Word -> Port ->
