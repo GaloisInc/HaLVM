@@ -15,9 +15,9 @@
 module Communication.IVC(
          InChannel, OutChannel, InOutChannel
        , ReadableChan, WriteableChan
-       , makeNewInChannel, acceptNewInChannel, 
-       , makeNewOutChannel, acceptNewOutChannel, 
-       , makeNewInOutChannel, acceptNewInOutChannel, 
+       , makeNewInChannel, acceptNewInChannel
+       , makeNewOutChannel, acceptNewOutChannel
+       , makeNewInOutChannel, acceptNewInOutChannel
        -- , closeInChannel, closeOutChannel, closeInOutChannel
        , get, put, peer
        )
@@ -141,7 +141,7 @@ acceptNewInOutChannel target grants port perc
   | otherwise                  = do
      let npages = fromIntegral (length grants)
      ((i, o), gh) <- acceptNewChan target grants port (buildIOChan perc npages)
-     return (InOutChannel (Borrow gh) i o target)
+     return (InOutChannel (Borrow gh) perc i o target)
 
 {-
 closeInOutChannel :: (Binary a, Binary b) => InOutChannel a b -> IO ()

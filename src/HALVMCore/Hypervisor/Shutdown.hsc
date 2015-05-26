@@ -42,7 +42,7 @@ poweroff :: IO ()
 poweroff = shutdown srPoweroff
 
 reboot :: IO ()
-poweroff = shutdown srReboot
+reboot = shutdown srReboot
 
 foreign import ccall unsafe "entryexit.c shutdown"
   shutdown :: ShutdownReason -> IO ()
