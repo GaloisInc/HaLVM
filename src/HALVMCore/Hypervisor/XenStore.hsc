@@ -9,7 +9,7 @@ module Hypervisor.XenStore(
        , initXenStore
        , initCustomXenStore
        , emptyTransaction
-       , xsGetDomId
+       , xsGetDomId, xsGetDomName
        , xsDirectory, xstDirectory
        , xsRead, xstRead
        , xsGetPermissions, xstGetPermissions
@@ -48,6 +48,7 @@ import Data.Char
 import Data.List
 import Data.Map.Strict(Map)
 import qualified Data.Map.Strict as Map
+import Data.Maybe (maybe)
 import Data.Word
 import Foreign.C.String
 import Foreign.C.Types
@@ -59,6 +60,7 @@ import Hypervisor.DomainInfo
 import Hypervisor.ErrorCodes
 import Hypervisor.Memory
 import Hypervisor.Port
+import Text.Read (readMaybe)
 
 newtype XenStore = XenStore (MVar XenbusState)
 
@@ -101,9 +103,10 @@ initCustomXenStore xsMFN xsPort = do
 xsGetDomId :: XenStore -> IO DomId
 xsGetDomId xs = do
   val <- xsRead xs "domid"
-  case reads val :: [(Word16, String)] of
-    [(domid, "")] -> return (toDomId domid)
-    _             -> throwIO EPROTO
+  maybe (throwIO EPROTO) (return . toDomId) (readMaybe val :: Maybe Word16)
+
+xsGetDomName :: XenStore -> IO String
+xsGetDomName xs = xsRead xs "name"
 
 xsDirectory :: XenStore -> String -> IO [String]
 xsDirectory xs = xstDirectory xs emptyTransaction
