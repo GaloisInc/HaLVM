@@ -122,7 +122,10 @@ $1_BIN := $$(BUILDBOX)/bin/$2
 $$($1_BIN): $$(PLATCABAL) | $$($1_SRC)
 	$$(BUILDENV) && cd $$($1_SRC) && \
 		$$(CABAL) sandbox init --sandbox $$(BUILDBOX) && \
-		$$(CABAL) install
+                $$(CABAL) install --only-dep && \
+                $$(CABAL) configure && \
+                $$(CABAL) build && \
+                $$(CABAL) copy
 endef
 $(eval $(call hackage-sandbox-build,ALEX,alex))
 $(eval $(call hackage-sandbox-build,HAPPY,happy))
