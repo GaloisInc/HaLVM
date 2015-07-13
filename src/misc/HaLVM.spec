@@ -10,7 +10,8 @@ URL:		https://github.com/GaloisInc/HaLVM
 Source0:	HaLVM.tar.gz
 
 BuildRequires:	autoconf automake libtool patch gcc ncurses-devel
-BuildRequires:  xen-devel zlib-devel chrpath
+BuildRequires:  zlib-devel chrpath
+BuildRequires:  /usr/include/xen/xen.h
 Requires:       perl glibc libffi libgcc ncurses-libs zlib
 Requires:       /usr/include/xen/xen.h
 AutoReq:        no
@@ -52,8 +53,8 @@ cp -r examples %{buildroot}%{_datadir}/HaLVM-%{version}/
 %{_bindir}/halvm-ghc
 %{_bindir}/halvm-ghc-pkg
 %{_bindir}/mkrenddir
-%{_bindir}/x86_64-unknown-HaLVM-ghc*
-%{_bindir}/x86_64-unknown-HaLVM-hp2ps
+%{_bindir}/*-unknown-HaLVM-ghc*
+%{_bindir}/*-unknown-HaLVM-hp2ps
 %{_includedir}/libIVC.h
 %{_docdir}/HaLVM-ghc/html/libraries/array-0.5.0.0/LICENSE
 %{_docdir}/HaLVM-ghc/html/libraries/base-4.7.0.2/LICENSE
