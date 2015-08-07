@@ -31,7 +31,7 @@ import Network.Stream
 import System.Exit
 import System.Info
 import System.Locale
-import Text.Blaze.Html5 as H hiding (map)
+import Text.Blaze.Html5 as H hiding (map,main)
 import Text.Blaze.Html5.Attributes(href)
 import Text.Blaze.Html.Renderer.String
 import Text.Blaze.Internal(string)
@@ -102,9 +102,8 @@ startServer print xs macstr state =
      print ("Starting server on device "++macstr++"\n")
      addDevice ns mac (xenSend nic) (xenReceiveLoop nic)
      deviceUp ns mac
-     ipMV <- newEmptyMVar
-     dhcpDiscover ns mac (putMVar ipMV)
-     ipaddr <- takeMVar ipMV
+     ipaddr <- dhcpDiscover ns mac
+     -- ipaddr <- takeMVar ipMV
      print ("Device "++macstr++" has IP "++show ipaddr++"\n")
      lsock <- listen ns undefined 80 `catch` handler
      forever $ do
