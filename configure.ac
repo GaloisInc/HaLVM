@@ -381,6 +381,7 @@ else
                    src/scripts/halvm-config
                    src/scripts/halvm-ghc
                    src/scripts/halvm-ghc-pkg
+                   src/scripts/hsc2hs
                    src/scripts/ldkernel
                   ])
   AC_OUTPUT

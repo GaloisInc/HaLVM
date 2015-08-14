@@ -2,4 +2,5 @@ halvm-cabal
 halvm-config
 halvm-ghc
 halvm-ghc-pkg
+hsc2hs
 ldkernel

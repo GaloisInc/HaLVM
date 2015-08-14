@@ -450,9 +450,19 @@ install:: $(TOPDIR)/src/misc/kernel-$(ARCH).lds
 	$(INSTALL) -D $(TOPDIR)/src/misc/kernel-$(ARCH).lds $(DESTDIR)$(halvmlibdir)/kernel.lds
 
 install:: ${PLATGHC}
-	$(INSTALL) -D $(shell $(PLATGHC) --print-libdir)/bin/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs
+	$(INSTALL) -D $(shell $(PLATGHC) --print-libdir)/bin/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs.bin
 
 # Need to be sure we grab datadirs for alex and happy, /usr/share w.r.t. their prefix
 install:: $(PLATALEX) $(PLATCABAL) $(PLATHAPPY) $(PLATHADDOCK) $(PLATHSCOLOUR)
 	mkdir -p $(DESTDIR)${halvmlibdir}
 	cp -rf $(TOPDIR)/platform_ghc/${prefix}/* $(DESTDIR)${prefix}/
+
+# hsc2hs requires a bunch of libraries to be installed. This is a hack (FIXME)
+# to copy over the platform_ghc ones to our destination directory and hope
+# nothing gets broken. Long term, finding some way to build a statically-linked
+# hsc2hs would be better.
+install::
+	$(FIND) $(TOPDIR)/platform_ghc -name "*so" -name '*-ghc*' \
+	    -exec cp '{}' $(DESTDIR)$(halvmlibdir)/base*/ \;
+	$(INSTALL) -D $(TOPDIR)/src/scripts/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs
+
