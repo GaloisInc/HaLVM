@@ -455,4 +455,4 @@ install:: ${PLATGHC}
 # Need to be sure we grab datadirs for alex and happy, /usr/share w.r.t. their prefix
 install:: $(PLATALEX) $(PLATCABAL) $(PLATHAPPY) $(PLATHADDOCK) $(PLATHSCOLOUR)
 	mkdir -p $(DESTDIR)${halvmlibdir}
-	cp -rf $(TOPDIR)/platform_ghc/usr $(DESTDIR)/
+	cp -rf $(TOPDIR)/platform_ghc/${prefix}/* $(DESTDIR)${prefix}/
