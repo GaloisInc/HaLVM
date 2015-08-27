@@ -32,4 +32,4 @@ for opt in ${CABALCMD}; do
   esac
 done
 
-exec ${CABALBIN} ${INITIAL_FLAGS} ${CABALCMD} ${FINAL_FLAGS}
+exec ${CABALBIN} ${INITIAL_FLAGS} "$@" ${FINAL_FLAGS}
