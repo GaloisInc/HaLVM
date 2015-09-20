@@ -463,6 +463,6 @@ install:: $(PLATALEX) $(PLATCABAL) $(PLATHAPPY) $(PLATHADDOCK) $(PLATHSCOLOUR)
 # hsc2hs would be better.
 install::
 	$(FIND) $(TOPDIR)/platform_ghc -name "*so" -name '*-ghc*' \
-	    -exec cp '{}' $(DESTDIR)$(halvmlibdir)/base*/ \;
+	    -exec cp '{}' $(DESTDIR)$(halvmlibdir)/lib/ \;
 	$(INSTALL) -D $(TOPDIR)/src/scripts/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs
 
