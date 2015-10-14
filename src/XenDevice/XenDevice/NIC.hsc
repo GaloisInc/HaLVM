@@ -61,7 +61,7 @@ import Hypervisor.XenStore
 data NIC = NIC {
     nicTxRing    :: !TxRing
   , nicTxId      :: !(MVar Word16)
-  , nicTxTable   :: !(MVar (Map Word16 (MVar (Maybe ErrorCode))))
+  , nicTxTable   :: !(MVar (Map Word16 (MVar (Maybe ErrorCode), SBS.ByteString)))
   , nicRxHandler :: !(MVar RxHandler)
   }
 
@@ -139,7 +139,7 @@ openNIC xs mac = do
       Nothing -> do
         writeDebugConsole ("WARNING: Received response to unsent NIC tx req " ++ show (txrsId resp) ++ "\n")
         return table
-      Just retMV -> do
+      Just (retMV, _) -> do
         putMVar retMV (txrsStatus resp)
         return (Map.delete (txrsId resp) table)
 
@@ -182,7 +182,7 @@ sendPacket nic bstr = do
               off16    = fromIntegral offset
               size16   = fromIntegral size'
               req      = TxRequest ref off16 flags newId size16
-              table'   = Map.insert newId mvar table
+              table'   = Map.insert newId (mvar, chunk) table
           go False (newId + 1) rest' (req : reqs) (mvar : mvars) table'
   --
   processErrors []               = return ()
