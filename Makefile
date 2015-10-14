@@ -57,9 +57,8 @@ clean::
 mrproper::
 	$(RM) -rf $(BUILDDIR)
 
-# Prepare an ordinary version of GHC if none available.
+# Prepare an ordinary version of GHC.
 # We don't ship this - we just need it to build halvm-ghc etc.
-ifeq ($(GHC),no)
 PLATGHC := $(TOPDIR)/platform_ghc/bin/ghc
 
 $(PLATGHC): $(GHC_FILE) | $(BUILDDIR) 
@@ -70,10 +69,6 @@ $(PLATGHC): $(GHC_FILE) | $(BUILDDIR)
 mrproper::
 	$(RM) -rf $(TOPDIR)/platform_ghc
 	$(RM) $(HOME)/.ghc/$(ARCH)-linux-7.8.4
-else
-# Use the global GHC.
-PLATGHC := $(GHC)
-endif
 
 PLATCABAL := $(TOPDIR)/platform_ghc${halvmlibdir}/bin/cabal
 $(PLATCABAL): $(CABAL_FILE) $(PLATGHC) | $(BUILDDIR) 
@@ -463,6 +458,6 @@ install:: $(PLATALEX) $(PLATCABAL) $(PLATHAPPY) $(PLATHADDOCK) $(PLATHSCOLOUR)
 # hsc2hs would be better.
 install::
 	$(FIND) $(TOPDIR)/platform_ghc -name "*so" -name '*-ghc*' \
-	    -exec cp '{}' $(DESTDIR)$(halvmlibdir)/base*/ \;
+	    -exec cp '{}' $(DESTDIR)$(halvmlibdir)/lib/ \;
 	$(INSTALL) -D $(TOPDIR)/src/scripts/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs
 

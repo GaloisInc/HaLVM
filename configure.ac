@@ -108,6 +108,7 @@ AC_FORCE_EXIST(CC,gcc)
 AC_FORCE_EXIST(CHMOD,chmod)
 AC_FORCE_EXIST(CP,cp)
 AC_FORCE_EXIST(CPP,cpp)
+AC_FORCE_EXIST(CURL,curl)
 AC_FORCE_EXIST(ECHO,echo)
 AC_FORCE_EXIST(FIND,find)
 AC_FORCE_EXIST(GIT,git)
@@ -148,9 +149,6 @@ AC_CHECK_HEADER(zlib.h, HAVE_ZLIB=y,
 AC_CHECK_LIB(gmp, __gmpz_init, ,
   LOG_FAILURE("The HaLVM requires libgmp to build."))
 
-if test "${NEED_CURL}" = "yes"; then
-  AC_FORCE_EXIST(CURL,curl)
-fi
 
 if test "${GHC}" != "no"; then
   AC_MSG_CHECKING(for globally-installed GHC terminfo package)

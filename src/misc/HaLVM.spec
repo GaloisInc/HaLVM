@@ -5,8 +5,8 @@
 %define name_suffix -gmp
 %define gmp_flag    --enable-gmp
 %else
-%define name_suffix
-%define gmp_flag
+%define name_suffix %{nil}
+%define gmp_flag    %{nil}
 %endif
 
 Name:		HaLVM%{name_suffix}
@@ -17,7 +17,7 @@ Summary:	The Haskell Lightweight Virtual Machine
 Group:		System Environment/Base
 License:	BSD3
 URL:		https://github.com/GaloisInc/HaLVM
-Source0:	HaLVM.tar.gz
+Source0:	HaLVM-%{_version}.tar.gz
 
 BuildRequires:	autoconf automake libtool patch gcc ncurses-devel
 BuildRequires:  zlib-devel chrpath
@@ -33,7 +33,7 @@ high-level, lightweight virtual machines that can run directly on the
 Xen hypervisor.
 
 %prep
-%setup -q -n HaLVM
+%setup -q -n HaLVM-%{_version}
 
 %build
 # We can't used %%configure because it overwrites halvm-ghc/config.sub for
@@ -43,7 +43,14 @@ make
 
 %install
 make install DESTDIR=%{buildroot}
-chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/*
+chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/alex
+chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/cabal
+chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/ghc
+chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/ghc-pkg
+chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/haddock
+chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/happy
+chrpath -r %{_libdir}/HaLVM-%{version}/lib %{buildroot}%{_libdir}/HaLVM-%{version}/bin/hsc2hs.bin
+chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/HsColour
 rm -rf  %{buildroot}share
 mv %{buildroot}%{_docdir}/ghc %{buildroot}%{_docdir}/HaLVM-ghc
 mv %{buildroot}%{_mandir}/man1/ghc.1 %{buildroot}%{_mandir}/man1/halvm-ghc.1
