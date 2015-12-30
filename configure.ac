@@ -1,12 +1,12 @@
 dnl BANNERSTART
-dnl - Copyright 2006-2008, Galois, Inc.
+dnl - Copyright 2006-2015, Galois, Inc.
 dnl - This software is distributed under a standard, three-clause BSD license.
 dnl - Please see the file LICENSE, distributed with this software, for specific
 dnl - terms and conditions.
 dnl Author: Adam Wick <awick@galois.com>
 dnl BANNEREND
 AC_PREREQ(2.60)
-AC_INIT(HALVM,2.0.0,awick@galois.com,halvm)
+AC_INIT(HALVM,3.0.0,awick@galois.com,halvm)
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -101,65 +101,65 @@ dnl
 dnl -------------------------------------------------------------------------
 
 dnl From this point on, we should use LOG_FAILURE instead of AC_FORCE_EXIST.
-AC_FORCE_EXIST(AR,ar)
-AC_FORCE_EXIST(AUTOMAKE,automake)
-AC_FORCE_EXIST(AUTORECONF,autoreconf)
-AC_FORCE_EXIST(CC,gcc)
-AC_FORCE_EXIST(CHMOD,chmod)
-AC_FORCE_EXIST(CP,cp)
-AC_FORCE_EXIST(CPP,cpp)
+dnl AC_FORCE_EXIST(AR,ar)
+dnl AC_FORCE_EXIST(AUTOMAKE,automake)
+dnl AC_FORCE_EXIST(AUTORECONF,autoreconf)
+dnl AC_FORCE_EXIST(CC,gcc)
+dnl AC_FORCE_EXIST(CHMOD,chmod)
+dnl AC_FORCE_EXIST(CP,cp)
+dnl AC_FORCE_EXIST(CPP,cpp)
 AC_FORCE_EXIST(CURL,curl)
-AC_FORCE_EXIST(ECHO,echo)
-AC_FORCE_EXIST(FIND,find)
-AC_FORCE_EXIST(GIT,git)
-AC_FORCE_EXIST(INSTALL,install)
-AC_FORCE_EXIST(LD,ld)
-AC_FORCE_EXIST(LIBTOOL,libtool) dnl Required by Ubuntu 12 for autoreconf
-AC_FORCE_EXIST(LN,ln)
+dnl AC_FORCE_EXIST(ECHO,echo)
+dnl AC_FORCE_EXIST(FIND,find)
+dnl AC_FORCE_EXIST(GIT,git)
+dnl AC_FORCE_EXIST(INSTALL,install)
+dnl AC_FORCE_EXIST(LD,ld)
+dnl AC_FORCE_EXIST(LIBTOOL,libtool) dnl Required by Ubuntu 12 for autoreconf
+dnl AC_FORCE_EXIST(LN,ln)
 AC_FORCE_EXIST(MAKE,make)
 AC_FORCE_EXIST(MKDIR,mkdir)
-AC_FORCE_EXIST(MV,mv)
-AC_FORCE_EXIST(NM,nm)
-AC_FORCE_EXIST(OBJDUMP,objdump)
-AC_FORCE_EXIST(PATCH,patch)
-AC_FORCE_EXIST(PERL,perl)
-AC_FORCE_EXIST(RANLIB,ranlib)
+dnl AC_FORCE_EXIST(MV,mv)
+dnl AC_FORCE_EXIST(NM,nm)
+dnl AC_FORCE_EXIST(OBJDUMP,objdump)
+dnl AC_FORCE_EXIST(PATCH,patch)
+dnl AC_FORCE_EXIST(PERL,perl)
+dnl AC_FORCE_EXIST(RANLIB,ranlib)
 AC_FORCE_EXIST(RM,rm)
-AC_FORCE_EXIST(SED,sed)
+dnl AC_FORCE_EXIST(SED,sed)
 AC_FORCE_EXIST(TAR,tar)
-AC_FORCE_EXIST(TOUCH,touch)
-
-AC_CHECK_PROG_VER(ALEX, alex, --version, [version \([0-9.]*\)],
-                  [3.[1-9]*], AC_SUBST(ALEX, "no") NEED_CURL=yes)
-AC_CHECK_PROG_VER(HAPPY, happy, --version, [Version \([0-9.]*\)], [1.19.*],
-                  AC_SUBST(HAPPY,"no") NEED_CURL=yes)
-AC_CHECK_PROG_VER(CABAL, cabal, --version, [cabal-install version \([0-9.]*\)],
-                  [1.[23456789][0123456789].*],
-                  AC_SUBST(CABAL,"no") NEED_CURL=yes)
-AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [7.8.*],
-                  AC_SUBST(GHC,no) NEED_CURL=yes)
-
-AC_CHECK_HEADER(ncurses.h, HAVE_NCURSES=y,
-  [AC_CHECK_HEADER(curses.h, HAVE_NCURSES=y,
-     LOG_FAILURE("The HaLVM requires the ncurses development library."))])
-
-AC_CHECK_HEADER(zlib.h, HAVE_ZLIB=y,
-  [LOG_FAILURE("The HaLVM requires zlib in order to build.")])
-
-AC_CHECK_LIB(gmp, __gmpz_init, ,
-  LOG_FAILURE("The HaLVM requires libgmp to build."))
-
-
-if test "${GHC}" != "no"; then
-  AC_MSG_CHECKING(for globally-installed GHC terminfo package)
-  if ${GHC}-pkg list --simple-output --no-user-package-conf | grep -q terminfo;
-  then
-    AC_MSG_RESULT(yes)
-  else
-    AC_MSG_RESULT(no)
-    LOG_FAILURE("The HaLVM requires GHC's terminfo library to be installed globally.")
-  fi
-fi
+dnl AC_FORCE_EXIST(TOUCH,touch)
+dnl 
+dnl AC_CHECK_PROG_VER(ALEX, alex, --version, [version \([0-9.]*\)],
+dnl                   [3.[1-9]*], AC_SUBST(ALEX, "no") NEED_CURL=yes)
+dnl AC_CHECK_PROG_VER(HAPPY, happy, --version, [Version \([0-9.]*\)], [1.19.*],
+dnl                   AC_SUBST(HAPPY,"no") NEED_CURL=yes)
+dnl AC_CHECK_PROG_VER(CABAL, cabal, --version, [cabal-install version \([0-9.]*\)],
+dnl                   [1.[23456789][0123456789].*],
+dnl                   AC_SUBST(CABAL,"no") NEED_CURL=yes)
+dnl AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [7.8.*],
+dnl                   AC_SUBST(GHC,no) NEED_CURL=yes)
+dnl 
+dnl AC_CHECK_HEADER(ncurses.h, HAVE_NCURSES=y,
+dnl   [AC_CHECK_HEADER(curses.h, HAVE_NCURSES=y,
+dnl      LOG_FAILURE("The HaLVM requires the ncurses development library."))])
+dnl 
+dnl AC_CHECK_HEADER(zlib.h, HAVE_ZLIB=y,
+dnl   [LOG_FAILURE("The HaLVM requires zlib in order to build.")])
+dnl 
+dnl AC_CHECK_LIB(gmp, __gmpz_init, ,
+dnl   LOG_FAILURE("The HaLVM requires libgmp to build."))
+dnl 
+dnl 
+dnl if test "${GHC}" != "no"; then
+dnl   AC_MSG_CHECKING(for globally-installed GHC terminfo package)
+dnl   if ${GHC}-pkg list --simple-output --no-user-package-conf | grep -q terminfo;
+dnl   then
+dnl     AC_MSG_RESULT(yes)
+dnl   else
+dnl     AC_MSG_RESULT(no)
+dnl     LOG_FAILURE("The HaLVM requires GHC's terminfo library to be installed globally.")
+dnl   fi
+dnl fi
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -214,8 +214,8 @@ AC_ARG_ENABLE([gmp],
 AC_SUBST(INTEGER_LIBRARY, [$int_library])
 
 AC_CHECK_FILE(/etc/centos-release,
-              AC_SUBST(PLATFORM,"centos65"),
-              AC_SUBST(PLATFORM,"deb7"))
+              AC_SUBST(PLATFORM,"centos67"),
+              AC_SUBST(PLATFORM,"deb8"))
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -223,48 +223,48 @@ dnl GHC Config
 dnl
 dnl -------------------------------------------------------------------------
 
-AC_ARG_ENABLE(docs,
-  [AS_HELP_STRING([--enable-docs], [build documentation])],
-  [if test "$enableval" = "yes"; then
-     enable_docs="yes"
-   else
-     enable_docs="no"
-   fi
-  ], [enable_docs="maybe"])
-
-AC_PATH_PROGS(HADDOCK,haddock,no)
-AC_PATH_PROGS(HSCOLOUR,hscolour,no)
-
-case "$enable_docs" in
-  "yes")
-           AC_SUBST(ENABLE_DOCS,"YES")
-           ;;
-  "no")
-           AC_SUBST(ENABLE_DOCS,"NO")
-           ;;
-  "maybe")
-           if test "${HADDOCK}" == "no"; then
-             HADDOCK_TEST="no"
-           else
-             HADDOCK_TEST="yes"
-           fi
-           if test "${HSCOLOUR}" == "no"; then
-             HSCOLOUR_TEST="no"
-           else
-             HSCOLOUR_TEST="yes"
-           fi
-           case "${HADDOCK_TEST}${HSCOLOUR_TEST}" in
-             "nono")   AC_SUBST(ENABLE_DOCS,"NO")
-                       doc_reason="(no haddock or hscolour)";;
-             "yesno")  AC_SUBST(ENABLE_DOCS,"NO")
-                       doc_reason="(no hscolour)";;
-             "noyes")  AC_SUBST(ENABLE_DOCS,"NO")
-                       doc_reason="(no haddock)";;
-             "yesyes") AC_SUBST(ENABLE_DOCS,"YES");;
-             *) echo "Fail: |${HADDOCK}${HSCOLOUR}|"
-           esac
-           ;;
-esac
+dnl AC_ARG_ENABLE(docs,
+dnl   [AS_HELP_STRING([--enable-docs], [build documentation])],
+dnl   [if test "$enableval" = "yes"; then
+dnl      enable_docs="yes"
+dnl    else
+dnl      enable_docs="no"
+dnl    fi
+dnl   ], [enable_docs="maybe"])
+dnl 
+dnl AC_PATH_PROGS(HADDOCK,haddock,no)
+dnl AC_PATH_PROGS(HSCOLOUR,hscolour,no)
+dnl 
+dnl case "$enable_docs" in
+dnl   "yes")
+dnl            AC_SUBST(ENABLE_DOCS,"YES")
+dnl            ;;
+dnl   "no")
+dnl            AC_SUBST(ENABLE_DOCS,"NO")
+dnl            ;;
+dnl   "maybe")
+dnl            if test "${HADDOCK}" == "no"; then
+dnl              HADDOCK_TEST="no"
+dnl            else
+dnl              HADDOCK_TEST="yes"
+dnl            fi
+dnl            if test "${HSCOLOUR}" == "no"; then
+dnl              HSCOLOUR_TEST="no"
+dnl            else
+dnl              HSCOLOUR_TEST="yes"
+dnl            fi
+dnl            case "${HADDOCK_TEST}${HSCOLOUR_TEST}" in
+dnl              "nono")   AC_SUBST(ENABLE_DOCS,"NO")
+dnl                        doc_reason="(no haddock or hscolour)";;
+dnl              "yesno")  AC_SUBST(ENABLE_DOCS,"NO")
+dnl                        doc_reason="(no hscolour)";;
+dnl              "noyes")  AC_SUBST(ENABLE_DOCS,"NO")
+dnl                        doc_reason="(no haddock)";;
+dnl              "yesyes") AC_SUBST(ENABLE_DOCS,"YES");;
+dnl              *) echo "Fail: |${HADDOCK}${HSCOLOUR}|"
+dnl            esac
+dnl            ;;
+dnl esac
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -272,83 +272,88 @@ dnl Xen Stuff
 dnl
 dnl -------------------------------------------------------------------------
 
-AC_ARG_WITH(xen-tree, 
- [AS_HELP_STRING([--with-xen-tree=ARG],
-   [build against the given Xen source tree])],
- [INCLUDE_DIRS="$withval"
-  CURDIR=`pwd`
-  CPPFLAGS="${CPPFLAGS} -I${withval}/dist/install/usr/include"
-  AC_SUBST(XEN_INCLUDE_DIRECTORY,"${withval}/dist/install/usr/include")
-  AC_SUBST(XEN_LIBRARY_DIRECTORY,"${withval}/dist/install/usr/lib")
-  AC_SUBST(XEN_BIN_ROOT,"${withval}/dist/install/")],
- [AC_SUBST(XEN_BIN_ROOT,"/")
-  AC_SUBST(XEN_INCLUDE_DIRECTORY,"/usr/include")
-  AC_SUBST(XEN_LIBRARY_DIRECTORY,"/usr/lib")])
-
-dnl First, see if we have Xen around.
-AC_CHECK_HEADER(xen/xen.h,[],[
-  LOG_FAILURE("Couldn't find the Xen headers. Please either install them")
-  LOG_FAILUREC(["(they're probably in something like xen-devel), or use the"])
-  LOG_FAILUREC(["--with-xen-tree configure flag to point this script at the"])
-  LOG_FAILUREC(["base of a Xen source repository checkout."])])
-
-AC_CHECK_HEADER(xenstore.h, HAVE_XENSTORE_H=yes, HAVE_XENSTORE_H=no)
-AC_CHECK_HEADER(xs.h, HAVE_XS_H=yes, HAVE_XS_H=no)
-
-if test "${HAVE_XENSTORE_H}${HAVE_XS_H}" = "nono"; then
-  LOG_FAILURE("The HaLVM requires either xenstore.h or xs.h.")
-fi
-
-if test "${HAVE_XENSTORE_H}" = "yes"; then
-  AC_SUBST(XENSTORE_H_OPT, "-DHAVE_XENSTORE_H")
-else
-  AC_SUBST(XENSTORE_H_OPT, "")
-fi
-
-dnl Is this a 64-bit platform?
+dnl AC_ARG_WITH(xen-tree, 
+dnl  [AS_HELP_STRING([--with-xen-tree=ARG],
+dnl    [build against the given Xen source tree])],
+dnl  [INCLUDE_DIRS="$withval"
+dnl   CURDIR=`pwd`
+dnl   CPPFLAGS="${CPPFLAGS} -I${withval}/dist/install/usr/include"
+dnl   AC_SUBST(XEN_INCLUDE_DIRECTORY,"${withval}/dist/install/usr/include")
+dnl   AC_SUBST(XEN_LIBRARY_DIRECTORY,"${withval}/dist/install/usr/lib")
+dnl   AC_SUBST(XEN_BIN_ROOT,"${withval}/dist/install/")],
+dnl  [AC_SUBST(XEN_BIN_ROOT,"/")
+dnl   AC_SUBST(XEN_INCLUDE_DIRECTORY,"/usr/include")
+dnl   AC_SUBST(XEN_LIBRARY_DIRECTORY,"/usr/lib")])
+dnl 
+dnl dnl First, see if we have Xen around.
+dnl AC_CHECK_HEADER(xen/xen.h,[],[
+dnl   LOG_FAILURE("Couldn't find the Xen headers. Please either install them")
+dnl   LOG_FAILUREC(["(they're probably in something like xen-devel), or use the"])
+dnl   LOG_FAILUREC(["--with-xen-tree configure flag to point this script at the"])
+dnl   LOG_FAILUREC(["base of a Xen source repository checkout."])])
+dnl 
+dnl AC_CHECK_HEADER(xenstore.h, HAVE_XENSTORE_H=yes, HAVE_XENSTORE_H=no)
+dnl AC_CHECK_HEADER(xs.h, HAVE_XS_H=yes, HAVE_XS_H=no)
+dnl 
+dnl if test "${HAVE_XENSTORE_H}${HAVE_XS_H}" = "nono"; then
+dnl   LOG_FAILURE("The HaLVM requires either xenstore.h or xs.h.")
+dnl fi
+dnl 
+dnl if test "${HAVE_XENSTORE_H}" = "yes"; then
+dnl   AC_SUBST(XENSTORE_H_OPT, "-DHAVE_XENSTORE_H")
+dnl else
+dnl   AC_SUBST(XENSTORE_H_OPT, "")
+dnl fi
+dnl 
 if test `uname -m` = "x86_64"; then
-  memory_model="64";
-  arch="x86_64"
-  abi="64"
+  AC_SUBST(ARCHITECTURE, "x86_64")
 else
-  arch="i386"
-  abi="32"
+  AC_SUBST(ARCHITECTURE, "i386")
 fi
-
-AC_SUBST(ARCHITECTURE, "$arch")
-AC_SUBST(ABI, "$abi")
-AC_SUBST(target,"${arch}-unknown-HaLVM")
-AC_SUBST(target_prefix,"${arch}-unknown-HaLVM-")
-
-if test "$memory_model" != "64"; then
-  AC_ARG_ENABLE(pae,
-   [AS_HELP_STRING([--enable-pae],
-     [use the Intel PAE memory model. This is the default.])],
-   [if test "$enableval" = "yes"; then
-      memory_model="32p"
-    else
-      memory_model="32"
-    fi ],
-   [memory_model="32p"])
-fi
-
-AC_CHECK_DECL(xc_gnttab_open, 
- [AC_SUBST(BUILD_LIBIVC, "y")],
- [AC_SUBST(BUILD_LIBIVC, "n")],
- [#include <xenctrl.h>])
-
-case "$memory_model" in
-  "32")  AC_SUBST(ARCH_OPTION, "-DCONFIG_X86_32")
-         MEMMODEL_STR="32-bit" ;
-         ARCH=i386 ;;
-  "32p") AC_SUBST(ARCH_OPTION, "-DCONFIG_X86_PAE")
-         MEMMODEL_STR="PAE (36-bit physical / 32-bit virtual)" ;
-         ARCH=i386 ;;
-  "64")  AC_SUBST(ARCH_OPTION, "-DCONFIG_X86_64")
-         MEMMODEL_STR="64-bit" ;
-         ARCH=x86_64 ;;
-  *)     LOG_FAILURE("Unknown memory model (internal error?)") ;;
-esac
+dnl dnl Is this a 64-bit platform?
+dnl if test `uname -m` = "x86_64"; then
+dnl   memory_model="64";
+dnl   arch="x86_64"
+dnl   abi="64"
+dnl else
+dnl   arch="i386"
+dnl   abi="32"
+dnl fi
+dnl 
+dnl AC_SUBST(ARCHITECTURE, "$arch")
+dnl AC_SUBST(ABI, "$abi")
+dnl AC_SUBST(target,"${arch}-unknown-HaLVM")
+dnl AC_SUBST(target_prefix,"${arch}-unknown-HaLVM-")
+dnl 
+dnl if test "$memory_model" != "64"; then
+dnl   AC_ARG_ENABLE(pae,
+dnl    [AS_HELP_STRING([--enable-pae],
+dnl      [use the Intel PAE memory model. This is the default.])],
+dnl    [if test "$enableval" = "yes"; then
+dnl       memory_model="32p"
+dnl     else
+dnl       memory_model="32"
+dnl     fi ],
+dnl    [memory_model="32p"])
+dnl fi
+dnl 
+dnl AC_CHECK_DECL(xc_gnttab_open, 
+dnl  [AC_SUBST(BUILD_LIBIVC, "y")],
+dnl  [AC_SUBST(BUILD_LIBIVC, "n")],
+dnl  [#include <xenctrl.h>])
+dnl 
+dnl case "$memory_model" in
+dnl   "32")  AC_SUBST(ARCH_OPTION, "-DCONFIG_X86_32")
+dnl          MEMMODEL_STR="32-bit" ;
+dnl          ARCH=i386 ;;
+dnl   "32p") AC_SUBST(ARCH_OPTION, "-DCONFIG_X86_PAE")
+dnl          MEMMODEL_STR="PAE (36-bit physical / 32-bit virtual)" ;
+dnl          ARCH=i386 ;;
+dnl   "64")  AC_SUBST(ARCH_OPTION, "-DCONFIG_X86_64")
+dnl          MEMMODEL_STR="64-bit" ;
+dnl          ARCH=x86_64 ;;
+dnl   *)     LOG_FAILURE("Unknown memory model (internal error?)") ;;
+dnl esac
 
 
 dnl -------------------------------------------------------------------------
@@ -366,9 +371,7 @@ if test "${FAILED}" == "Yes"; then
   echo "Fix these errors, and then try again."
 else
   echo
-  echo "  HaLVM Memory Model: ${MEMMODEL_STR}"
   echo "  Integer library: ${INTEGER_LIBRARY}"
-  echo "  Building documentation: ${ENABLE_DOCS} ${doc_reason}"
   echo
   AC_CONFIG_FILES([
                    autoconf.mk

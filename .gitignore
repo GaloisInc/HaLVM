@@ -8,8 +8,7 @@ config.status
 configure
 dist
 
-platform_ghc
-build
+platform-ghc
 src/gmp
 
 src/HALVMCore/dist-install
