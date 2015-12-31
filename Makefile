@@ -1,5 +1,5 @@
 # BANNERSTART
-# - Copyright 2006-2008, Galois, Inc.
+# - Copyright 2006-2015, Galois, Inc.
 # - This software is distributed under a standard, three-clause BSD license.
 # - Please see the file LICENSE, distributed with this software, for specific
 # - terms and conditions.
@@ -14,35 +14,39 @@ drproper:: mrproper
 
 include autoconf.mk
 include platform-ghc.mk
-
-###############################################################################
-# Prepping / supporting the GHC build
-################################################################################
-
-# array.cabal is the witness for the presence of all GHC's libraries
-$(TOPDIR)/halvm-ghc/libraries/array/array.cabal:
-	(cd halvm-ghc && ./sync-all --no-dph -r http://darcs.haskell.org get)
-	(cd halvm-ghc && ./sync-all checkout -t origin/ghc-7.8)
-
-# Replace GHC's base with halvm-base.
-# When NoIO.hs exists, we know this step has succeeded
-$(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs: \
-             $(TOPDIR)/halvm-ghc/libraries/array/array.cabal
-	$(RM) -rf $(TOPDIR)/halvm-ghc/libraries/base
-	$(GIT) clone $(GIT_LIB_URL)/halvm-base.git -b halvm halvm-ghc/libraries/base
-
-$(TOPDIR)/halvm-ghc/libraries/base/ghc.mk: \
-             $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs \
-			 $(TOPDIR)/halvm-ghc/mk/build.mk
-	(cd halvm-ghc && ./boot)
-
-# Link Xen headers into the HaLVM runtime include dir
-$(TOPDIR)/halvm-ghc/rts/xen/include/xen:
-	$(LN) -sf $(XEN_INCLUDE_DIR)/xen $(TOPDIR)/halvm-ghc/rts/xen/include/xen
+include rumpkernel.mk
 
 # Link our custom build.mk - controls the GHC build, forces Stage1Only etc
 $(TOPDIR)/halvm-ghc/mk/build.mk: $(TOPDIR)/src/misc/build.mk
 	$(LN) -sf $(TOPDIR)/src/misc/build.mk $@
+
+# Run boot, for whatever it does.
+$(TOPDIR)/halvm-ghc/libraries/base/ghc.mk: $(TOPDIR)/halvm-ghc/mk/build.mk
+	(cd halvm-ghc && ./boot)
+
+HALVM_GHC_CONFIGURE_FLAGS  = --target=$(TARGET_ARCH)
+HALVM_GHC_CONFIGURE_FLAGS += --with-gcc=$(CC)
+HALVM_GHC_CONFIGURE_FLAGS += --with-ld=$(LD)
+HALVM_GHC_CONFIGURE_FLAGS += --with-nm=$(NM)
+HALVM_GHC_CONFIGURE_FLAGS += --with-ar=$(AR)
+HALVM_GHC_CONFIGURE_FLAGS += --with-objdump=$(OBJDUMP)
+HALVM_GHC_CONFIGURE_FLAGS += --with-ranlib=$(RANLIB)
+HALVM_GHC_CONFIGURE_FLAGS += --with-ghc=$(PLATFORM_GHC)
+HALVM_GHC_CONFIGURE_FLAGS += --prefix=$(prefix)
+
+$(TOPDIR)/halvm-ghc/mk/config.mk: $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk   \
+                                  $(PLATFORM_GHC) $(PLATCABAL) $(PLATALEX)    \
+                                  $(PLATHAPPY) $(PLATHADDOCK) $(PLATHSCOLOUR) \
+                                  $(RUMPKERNEL_TARGET)
+	(cd halvm-ghc && \
+	  PATH=${PATH}:$(PLATFORM_GHC_DIR)/bin \
+	  CPPFLAGS=-I$(TOPDIR)/rumpkernel/src/include \
+	  ./configure $(HALVM_GHC_CONFIGURE_FLAGS))
+
+
+# Link Xen headers into the HaLVM runtime include dir
+$(TOPDIR)/halvm-ghc/rts/xen/include/xen:
+	$(LN) -sf $(XEN_INCLUDE_DIR)/xen $(TOPDIR)/halvm-ghc/rts/xen/include/xen
 
 # Link HALVMCore into GHC's library path, where it will be found and built
 # by the GHC build system.
@@ -221,21 +225,6 @@ install::$(TOPDIR)/src/bootloader/start.o
 ###############################################################################
 # The HaLVM!
 ###############################################################################
-
-HALVM_GHC_CONFIGURE_FLAGS  = --target=$(TARGET_ARCH)
-HALVM_GHC_CONFIGURE_FLAGS += --with-gcc=$(CC)
-HALVM_GHC_CONFIGURE_FLAGS += --with-ld=$(LD)
-HALVM_GHC_CONFIGURE_FLAGS += --with-nm=$(NM)
-HALVM_GHC_CONFIGURE_FLAGS += --with-ar=$(AR)
-HALVM_GHC_CONFIGURE_FLAGS += --with-objdump=$(OBJDUMP)
-HALVM_GHC_CONFIGURE_FLAGS += --with-ranlib=$(RANLIB)
-HALVM_GHC_CONFIGURE_FLAGS += --with-ghc=$(PLATGHC)
-HALVM_GHC_CONFIGURE_FLAGS += --prefix=$(prefix)
-
-$(TOPDIR)/halvm-ghc/mk/config.mk: $(GHC_PREPPED) $(PLATGHC) $(PLATALEX) \
-                                  $(PLATHAPPY) $(PLATHADDOCK) $(PLATHAPPY)
-	(cd halvm-ghc && \
-	    $(BUILDENV) && ./configure $(HALVM_GHC_CONFIGURE_FLAGS))
 
 # The GHC build system picks up everything linked into halvm-ghc/libraries
 $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1: $(TOPDIR)/halvm-ghc/mk/config.mk

@@ -30,8 +30,8 @@ PLATFORM_GHC_DIR  := $(TOPDIR)/platform-ghc
 PLATFORM_GHC      := $(PLATFORM_GHC_DIR)/bin/ghc
 PLATFORM_CABAL    := $(PLATFORM_GHC_DIR)/bin/cabal
 PLATCABAL         := $(PLATFORM_GHC_DIR)/bin/cabal.sh
-PLATALEX 	  := $(PLATFORM_GHC_DIR)/bin/alex
-PLATHAPPY	  := $(PLATFORM_GHC_DIR)/bin/happy
+PLATALEX          := $(PLATFORM_GHC_DIR)/bin/alex
+PLATHAPPY         := $(PLATFORM_GHC_DIR)/bin/happy
 PLATHADDOCK       := $(PLATFORM_GHC_DIR)/bin/haddock
 PLATHSCOLOUR      := $(PLATFORM_GHC_DIR)/bin/HsColour
 
