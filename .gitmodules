@@ -4,3 +4,6 @@
 [submodule "src/openlibm"]
 	path = src/openlibm
 	url = git://github.com/acw/openlibm
+[submodule "rumprun"]
+	path = rumprun
+	url = https://github.com/rumpkernel/rumprun

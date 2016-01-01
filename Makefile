@@ -31,6 +31,7 @@ HALVM_GHC_CONFIGURE_FLAGS += --with-nm=$(NM)
 HALVM_GHC_CONFIGURE_FLAGS += --with-ar=$(AR)
 HALVM_GHC_CONFIGURE_FLAGS += --with-objdump=$(OBJDUMP)
 HALVM_GHC_CONFIGURE_FLAGS += --with-ranlib=$(RANLIB)
+HALVM_GHC_CONFIGURE_FLAGS += --with-readelf=$(READELF)
 HALVM_GHC_CONFIGURE_FLAGS += --with-ghc=$(PLATFORM_GHC)
 HALVM_GHC_CONFIGURE_FLAGS += --prefix=$(prefix)
 
@@ -40,7 +41,7 @@ $(TOPDIR)/halvm-ghc/mk/config.mk: $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk   \
                                   $(RUMPKERNEL_TARGET)
 	(cd halvm-ghc && \
 	  PATH=${PATH}:$(PLATFORM_GHC_DIR)/bin \
-	  CPPFLAGS=-I$(TOPDIR)/rumpkernel/src/include \
+	  CPPFLAGS=-I$(RUMP_INCLUDE_DIR) \
 	  ./configure $(HALVM_GHC_CONFIGURE_FLAGS))
 
 
