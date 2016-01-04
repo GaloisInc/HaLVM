@@ -162,6 +162,10 @@ dnl     LOG_FAILURE("The HaLVM requires GHC's terminfo library to be installed g
 dnl   fi
 dnl fi
 
+AC_PROG_CC
+AC_PROG_CXX
+AC_PROG_CXXCPP
+
 dnl -------------------------------------------------------------------------
 dnl
 dnl C Compiler Oddities: Here we check for a few different flags that we

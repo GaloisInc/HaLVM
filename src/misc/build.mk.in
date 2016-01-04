@@ -7,6 +7,7 @@ GhcRTSWays = thr v p debug thr_debug
 
 # These are copied from the "perf" option
 SRC_HC_OPTS     = -O -H64m
+SRC_HSC2HS_OPTS = -L@abs_top_builddir@/src/misc/netbsd_compat.o
 GhcStage1HcOpts = -O -fasm
 GhcStage2HcOpts = -O2 -fasm
 GhcHcOpts       = -Rghc-timing
@@ -24,8 +25,6 @@ SRC_CC_OPTS += @NO_FRAME_PTR_OPT@
 SRC_CC_OPTS += @NO_ASYNC_UNWIND_OPT@
 SRC_CC_OPTS += @NO_RED_ZONE_OPT@
 SRC_CC_OPTS += @NO_BUILTIN_OPT@
-SRC_CC_OPTS += @ARCH_OPTION@
-
 
 NoFibWays =
 STRIP_CMD = :
