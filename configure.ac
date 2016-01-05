@@ -112,7 +112,7 @@ AC_FORCE_EXIST(CURL,curl)
 dnl AC_FORCE_EXIST(ECHO,echo)
 dnl AC_FORCE_EXIST(FIND,find)
 dnl AC_FORCE_EXIST(GIT,git)
-dnl AC_FORCE_EXIST(INSTALL,install)
+AC_FORCE_EXIST(INSTALL,install)
 AC_FORCE_EXIST(LD,ld)
 dnl AC_FORCE_EXIST(LIBTOOL,libtool) dnl Required by Ubuntu 12 for autoreconf
 AC_FORCE_EXIST(LN,ln)

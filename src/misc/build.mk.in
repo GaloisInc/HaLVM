@@ -5,8 +5,15 @@ DYNAMIC_GHC_PROGRAMS := NO
 GhcLibWays = v p
 GhcRTSWays = thr v p debug thr_debug
 
+ifeq (@ARCHITECTURE@,x86_64)
+RUMP_ARCH=amd64
+else
+RUMP_ARCH=i686
+endif
+
 # These are copied from the "perf" option
 SRC_HC_OPTS     = -O -H64m
+SRC_CPP_OPTS    = -nostdinc -I@abs_top_builddir@/rumprun/obj-$(RUMP_ARCH)-xen/dest.stage/include
 SRC_HSC2HS_OPTS = -L@abs_top_builddir@/src/misc/netbsd_compat.o
 GhcStage1HcOpts = -O -fasm
 GhcStage2HcOpts = -O2 -fasm

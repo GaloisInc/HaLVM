@@ -77,6 +77,12 @@ all:: $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1
 clean::
 	$(MAKE) -C halvm-ghc clean
 
+install::
+	$(MAKE) -C halvm-ghc install ghclibdir=$(halvmlibdir) DESTDIR=$(DESTDIR) stage=1
+
+install:: $(TOPDIR)/src/scripts/halvm-ghc
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-ghc $(DESTDIR)$(bindir)/halvm-ghc
+
 # 
 # 
 # # Link Xen headers into the HaLVM runtime include dir

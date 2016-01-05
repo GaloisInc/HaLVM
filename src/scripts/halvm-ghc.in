@@ -11,10 +11,9 @@ prefix=@prefix@
 exec_prefix=@exec_prefix@
 bindir=@bindir@
 libdir=@libdir@/HaLVM-@PACKAGE_VERSION@
+arch=@ARCHITECTURE@
 
-GHCBIN="${bindir}/@target_prefix@ghc"
-#LIBDIROPT="-B${libdir}"
-LINKSCRIPTOPT="-pgml ${libdir}/ldkernel -optl -static -rtsopts"
-LIBDIROPT2="-L${libdir}"
+GHCBIN="${bindir}/${arch}-unknown-HaLVM-ghc"
+LIBDIROPT="-L${libdir} -static -rtsopts"
 
-exec $GHCBIN $LIBDIROPT $LIBDIROPT2 ${LINKSCRIPTOPT} ${1+"$@"}
+exec ${GHCBIN} ${LIBDIROPT} ${1+"$@"}
