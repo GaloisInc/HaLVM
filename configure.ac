@@ -382,6 +382,7 @@ else
                    autoconf.mk
                    examples/standard.mk
                    src/HALVMCore/HALVMCore.buildinfo
+		   src/XenRaw/XenRaw.buildinfo
                    src/misc/build.mk
                    src/scripts/halvm-cabal
                    src/scripts/halvm-config

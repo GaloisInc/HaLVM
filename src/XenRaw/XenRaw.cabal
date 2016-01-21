@@ -7,7 +7,7 @@ description:    This package provides access to raw Xen capabilities.
 synopsis:       Integration with basic Xen capabilities
 category:       HaLVM, System
 stability:      experimental
-build-type:     Configure
+build-type:     Simple
 cabal-version:  >= 1.2
 tested-with:    GHC ==7.10.0
 

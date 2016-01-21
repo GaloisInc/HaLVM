@@ -1,1 +1,0 @@
-ld-options: -T@prefix@/lib/HaLVM-@PACKAGE_VERSION@/xen.ldscript
