@@ -24,17 +24,14 @@ $(TOPDIR)/halvm-ghc/mk/build.mk: $(TOPDIR)/src/misc/build.mk
 clean::
 	$(RM) -f $(TOPDIR)/halvm-ghc/mk/build.mk
 
-$(TOPDIR)/src/XenRaw/configure:
-	(cd $(TOPDIR)/src/XenRaw && autoconf)
-
 # Link HALVMCore into GHC's library path, where it will be found and built
 # by the GHC build system.
-$(TOPDIR)/halvm-ghc/libraries/XenRaw: $(TOPDIR)/src/XenRaw/configure
-	if [ ! -h $@ ]; then $(LN) -sf $(TOPDIR)/src/XenRaw $@ ; fi
+$(TOPDIR)/halvm-ghc/libraries/HaLVMInterfaces: $(TOPDIR)/src/HaLVMInterfaces/HaLVMInterfaces.cabal
+	if [ ! -h $@ ]; then $(LN) -sf $(TOPDIR)/src/HaLVMInterfaces $@ ; fi
 
 # Run boot, for whatever it does.
 $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk: $(TOPDIR)/halvm-ghc/mk/build.mk \
-                                           $(TOPDIR)/halvm-ghc/libraries/XenRaw
+                                           $(TOPDIR)/halvm-ghc/libraries/HaLVMInterfaces
 	(cd halvm-ghc && ./boot)
 
 clean::
