@@ -9,6 +9,8 @@
 
 include autoconf.mk
 
+RELEASE=1
+
 .PHONY: all
 all::
 
@@ -460,4 +462,21 @@ install::
 	$(FIND) $(TOPDIR)/platform_ghc -name "*so" -name '*-ghc*' \
 	    -exec cp '{}' $(DESTDIR)$(halvmlibdir)/lib/ \;
 	$(INSTALL) -D $(TOPDIR)/src/scripts/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs
+
+FILELIST := $(filter-out $(TOPDIR)/HaLVM-$(HaLVM_VERSION),\
+              $(filter-out $(TOPDIR)/rpmbuild,\
+                $(wildcard $(TOPDIR)/*)))
+
+.PHONY: packages
+packages:
+	mkdir -p $(TOPDIR)/HaLVM-${HaLVM_VERSION} $(TOPDIR)/packages
+	mkdir -p $(TOPDIR)/rpmbuild/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS}
+	rm -rf $(TOPDIR)/HaLVM-${HaLVM_VERSION}/*
+	cp -r $(FILELIST) $(TOPDIR)/HaLVM-${HaLVM_VERSION}/
+	tar czf $(TOPDIR)/rpmbuild/SOURCES/HaLVM-${HaLVM_VERSION}.tar.gz HaLVM-${HaLVM_VERSION}/
+	rm -rf $(TOPDIR)/HaLVM-${HaLVM_VERSION}
+	ln -sf $(TOPDIR)/src/misc/HaLVM.spec $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
+	rpmbuild -ba --define "_topdir $(TOPDIR)/rpmbuild" --define "_version $(HaLVM_VERSION)" --define "_release $(RELEASE)" $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
+	rpmbuild -ba --with gmp --define "_topdir $(TOPDIR)/rpmbuild" --define "_version $(HaLVM_VERSION)" --define "_release $(RELEASE)" $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
+	find rpmbuild -name "*.*rpm" -exec cp '{}' $(TOPDIR)/packages/ \;
 
