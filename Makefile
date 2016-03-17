@@ -472,10 +472,11 @@ packages:
 	mkdir -p $(TOPDIR)/HaLVM-${HaLVM_VERSION} $(TOPDIR)/packages
 	mkdir -p $(TOPDIR)/rpmbuild/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS}
 	rm -rf $(TOPDIR)/HaLVM-${HaLVM_VERSION}/*
+	find . -name .git -delete
 	cp -r $(FILELIST) $(TOPDIR)/HaLVM-${HaLVM_VERSION}/
 	tar czf $(TOPDIR)/rpmbuild/SOURCES/HaLVM-${HaLVM_VERSION}.tar.gz HaLVM-${HaLVM_VERSION}/
 	rm -rf $(TOPDIR)/HaLVM-${HaLVM_VERSION}
-	ln -sf $(TOPDIR)/src/misc/HaLVM.spec $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
+	cp $(TOPDIR)/src/misc/HaLVM.spec $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
 	rpmbuild -ba --define "_topdir $(TOPDIR)/rpmbuild" --define "_version $(HaLVM_VERSION)" --define "_release $(RELEASE)" $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
 	rpmbuild -ba --with gmp --define "_topdir $(TOPDIR)/rpmbuild" --define "_version $(HaLVM_VERSION)" --define "_release $(RELEASE)" $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
 	find rpmbuild -name "*.*rpm" -exec cp '{}' $(TOPDIR)/packages/ \;
