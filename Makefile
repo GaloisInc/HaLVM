@@ -465,14 +465,13 @@ install::
 
 FILELIST := $(filter-out $(TOPDIR)/HaLVM-$(HaLVM_VERSION),\
               $(filter-out $(TOPDIR)/rpmbuild,\
-                $(wildcard $(TOPDIR)/*)))
+                $(wildcard $(TOPDIR)/* $(TOPDIR)/.git)))
 
 .PHONY: packages
 packages:
 	mkdir -p $(TOPDIR)/HaLVM-${HaLVM_VERSION} $(TOPDIR)/packages
 	mkdir -p $(TOPDIR)/rpmbuild/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS}
 	rm -rf $(TOPDIR)/HaLVM-${HaLVM_VERSION}/*
-	find . -name .git -delete
 	cp -r $(FILELIST) $(TOPDIR)/HaLVM-${HaLVM_VERSION}/
 	tar czf $(TOPDIR)/rpmbuild/SOURCES/HaLVM-${HaLVM_VERSION}.tar.gz HaLVM-${HaLVM_VERSION}/
 	rm -rf $(TOPDIR)/HaLVM-${HaLVM_VERSION}

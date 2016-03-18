@@ -27,3 +27,6 @@ src/misc/*.o
 src/profiling/convert-profile
 
 *.disk
+
+packages/
+rpmbuild/
