@@ -10,13 +10,15 @@
 module HaLVM.Interface.NIC(
          NetworkCardDriver(..)
        , NIC(..)
+       , NICOptions(..)
+       , NICStatistics(..)
        )
  where
 
 import Control.Concurrent.BoundedChan
 import Data.ByteString.Lazy(ByteString)
 import Data.IORef(IORef)
-import Data.Word(Word64)
+import Data.Word(Word64,Word8)
 
 -- |A HaLVM-compatible network card driver.
 data NetworkCardDriver = NetworkCardDriver {
@@ -49,7 +51,7 @@ instance Monoid NetworkCardDriver where
 -- `nicTxIPv4ChecksumOffload` before you assume that you don't need to do your
 -- own checksums.
 data NICOptions = NICOptions {
-       nicMAC                   :: Maybe(Word8,Word8,Word8,Word8,Word8,Word8)
+       nicMAC                   :: Maybe (Word8,Word8,Word8,Word8,Word8,Word8)
      , nicRxIPv4ChecksumOffload :: Bool
      , nicTxIPv4ChecksumOffload :: Bool
      , nicRxIPv6ChecksumOffload :: Bool

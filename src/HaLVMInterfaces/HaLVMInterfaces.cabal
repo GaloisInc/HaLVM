@@ -16,8 +16,9 @@ tested-with:        GHC ==7.10.0
 library
   ghc-options:      -Wall
   build-depends:
-                    base       >= 4.8.2  && < 4.10,
-                    bytestring >= 0.10.6 && < 0.11
+                    base        >= 4.8.2  && < 4.10,
+                    bytestring  >= 0.10.6 && < 0.11,
+                    BoundedChan >= 1.0.3  && < 1.2
   exposed-modules:
                     HaLVM.Interface.Console,
                     HaLVM.Interface.Disk,

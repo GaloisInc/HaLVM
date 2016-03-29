@@ -13,8 +13,12 @@ src/gmp
 
 src/HALVMCore/dist-install
 src/XenDevice/dist-install
+src/HaLVMInterfaces/dist-install
 
 src/XenDevice/GNUmakefile
+src/HaLVMInterfaces/GNUmakefile
+
+src/HaLVMInterfaces/ghc.mk
 
 src/libm/*/*.o
 src/libIVC/*/*.o
