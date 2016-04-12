@@ -6,7 +6,7 @@ dnl - terms and conditions.
 dnl Author: Adam Wick <awick@galois.com>
 dnl BANNEREND
 AC_PREREQ(2.60)
-AC_INIT(HALVM,2.0.2,awick@galois.com,halvm)
+AC_INIT(HALVM,2.0.3,awick@galois.com,halvm)
 
 dnl -------------------------------------------------------------------------
 dnl

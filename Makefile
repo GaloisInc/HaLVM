@@ -460,7 +460,7 @@ install:: $(PLATALEX) $(PLATCABAL) $(PLATHAPPY) $(PLATHADDOCK) $(PLATHSCOLOUR)
 # hsc2hs would be better.
 install::
 	$(FIND) $(TOPDIR)/platform_ghc -name "*so" -name '*-ghc*' \
-	    -exec cp '{}' $(DESTDIR)$(halvmlibdir)/rts-*/ \;
+	    -exec cp '{}' $(DESTDIR)$(halvmlibdir)/lib/ \;
 	$(INSTALL) -D $(TOPDIR)/src/scripts/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs
 
 FILELIST := $(filter-out $(TOPDIR)/HaLVM-$(HaLVM_VERSION),\
