@@ -467,16 +467,30 @@ FILELIST := $(filter-out $(TOPDIR)/HaLVM-$(HaLVM_VERSION),\
               $(filter-out $(TOPDIR)/rpmbuild,\
                 $(wildcard $(TOPDIR)/* $(TOPDIR)/.git)))
 
-.PHONY: packages
-packages:
-	mkdir -p $(TOPDIR)/HaLVM-${HaLVM_VERSION} $(TOPDIR)/packages
-	mkdir -p $(TOPDIR)/rpmbuild/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS}
-	rm -rf $(TOPDIR)/HaLVM-${HaLVM_VERSION}/*
-	cp -r $(FILELIST) $(TOPDIR)/HaLVM-${HaLVM_VERSION}/
-	tar czf $(TOPDIR)/rpmbuild/SOURCES/HaLVM-${HaLVM_VERSION}.tar.gz HaLVM-${HaLVM_VERSION}/
+HaLVM-${HaLVM_VERSION}.tar.gz:
 	rm -rf $(TOPDIR)/HaLVM-${HaLVM_VERSION}
+	mkdir -p $(TOPDIR)/HaLVM-${HaLVM_VERSION}
+	cp -r $(FILELIST) $(TOPDIR)/HaLVM-${HaLVM_VERSION}/
+	tar czf $@ HaLVM-${HaLVM_VERSION}/
+	rm -rf $(TOPDIR)/HaLVM-${HaLVM_VERSION}
+
+.PHONY: rpm
+rpm: HaLVM-${HaLVM_VERSION}.tar.gz
+	cp HaLVM-${HaLVM_VERSION}.tar.gz $(TOPDIR)/rpmbuild/SOURCES/
 	cp $(TOPDIR)/src/misc/HaLVM.spec $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
 	rpmbuild -ba --define "_topdir $(TOPDIR)/rpmbuild" --define "_version $(HaLVM_VERSION)" --define "_release $(RELEASE)" $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
 	rpmbuild -ba --with gmp --define "_topdir $(TOPDIR)/rpmbuild" --define "_version $(HaLVM_VERSION)" --define "_release $(RELEASE)" $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
 	find rpmbuild -name "*.*rpm" -exec cp '{}' $(TOPDIR)/packages/ \;
 
+.PHONY: deb
+deb: HaLVM-${HaLVM_VERSION}.tar.gz
+	rm -rf halvm-${HaLVM_VERSION}
+	tar zxf HaLVM-${HaLVM_VERSION}.tar.gz
+	mv HaLVM-${HaLVM_VERSION} halvm-${HaLVM_VERSION}
+	tar cJf halvm-${HaLVM_VERSION}.tar.xz halvm-${HaLVM_VERSION}/
+	mv halvm-${HaLVM_VERSION}.tar.xz halvm-${HaLVM_VERSION}/
+	(cd halvm-${HaLVM_VERSION} && dh_make -c bsd -e awick@galois.com -s -f halvm-${HaLVM_VERSION}.tar.xz -y)
+	echo 'extend-diff-ignore = "(^|/)(config\.sub|config\.guess|Makefile)$$"' > \
+	     halvm-${HaLVM_VERSION}/debian/source/options
+	sed -ie "s/--with.*//g" halvm-${HaLVM_VERSION}/debian/rules
+	(cd halvm-$(HaLVM_VERSION) && env LD_LIBRARY_PATH=$(TOPDIR)/halvm-${HaLVM_VERSION}/debian/halvm/usr/lib/x86_64-linux-gnu/HaLVM-2.0.3/lib/ debuild -uc -us -nc)
