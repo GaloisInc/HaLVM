@@ -493,4 +493,6 @@ deb: HaLVM-${HaLVM_VERSION}.tar.gz
 	echo 'extend-diff-ignore = "(^|/)(config\.sub|config\.guess|Makefile)$$"' > \
 	     halvm-${HaLVM_VERSION}/debian/source/options
 	sed -ie "s/--with.*//g" halvm-${HaLVM_VERSION}/debian/rules
-	(cd halvm-$(HaLVM_VERSION) && env LD_LIBRARY_PATH=$(TOPDIR)/halvm-${HaLVM_VERSION}/debian/halvm/usr/lib/x86_64-linux-gnu/HaLVM-2.0.3/lib/ debuild -uc -us -nc)
+	echo "override_dh_shlibdeps:" >> halvm-${HaLVM_VERSION}/debian/rules
+	echo "	dh_shlibdeps -l$/usr/lib/x86_64-linux-gnu/HaLVM-2.0.3/lib" >> halvm-${HaLVM_VERSION}/debian/rules
+	(cd halvm-$(HaLVM_VERSION) && debuild -uc -us -nc)
