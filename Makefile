@@ -467,7 +467,9 @@ FILELIST := $(filter-out $(TOPDIR)/HaLVM-$(HaLVM_VERSION),\
               $(filter-out $(TOPDIR)/rpmbuild,\
                 $(wildcard $(TOPDIR)/* $(TOPDIR)/.git)))
 
-HaLVM-${HaLVM_VERSION}.tar.gz:
+SRC_TARBALL=HaLVM-$(HaLVM_VERSION).tar.gz
+
+$(SRC_TARBALL):
 	rm -rf $(TOPDIR)/HaLVM-${HaLVM_VERSION}
 	mkdir -p $(TOPDIR)/HaLVM-${HaLVM_VERSION}
 	cp -r $(FILELIST) $(TOPDIR)/HaLVM-${HaLVM_VERSION}/
@@ -475,22 +477,53 @@ HaLVM-${HaLVM_VERSION}.tar.gz:
 	rm -rf $(TOPDIR)/HaLVM-${HaLVM_VERSION}
 
 .PHONY: rpm
-rpm: HaLVM-${HaLVM_VERSION}.tar.gz
-	cp HaLVM-${HaLVM_VERSION}.tar.gz $(TOPDIR)/rpmbuild/SOURCES/
+rpm: $(SRC_TARBALL)
+	cp $(SRC_TARBALL) $(TOPDIR)/rpmbuild/SOURCES/
 	cp $(TOPDIR)/src/misc/HaLVM.spec $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
 	rpmbuild -ba --define "_topdir $(TOPDIR)/rpmbuild" --define "_version $(HaLVM_VERSION)" --define "_release $(RELEASE)" $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
 	rpmbuild -ba --with gmp --define "_topdir $(TOPDIR)/rpmbuild" --define "_version $(HaLVM_VERSION)" --define "_release $(RELEASE)" $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
 	find rpmbuild -name "*.*rpm" -exec cp '{}' $(TOPDIR)/packages/ \;
 
+DEB_ORIGSRC_TARBALL=halvm_$(HaLVM_VERSION).orig.tar.gz
+DEB_CONFSRC_TARBALL=halvm_$(HaLVM_VERSION)-$(RELEASE).debian.tar.gz
+DEB_DESC_FILE=halvm_$(HaLVM_VERSION)-$(RELEASE).dsc
+
+hash=openssl sha -$1 $2 | sed 's/.*= //g'
+sha1=$(call hash,sha1,$1)
+sha256=$(call hash,sha256,$1)
+size=stat -c "%s" $1
+
 .PHONY: deb
-deb: HaLVM-${HaLVM_VERSION}.tar.gz
-	rm -rf halvm-${HaLVM_VERSION}
-	tar zxf HaLVM-${HaLVM_VERSION}.tar.gz
-	mv HaLVM-${HaLVM_VERSION} halvm-${HaLVM_VERSION}
-	tar cJf halvm-${HaLVM_VERSION}.tar.xz halvm-${HaLVM_VERSION}/
-	mv halvm-${HaLVM_VERSION}.tar.xz halvm-${HaLVM_VERSION}/
-	(cd halvm-${HaLVM_VERSION} && dh_make -c bsd -e awick@galois.com -s -f halvm-${HaLVM_VERSION}.tar.xz -y)
-	echo 'extend-diff-ignore = "(^|/)(config\.sub|config\.guess|Makefile)$$"' > \
-	     halvm-${HaLVM_VERSION}/debian/source/options
-	sed -ie "s/--with.*//g" halvm-${HaLVM_VERSION}/debian/rules
-	(cd halvm-$(HaLVM_VERSION) && env LD_LIBRARY_PATH=$(TOPDIR)/halvm-${HaLVM_VERSION}/debian/halvm/usr/lib/x86_64-linux-gnu/HaLVM-2.0.3/lib/ debuild -uc -us -nc)
+deb: $(DEB_ORIGSRC_TARBALL) $(DEB_CONFSRC_TARBALL) $(DEB_DESC_FILE)
+	rm -rf HaLVM-$(HaLVM_VERSION) halvm-$(HaLVM_VERSION)
+	tar zxf $(DEB_ORIGSRC_TARBALL)
+	mv HaLVM-$(HaLVM_VERSION) halvm-$(HaLVM_VERSION)
+	tar zxf $(DEB_CONFSRC_TARBALL) -C halvm-$(HaLVM_VERSION)/
+	(cd halvm-$(HaLVM_VERSION) && dpkg-buildpackage -rfakeroot -uc)
+
+$(DEB_ORIGSRC_TARBALL): $(SRC_TARBALL)
+	cp $(SRC_TARBALL) $(DEB_ORIGSRC_TARBALL)
+
+$(DEB_CONFSRC_TARBALL): $(shell find $(TOPDIR)/src/debian)
+	tar cz -C src -f $(DEB_CONFSRC_TARBALL) debian/
+
+$(DEB_DESC_FILE): $(DEB_ORIGSRC_TARBALL) $(DEB_CONFSRC_TARBALL)
+	sed -e 's!ORIG_SHA1!'`$(call sha1,$(DEB_ORIGSRC_TARBALL))`'!g'     \
+        -e 's!ORIG_SHA256!'`$(call sha256,$(DEB_ORIGSRC_TARBALL))`'!g' \
+        -e 's!CONF_SHA256!'`$(call sha256,$(DEB_CONFSRC_TARBALL))`'!g' \
+        -e 's!CONF_SHA1!'`$(call sha1,$(DEB_CONFSRC_TARBALL))`'!g' \
+        -e 's!ORIG_SIZE!'`$(call size,$(DEB_ORIGSRC_TARBALL))`'!g' \
+        -e 's!CONF_SIZE!'`$(call size,$(DEB_CONFSRC_TARBALL))`'!g' \
+        -e 's!VERSION!$(HaLVM_VERSION)!g' \
+        -e 's!RELEASE!$(RELEASE)!g' \
+        src/misc/halvm.dsc > $(DEB_DESC_FILE)
+
+debclean:
+	$(RM) -f $(SRC_TARBALL)
+	$(RM) -f $(DEB_ORIGSRC_TARBALL)
+	$(RM) -f $(DEB_CONFSRC_TARBALL)
+	$(RM) -f $(DEB_DESC_FILE)
+	$(RM) -rf HaLVM-$(HaLVM_VERSION) halvm-$(HaLVM_VERSION)
+	$(RM) -f *.deb
+
+clean:: debclean

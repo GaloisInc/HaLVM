@@ -374,6 +374,7 @@ else
                    autoconf.mk
                    examples/standard.mk
                    src/HALVMCore/HALVMCore.buildinfo
+                   src/debian/rules
                    src/misc/build.mk
                    src/scripts/halvm-cabal
                    src/scripts/halvm-config

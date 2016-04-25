@@ -1,0 +1,16 @@
+Source: halvm
+Section: devel
+Priority: optional
+Maintainer: HaLVM Maintainers <halvm-devel@community.galois.com>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.4
+Homepage: http://halvm.org
+Vcs-Git: git://github.com/GaloisInc/HaLVM
+Vcs-Browser: http://github.com/GaloisInc/HaLVM
+
+Package: halvm
+Architecture: amd64 i386
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: The HaLVM unikernel development tools
+ Tools and scripts for building HaLVM-based unikernels, along with
+ example unikernels that illustrate key points.

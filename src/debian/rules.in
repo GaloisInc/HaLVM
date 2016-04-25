@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+VERSION:=@PACKAGE_VERSION@
+ARCH:=@ARCHITECTURE@
+
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+	echo "skip dh_auto_clean"
+
+override_dh_shlibdeps:
+	dh_shlibdeps -l/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/lib

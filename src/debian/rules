@@ -1,0 +1,34 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+VERSION:=2.0.3
+ARCH:=x86_64
+
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+	echo "skip dh_auto_clean"
+
+override_dh_shlibdeps:
+	dh_shlibdeps -l/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/lib
+
+override_dh_strip:
+	dh_strip
+	chrpath -d /usr/lib/$(ARCH)-linux/gnu/HaLVM-$(VERSION)/bin/alex
+	chrpath -d /usr/lib/$(ARCH)-linux/gnu/HaLVM-$(VERSION)/bin/cabal
+	chrpath -d /usr/lib/$(ARCH)-linux/gnu/HaLVM-$(VERSION)/bin/ghc
+	chrpath -d /usr/lib/$(ARCH)-linux/gnu/HaLVM-$(VERSION)/bin/ghc-pkg
+	chrpath -d /usr/lib/$(ARCH)-linux/gnu/HaLVM-$(VERSION)/bin/haddock
+	chrpath -d /usr/lib/$(ARCH)-linux/gnu/HaLVM-$(VERSION)/bin/happy
+	chrpath -d /usr/lib/$(ARCH)-linux/gnu/HaLVM-$(VERSION)/bin/HsColour
+	chrpath -r /usr/lib/$(ARCH)-linux/gnu/HaLVM-$(VERSION)/bin \
+	           /usr/lib/$(ARCH)-linux/gnu/HaLVM-$(VERSION)/bin/hsc2hs.bin
+	mv /usr/share/doc/ghc /usr/share/doc//HaLVM-ghc
+	mkdir -p /usre/share/HaLVM-$(VERSION)
+	cp -r examples /usr/share/HaLVM-$(VERSION)/
+
+
