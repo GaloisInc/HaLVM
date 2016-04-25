@@ -350,6 +350,16 @@ case "$memory_model" in
   *)     LOG_FAILURE("Unknown memory model (internal error?)") ;;
 esac
 
+AC_CHECK_FILE(/etc/os-release,
+  [source /etc/os-release
+   case "${ID}" in
+     "ubuntu") AC_SUBST(PACKAGE_TARGET, "Ubuntu")     ;;
+     "debian") AC_SUBST(PACKAGE_TARGET, "Debian")     ;;
+     "fedora") AC_SUBST(PACKAGE_TARGET, "Fedora")     ;;
+     "centos") AC_SUBST(PACKAGE_TARGET, "CentOS")     ;;
+     *)        AC_SUBST(PACKAGE_TARGET, "Unfamiliar") ;;
+   esac],
+  AC_SUBST(PACKAGE_TARGET, "Unknown"))
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -369,6 +379,7 @@ else
   echo "  HaLVM Memory Model: ${MEMMODEL_STR}"
   echo "  Integer library: ${INTEGER_LIBRARY}"
   echo "  Building documentation: ${ENABLE_DOCS} ${doc_reason}"
+  echo "  Package target: ${PACKAGE_TARGET}"
   echo
   AC_CONFIG_FILES([
                    autoconf.mk

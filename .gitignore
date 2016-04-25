@@ -35,3 +35,4 @@ rpmbuild/
 *.dsc
 halvm-*/
 halvm_*.changes
+src/debian/rules

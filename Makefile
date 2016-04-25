@@ -488,18 +488,26 @@ DEB_ORIGSRC_TARBALL=halvm_$(HaLVM_VERSION).orig.tar.gz
 DEB_CONFSRC_TARBALL=halvm_$(HaLVM_VERSION)-$(RELEASE).debian.tar.gz
 DEB_DESC_FILE=halvm_$(HaLVM_VERSION)-$(RELEASE).dsc
 
+DEBG_ORIGSRC_TARBALL=halvm-gmp_$(HaLVM_VERSION).orig.tar.gz
+DEBG_CONFSRC_TARBALL=halvm-gmp_$(HaLVM_VERSION)-$(RELEASE).debian.tar.gz
+DEBG_DESC_FILE=halvm-gmp_$(HaLVM_VERSION)-$(RELEASE).dsc
+
 hash=openssl sha -$1 $2 | sed 's/.*= //g'
 sha1=$(call hash,sha1,$1)
 sha256=$(call hash,sha256,$1)
 size=stat -c "%s" $1
 
 .PHONY: deb
-deb: $(DEB_ORIGSRC_TARBALL) $(DEB_CONFSRC_TARBALL) $(DEB_DESC_FILE)
+deb: $(DEB_ORIGSRC_TARBALL)  $(DEB_CONFSRC_TARBALL)  $(DEB_DESC_FILE) \
+     $(DEBG_ORIGSRC_TARBALL) $(DEBG_CONFSRC_TARBALL) $(DEBG_DESC_FILE)
 	rm -rf HaLVM-$(HaLVM_VERSION) halvm-$(HaLVM_VERSION)
 	tar zxf $(DEB_ORIGSRC_TARBALL)
 	mv HaLVM-$(HaLVM_VERSION) halvm-$(HaLVM_VERSION)
 	tar zxf $(DEB_CONFSRC_TARBALL) -C halvm-$(HaLVM_VERSION)/
-	(cd halvm-$(HaLVM_VERSION) && dpkg-buildpackage -rfakeroot -uc)
+	(cd halvm-$(HaLVM_VERSION) && dpkg-buildpackage -rfakeroot -uc -us)
+	tar zxf $(DEBG_ORIGSRC_TARBALL)
+	tar zxf $(DEBG_CONFSRC_TARBALL) -C halvm-gmp-$(HaLVM_VERSION)/
+	(cd halvm-gmp-$(HaLVM_VERSION) && dpkg-buildpackage -rfakeroot -uc -us)
 
 $(DEB_ORIGSRC_TARBALL): $(SRC_TARBALL)
 	cp $(SRC_TARBALL) $(DEB_ORIGSRC_TARBALL)
@@ -516,6 +524,34 @@ $(DEB_DESC_FILE): $(DEB_ORIGSRC_TARBALL) $(DEB_CONFSRC_TARBALL)
         -e 's!CONF_SIZE!'`$(call size,$(DEB_CONFSRC_TARBALL))`'!g' \
         -e 's!VERSION!$(HaLVM_VERSION)!g' \
         -e 's!RELEASE!$(RELEASE)!g' \
+        src/misc/halvm.dsc > $(DEB_DESC_FILE)
+
+$(DEBG_ORIGSRC_TARBALL): $(DEB_ORIGSRC_TARBALL)
+	rm -rf tmp
+	mkdir tmp
+	tar zx -C tmp -f $(DEB_ORIGSRC_TARBALL)
+	mv tmp/HaLVM-$(HaLVM_VERSION) tmp/halvm-gmp-$(HaLVM_VERSION)
+	tar cz -C tmp -f $@ halvm-gmp-$(HaLVM_VERSION)
+	rm -rf tmp
+
+$(DEBG_CONFSRC_TARBALL): $(shell find $(TOPDIR)/src/debian)
+	rm -rf tmp
+	cp -r src/debian tmp/debian
+	sed -ie 's/halvm/halvm-gmp/g' tmp/debian/changelog
+	sed -ie 's/ halvm/ halvm-gmp/g' tmp/debian/control
+	echo "DEB_CONFIGURE_EXTRA_FLAGS += --enable-gmp" >> tmp/debian/rules
+	tar cz -C tmp -f $@ debian/
+
+$(DEBG_DESC_FILE): $(DEBG_ORIGSRC_TARBALL) $(DEBG_CONFSRC_TARBALL)
+	sed -e 's!ORIG_SHA1!'`$(call sha1,$(DEB_ORIGSRC_TARBALL))`'!g'     \
+        -e 's!ORIG_SHA256!'`$(call sha256,$(DEB_ORIGSRC_TARBALL))`'!g' \
+        -e 's!CONF_SHA256!'`$(call sha256,$(DEB_CONFSRC_TARBALL))`'!g' \
+        -e 's!CONF_SHA1!'`$(call sha1,$(DEB_CONFSRC_TARBALL))`'!g' \
+        -e 's!ORIG_SIZE!'`$(call size,$(DEB_ORIGSRC_TARBALL))`'!g' \
+        -e 's!CONF_SIZE!'`$(call size,$(DEB_CONFSRC_TARBALL))`'!g' \
+        -e 's!VERSION!$(HaLVM_VERSION)!g' \
+        -e 's!RELEASE!$(RELEASE)!g' \
+         -e 's! halvm! halvm-gmp!g' \
         src/misc/halvm.dsc > $(DEB_DESC_FILE)
 
 debclean:
