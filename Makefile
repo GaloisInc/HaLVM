@@ -536,6 +536,7 @@ $(DEBG_ORIGSRC_TARBALL): $(DEB_ORIGSRC_TARBALL)
 
 $(DEBG_CONFSRC_TARBALL): $(shell find $(TOPDIR)/src/debian)
 	rm -rf tmp
+	mkdir tmp
 	cp -r src/debian tmp/debian
 	sed -ie 's/halvm/halvm-gmp/g' tmp/debian/changelog
 	sed -ie 's/ halvm/ halvm-gmp/g' tmp/debian/control
@@ -556,10 +557,12 @@ $(DEBG_DESC_FILE): $(DEBG_ORIGSRC_TARBALL) $(DEBG_CONFSRC_TARBALL)
 
 debclean:
 	$(RM) -f $(SRC_TARBALL)
-	$(RM) -f $(DEB_ORIGSRC_TARBALL)
-	$(RM) -f $(DEB_CONFSRC_TARBALL)
-	$(RM) -f $(DEB_DESC_FILE)
-	$(RM) -rf HaLVM-$(HaLVM_VERSION) halvm-$(HaLVM_VERSION)
-	$(RM) -f *.deb
+	$(RM) -f $(DEB_ORIGSRC_TARBALL) $(DEBG_ORIGSRC_TARBALL)
+	$(RM) -f $(DEB_CONFSRC_TARBALL) $(DEBG_CONFSRC_TARBALL)
+	$(RM) -f $(DEB_DESC_FILE) $(DEBG_DESC_FILE)
+	$(RM) -rf HaLVM-$(HaLVM_VERSION)
+	$(RM) -rf halvm-$(HaLVM_VERSION)
+	$(RM) -rf halvm-gmp-$(HaLVM_VERSION)
+	$(RM) -f *.deb *.changes
 
 clean:: debclean
