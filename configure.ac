@@ -214,8 +214,12 @@ AC_ARG_ENABLE([gmp],
 AC_SUBST(INTEGER_LIBRARY, [$int_library])
 
 AC_CHECK_FILE(/etc/centos-release,
-              AC_SUBST(PLATFORM,"centos65"),
-              AC_SUBST(PLATFORM,"deb7"))
+  [if `grep -q "release 7" /etc/centos-release`; then
+     AC_SUBST(PLATFORM,"deb7")
+   else
+     AC_SUBST(PLATFORM,"centos65")
+   fi],
+  AC_SUBST(PLATFORM,"deb7"))
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -353,10 +357,10 @@ esac
 AC_CHECK_FILE(/etc/os-release,
   [source /etc/os-release
    case "${ID}" in
-     "ubuntu") AC_SUBST(PACKAGE_TARGET, "Ubuntu")     ;;
-     "debian") AC_SUBST(PACKAGE_TARGET, "Debian")     ;;
-     "fedora") AC_SUBST(PACKAGE_TARGET, "Fedora")     ;;
-     "centos") AC_SUBST(PACKAGE_TARGET, "CentOS")     ;;
+     "ubuntu") AC_SUBST(PACKAGE_TARGET, "deb")     ;;
+     "debian") AC_SUBST(PACKAGE_TARGET, "deb")     ;;
+     "fedora") AC_SUBST(PACKAGE_TARGET, "RPM")     ;;
+     "centos") AC_SUBST(PACKAGE_TARGET, "RPM")     ;;
      *)        AC_SUBST(PACKAGE_TARGET, "Unfamiliar") ;;
    esac],
   AC_SUBST(PACKAGE_TARGET, "Unknown"))
