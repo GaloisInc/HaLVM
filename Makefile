@@ -463,6 +463,10 @@ install::
 	    -exec cp '{}' $(DESTDIR)$(halvmlibdir)/lib/ \;
 	$(INSTALL) -D $(TOPDIR)/src/scripts/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs
 
+###############################################################################
+# Packaging!
+###############################################################################
+
 FILELIST := $(filter-out $(TOPDIR)/HaLVM-$(HaLVM_VERSION),\
               $(filter-out $(TOPDIR)/rpmbuild,\
                 $(wildcard $(TOPDIR)/* $(TOPDIR)/.git)))
@@ -476,14 +480,19 @@ $(SRC_TARBALL):
 	tar czf $@ HaLVM-${HaLVM_VERSION}/
 	rm -rf $(TOPDIR)/HaLVM-${HaLVM_VERSION}
 
-.PHONY: rpm
-rpm: $(SRC_TARBALL)
+ifeq ($(PACKAGE_TARGET),RPM)
+.PHONY: packages
+packages: $(SRC_TARBALL)
+	mkdir -p rpmbuild/{SOURCES,SPECS}
 	cp $(SRC_TARBALL) $(TOPDIR)/rpmbuild/SOURCES/
 	cp $(TOPDIR)/src/misc/HaLVM.spec $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
+	mkdir -p packages
 	rpmbuild -ba --define "_topdir $(TOPDIR)/rpmbuild" --define "_version $(HaLVM_VERSION)" --define "_release $(RELEASE)" $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
 	rpmbuild -ba --with gmp --define "_topdir $(TOPDIR)/rpmbuild" --define "_version $(HaLVM_VERSION)" --define "_release $(RELEASE)" $(TOPDIR)/rpmbuild/SPECS/HaLVM.spec
 	find rpmbuild -name "*.*rpm" -exec cp '{}' $(TOPDIR)/packages/ \;
+endif
 
+ifeq ($(PACKAGE_TARGET),deb)
 DEB_ORIGSRC_TARBALL=halvm_$(HaLVM_VERSION).orig.tar.gz
 DEB_CONFSRC_TARBALL=halvm_$(HaLVM_VERSION)-$(RELEASE).debian.tar.gz
 DEB_DESC_FILE=halvm_$(HaLVM_VERSION)-$(RELEASE).dsc
@@ -497,9 +506,9 @@ sha1=$(call hash,sha1,$1)
 sha256=$(call hash,sha256,$1)
 size=stat -c "%s" $1
 
-.PHONY: deb
-deb: $(DEB_ORIGSRC_TARBALL)  $(DEB_CONFSRC_TARBALL)  $(DEB_DESC_FILE) \
-     $(DEBG_ORIGSRC_TARBALL) $(DEBG_CONFSRC_TARBALL) $(DEBG_DESC_FILE)
+.PHONY: packages
+packages: $(DEB_ORIGSRC_TARBALL)  $(DEB_CONFSRC_TARBALL)  $(DEB_DESC_FILE) \
+          $(DEBG_ORIGSRC_TARBALL) $(DEBG_CONFSRC_TARBALL) $(DEBG_DESC_FILE)
 	rm -rf HaLVM-$(HaLVM_VERSION) halvm-$(HaLVM_VERSION)
 	tar zxf $(DEB_ORIGSRC_TARBALL)
 	mv HaLVM-$(HaLVM_VERSION) halvm-$(HaLVM_VERSION)
@@ -508,6 +517,8 @@ deb: $(DEB_ORIGSRC_TARBALL)  $(DEB_CONFSRC_TARBALL)  $(DEB_DESC_FILE) \
 	tar zxf $(DEBG_ORIGSRC_TARBALL)
 	tar zxf $(DEBG_CONFSRC_TARBALL) -C halvm-gmp-$(HaLVM_VERSION)/
 	(cd halvm-gmp-$(HaLVM_VERSION) && dpkg-buildpackage -rfakeroot -uc -us)
+	mkdir -p packages
+	cp *.deb packages/
 
 $(DEB_ORIGSRC_TARBALL): $(SRC_TARBALL)
 	cp $(SRC_TARBALL) $(DEB_ORIGSRC_TARBALL)
@@ -566,3 +577,4 @@ debclean:
 	$(RM) -f *.deb *.changes
 
 clean:: debclean
+endif #ifeq deb
