@@ -1,0 +1,22 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+# 
+# This Vagrantfile is used to describe a set of build machines for building and
+# packaging the HaLVM. You probably shouldn't use them directly. Instead, let me
+# recommend using the Vagrantfiles located at:
+#    git://github.com/GaloisInc/HaLVM-Vagrant.
+#
+Vagrant.configure do |config|
+  config.vm.define "fedora22-32" do |f2232|
+    f2232.vm.box = "acw/fedora32-22"
+  end
+  config.vm.define "fedora22-64" do |f2264|
+    f2264.vm.box = "box-cutter/fedora22"
+  end
+  config.vm.define "fedora23-32" do |f2332|
+    f2332.vm.box = "acw/fedora32-23"
+  end
+  config.vm.define "fedora23-64" do |f2364|
+    f2364.vm.box = "box-cutter/fedora22"
+  end
+end
