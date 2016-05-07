@@ -24,6 +24,9 @@ override_dh_auto_clean:
 override_dh_auto_configure:
 	dh_auto_configure -- $(CONFIGURE_FLAGS)
 
+override_dh_update_autotools_config:
+	echo "skip autottolls_config; we like our config.sub, thanks."
+
 override_dh_shlibdeps:
 	dh_shlibdeps -l/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/lib
 
