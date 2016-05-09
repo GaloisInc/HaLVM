@@ -6,7 +6,7 @@ dnl - terms and conditions.
 dnl Author: Adam Wick <awick@galois.com>
 dnl BANNEREND
 AC_PREREQ(2.60)
-AC_INIT(HALVM,2.0.3,awick@galois.com,halvm)
+AC_INIT(HALVM,2.0.4,awick@galois.com,halvm)
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -214,8 +214,12 @@ AC_ARG_ENABLE([gmp],
 AC_SUBST(INTEGER_LIBRARY, [$int_library])
 
 AC_CHECK_FILE(/etc/centos-release,
-              AC_SUBST(PLATFORM,"centos65"),
-              AC_SUBST(PLATFORM,"deb7"))
+  [if `grep -q "release 7" /etc/centos-release`; then
+     AC_SUBST(PLATFORM,"deb7")
+   else
+     AC_SUBST(PLATFORM,"centos65")
+   fi],
+  AC_SUBST(PLATFORM,"deb7"))
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -350,6 +354,16 @@ case "$memory_model" in
   *)     LOG_FAILURE("Unknown memory model (internal error?)") ;;
 esac
 
+AC_CHECK_FILE(/etc/os-release,
+  [source /etc/os-release
+   case "${ID}" in
+     "ubuntu") AC_SUBST(PACKAGE_TARGET, "deb")     ;;
+     "debian") AC_SUBST(PACKAGE_TARGET, "deb")     ;;
+     "fedora") AC_SUBST(PACKAGE_TARGET, "RPM")     ;;
+     "centos") AC_SUBST(PACKAGE_TARGET, "RPM")     ;;
+     *)        AC_SUBST(PACKAGE_TARGET, "Unfamiliar (${ID})") ;;
+   esac],
+  AC_SUBST(PACKAGE_TARGET, "Unknown"))
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -369,11 +383,13 @@ else
   echo "  HaLVM Memory Model: ${MEMMODEL_STR}"
   echo "  Integer library: ${INTEGER_LIBRARY}"
   echo "  Building documentation: ${ENABLE_DOCS} ${doc_reason}"
+  echo "  Package target: ${PACKAGE_TARGET}"
   echo
   AC_CONFIG_FILES([
                    autoconf.mk
                    examples/standard.mk
                    src/HALVMCore/HALVMCore.buildinfo
+                   src/debian/rules
                    src/misc/build.mk
                    src/scripts/halvm-cabal
                    src/scripts/halvm-config

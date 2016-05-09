@@ -30,3 +30,9 @@ src/profiling/convert-profile
 
 packages/
 rpmbuild/
+
+*.deb
+*.dsc
+halvm-*/
+halvm*.changes
+src/debian/rules
