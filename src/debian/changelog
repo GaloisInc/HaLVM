@@ -1,5 +1,5 @@
-halvm (2.0.3-1) unstable; urgency=low
+halvm (VERSION-RELEASE) unstable; urgency=low
 
-  * Initial Debian packaging
+  * Debian packaging
 
  -- Adam Wick <awick@galois.com>  Sat, 16 Apr 2016 15:06:54 +0000
