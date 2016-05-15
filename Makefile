@@ -518,6 +518,8 @@ packages: $(DEB_ORIGSRC_TARBALL)  $(DEB_CONFSRC_TARBALL)  $(DEB_DESC_FILE) \
 	tar zxf $(DEBG_CONFSRC_TARBALL) -C halvm-gmp-$(HaLVM_VERSION)/
 	(cd halvm-gmp-$(HaLVM_VERSION) && dpkg-buildpackage -rfakeroot -uc -us)
 	mkdir -p packages
+	cp $(DEB_ORIGSRC_TARBALL) $(DEBG_ORIGSRC_TARBALL) packages/
+	cp $(DEB_CONFSRC_TARBALL) $(DEBG_CONFSRC_TARBALL) packages/
 	cp *.deb packages/
 	cp *.dsc packages/
 	cp *.changes packages/
@@ -532,6 +534,7 @@ $(DEB_CONFSRC_TARBALL): $(shell find $(TOPDIR)/src/debian)
 	sed -ie 's/INTEGER_LIBRARY/simple/g' tmp/debian/rules
 	sed -ie 's/VERSION/$(HaLVM_VERSION)/g' tmp/debian/changelog
 	sed -ie 's/RELEASE/$(RELEASE)/g' tmp/debian/changelog
+	sed -ie 's/UBUNTU_REVISION/$(UBUNTU_REV)/g' tmp/debian/changelog
 	tar cz -C tmp -f $@ debian/
 
 $(DEB_DESC_FILE): $(DEB_ORIGSRC_TARBALL) $(DEB_CONFSRC_TARBALL)
@@ -562,6 +565,7 @@ $(DEBG_CONFSRC_TARBALL): $(shell find $(TOPDIR)/src/debian)
 	sed -ie 's/INTEGER_LIBRARY/gmp/g' tmp/debian/rules
 	sed -ie 's/VERSION/$(HaLVM_VERSION)/g' tmp/debian/changelog
 	sed -ie 's/RELEASE/$(RELEASE)/g' tmp/debian/changelog
+	sed -ie 's/UBUNTU_REVISION/$(UBUNTU_REV)/g' tmp/debian/changelog
 	tar cz -C tmp -f $@ debian/
 
 $(DEBG_DESC_FILE): $(DEBG_ORIGSRC_TARBALL) $(DEBG_CONFSRC_TARBALL)

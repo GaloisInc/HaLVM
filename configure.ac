@@ -357,10 +357,12 @@ esac
 AC_CHECK_FILE(/etc/os-release,
   [source /etc/os-release
    case "${ID}" in
-     "ubuntu") AC_SUBST(PACKAGE_TARGET, "deb")     ;;
-     "debian") AC_SUBST(PACKAGE_TARGET, "deb")     ;;
-     "fedora") AC_SUBST(PACKAGE_TARGET, "RPM")     ;;
-     "centos") AC_SUBST(PACKAGE_TARGET, "RPM")     ;;
+     "ubuntu") AC_SUBST(PACKAGE_TARGET, "deb")
+               source /etc/lsb-release
+               AC_SUBST(UBUNTU_REV,"${DISTRIB_CODENAME}")     ;;
+     "debian") AC_SUBST(PACKAGE_TARGET, "deb")                ;;
+     "fedora") AC_SUBST(PACKAGE_TARGET, "RPM")                ;;
+     "centos") AC_SUBST(PACKAGE_TARGET, "RPM")                ;;
      *)        AC_SUBST(PACKAGE_TARGET, "Unfamiliar (${ID})") ;;
    esac],
   AC_SUBST(PACKAGE_TARGET, "Unknown"))

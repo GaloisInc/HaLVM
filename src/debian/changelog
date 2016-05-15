@@ -1,4 +1,4 @@
-halvm (VERSION-RELEASE) unstable; urgency=low
+halvm (VERSION-RELEASE) UBUNTU_REVISION; urgency=low
 
   * Debian packaging
 
