@@ -2,7 +2,7 @@ Source: halvm
 Section: devel
 Priority: optional
 Maintainer: HaLVM Maintainers <halvm-devel@community.galois.com>
-Build-Depends: debhelper (>= 8.0.0)
+Build-Depends: debhelper (>= 8.0.0), autoconf, automake, libtool, libncurses5-dev, zlib1g-dev, libgmp-dev, g++, libxen-dev, curl, make, git, chrpath
 Standards-Version: 3.9.4
 Homepage: http://halvm.org
 Vcs-Git: git://github.com/GaloisInc/HaLVM

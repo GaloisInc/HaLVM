@@ -9,7 +9,7 @@
 
 include autoconf.mk
 
-RELEASE=1
+RELEASE=2
 
 .PHONY: all
 all::
@@ -520,9 +520,28 @@ packages: $(DEB_ORIGSRC_TARBALL)  $(DEB_CONFSRC_TARBALL)  $(DEB_DESC_FILE) \
 	mkdir -p packages
 	cp $(DEB_ORIGSRC_TARBALL) $(DEBG_ORIGSRC_TARBALL) packages/
 	cp $(DEB_CONFSRC_TARBALL) $(DEBG_CONFSRC_TARBALL) packages/
-	cp *.deb packages/
-	cp *.dsc packages/
-	cp *.changes packages/
+	mv *.deb packages/
+	mv *.dsc packages/
+	mv *.debian.tar.xz packages/
+	mv *.changes packages/
+
+source-packages: $(DEB_ORIGSRC_TARBALL)  $(DEB_CONFSRC_TARBALL)  $(DEB_DESC_FILE) \
+                 $(DEBG_ORIGSRC_TARBALL) $(DEBG_CONFSRC_TARBALL) $(DEBG_DESC_FILE)
+	rm -rf halvm-$(HaLVM_VERSION) halvm-gmp-$(HaLVM_VERSION)
+	tar zxf $(DEB_ORIGSRC_TARBALL)
+	mv HaLVM-$(HaLVM_VERSION) halvm-$(HaLVM_VERSION)
+	tar zxf $(DEB_CONFSRC_TARBALL) -C halvm-$(HaLVM_VERSION)/
+	(cd halvm-$(HaLVM_VERSION) && dpkg-buildpackage -rfakeroot -uc -us -S)
+	tar zxf $(DEBG_ORIGSRC_TARBALL)
+	tar zxf $(DEBG_CONFSRC_TARBALL) -C halvm-gmp-$(HaLVM_VERSION)/
+	(cd halvm-gmp-$(HaLVM_VERSION) && dpkg-buildpackage -rfakeroot -uc -us -S)
+	mkdir -p packages/source
+	cp $(DEB_ORIGSRC_TARBALL) $(DEBG_ORIGSRC_TARBALL) packages/source/
+	cp $(DEB_CONFSRC_TARBALL) $(DEBG_CONFSRC_TARBALL) packages/source/
+	mv *.dsc packages/source/
+	mv *.debian.tar.xz packages/source/
+	mv *.changes packages/source/
+
 
 $(DEB_ORIGSRC_TARBALL): $(SRC_TARBALL)
 	cp $(SRC_TARBALL) $(DEB_ORIGSRC_TARBALL)
