@@ -44,15 +44,18 @@ import Control.Monad
 import qualified Data.ByteString as SBS
 import Data.ByteString.Lazy(ByteString)
 import qualified Data.ByteString.Lazy as BS
-import Data.ByteString.Unsafe(unsafePackCStringFinalizer, unsafeUseAsCStringLen)
+import Data.ByteString.Unsafe(unsafeUseAsCStringLen)
 import Data.Int
 import Data.Map.Strict(Map)
 import qualified Data.Map.Strict as Map
 import Data.Maybe
 import Data.Word
+import Foreign.C.Types(CChar)
+import Foreign.ForeignPtr
 import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
+import GHC.ForeignPtr(mallocForeignPtrAlignedBytes)
 import Hypervisor.DomainInfo
 import Hypervisor.ErrorCodes
 import Hypervisor.Memory
@@ -179,56 +182,65 @@ findDevice xs str = do
     Nothing  -> throwIO ENODEV
     Just res -> return res
 
--- |Read data n bytes from the given sector on the disk. If n is not an even
--- multiple of the sector size, it will be rounded up to the nearest sector.
+-- |Read data n bytes from the given sector on the disk.
 readDisk :: Disk -> Word -> Word -> IO ByteString
-readDisk disk inlen sector = do
-  oreqid <- takeMVar (nextRequestIdMV disk)
-  (reqs, nextReq, bstr) <- buildReqs length' oreqid sector
-  putMVar (nextRequestIdMV disk) nextReq
-  mvs <- modifyMVar (requestTableMV disk) $ \ reqTable ->
-           foldM addReqTableEntry (reqTable, []) reqs
-  frbWriteRequests (diskRing disk) reqs
-  errs <- mapM takeMVar mvs
-  mapM_ endAccess (map bsGrant (concatMap segments reqs))
-  case catMaybes errs of
-    []    -> return bstr
-    (x:_) -> throwIO x
+readDisk disk inlen sector =
+  do requests <- modifyMVar (nextRequestIdMV disk) $ \ startReqId ->
+                   buildRequests length' startReqId sector
+     mvars    <- modifyMVar (requestTableMV disk) $ \ reqTable ->
+                   foldM addReqTableEntry (reqTable, []) (map first requests)
+     frbWriteRequests (diskRing disk) (map first requests)
+     errs <- mapM takeMVar mvars
+     mapM_ endAccess (concatMap second requests)
+     case catMaybes errs of
+       []    -> do chunks <- forM (concatMap third requests) $ \ fptr ->
+                               withForeignPtr fptr $ \ ptr ->
+                                 SBS.packCStringLen (ptr, 4096)
+                   return (BS.take (fromIntegral inlen) (BS.fromChunks chunks))
+       (x:_) -> throwIO x
  where
   numSecs     = (inlen + (diskSectorSize disk - 1)) `div` (diskSectorSize disk)
   length'     = numSecs * diskSectorSize disk
   secsPerPage = 4096 `div` diskSectorSize disk
+  dom         = frbGetDomain (diskRing disk)
   --
-  buildReqs 0 reqid _ = return ([], reqid, BS.empty)
-  buildReqs left myreq stsec = do
-    (segs, fbstr, left', stsec') <- buildSegs left stsec
-    (rreqs, rid, rbstr) <- buildReqs left' (advanceReqId myreq) stsec'
-    let req = DiskRequest {
-                reqOp       = BlockOpRead
-              , numSegments = fromIntegral (length segs)
-              , devHandle   = diskHandle disk
-              , reqId       = myreq
-              , sectorNum   = fromIntegral stsec
-              , segments    = segs
-              , numSectors  = undefined
-              , secure      = undefined
-              }
-    return (req : rreqs, rid, fbstr `BS.append` rbstr)
+  first  (a,_,_) = a
+  second (_,b,_) = b
+  third  (_,_,c) = c
   --
-  buildSegs 0    stsec = return ([], BS.empty, 0, stsec)
-  buildSegs left stsec = do
-    let sectorsLeft = left `div` diskSectorSize disk
-        mySectors   = min secsPerPage sectorsLeft
-        myLength    = diskSectorSize disk * mySectors
-        left'       = left - myLength
-        stsec'      = stsec + mySectors
-    page <- allocPage
-    [ref] <- grantAccess (frbGetDomain (diskRing disk)) page 4096 True
-    mybstr <- unsafePackCStringFinalizer page (fromIntegral myLength)
-                (freePage page)
-    let seg = Segment ref 0 (fromIntegral mySectors - 1)
-    (rsegs, rbstr, 0, ensec) <- buildSegs left' stsec'
-    return (seg : rsegs, BS.fromStrict mybstr `BS.append` rbstr, 0, ensec)
+  buildRequests :: Word -> Word64 -> Word ->
+                   IO (Word64, [(DiskRequest, [GrantRef], [ForeignPtr CChar])])
+  buildRequests 0    reqid _     = return (reqid, [])
+  buildRequests left myreq stsec =
+    do (segmentData, left', stsec') <- buildSegs left stsec
+       let req = DiskRequest {
+                   reqOp       = BlockOpRead
+                 , numSegments = fromIntegral (length segmentData)
+                 , devHandle   = diskHandle disk
+                 , reqId       = myreq
+                 , sectorNum   = fromIntegral stsec
+                 , segments    = map first segmentData
+                 , numSectors  = 0
+                 , secure      = False
+                 }
+           myreq' = advanceReqId myreq
+       (endReqId, rest) <- buildRequests left' myreq' stsec'
+       let refs  = map second segmentData
+           fptrs = map third  segmentData
+       return (endReqId, (req, refs, fptrs):rest)
+  --
+  buildSegs :: Word -> Word ->
+               IO ([(BlockSegment, GrantRef, ForeignPtr CChar)], Word, Word)
+  buildSegs 0 stsec = return ([], 0, stsec)
+  buildSegs left stsec =
+    do let sectorsLeft = left `div` diskSectorSize disk
+           mySectors   = min secsPerPage sectorsLeft
+           myLength    = diskSectorSize disk * mySectors
+       fptr  <- mallocForeignPtrAlignedBytes 4096 4096
+       [ref] <- withForeignPtr fptr $ \ page -> grantAccess dom page 4096 True
+       let seg = Segment ref 0 (fromIntegral mySectors - 1)
+       (rest, left', stsec') <- buildSegs (left - myLength) (stsec + mySectors)
+       return (((seg, ref, fptr) : rest), left', stsec')
 
 addReqTableEntry :: (Map Word64 (MVar (Maybe ErrorCode)),
                      [MVar (Maybe ErrorCode)]) ->
@@ -244,8 +256,7 @@ addReqTableEntry (inTable, rmvs) req = do
 -- is not are not defined.
 writeDisk :: Disk -> ByteString -> Word -> IO ()
 writeDisk disk bs sector = do
-  writeDebugConsole ("Writing bs starting with " ++ show (BS.take 16 bs) ++ "\n")
-  (segs, pgs) <- segmentize Nothing (BS.toChunks bs)
+  (segs, fptrs) <- segmentize Nothing (BS.toChunks bs)
   firstReqId <- takeMVar (nextRequestIdMV disk)
   (reqs, nextReqId) <- requestify segs sector firstReqId
   putMVar (nextRequestIdMV disk) $! nextReqId
@@ -253,8 +264,8 @@ writeDisk disk bs sector = do
              foldM addReqTableEntry (reqTable, []) reqs
   frbWriteRequests (diskRing disk) reqs
   errs <- mapM takeMVar mvars
-  mapM_ endAccess (map bsGrant segs)
-  mapM_ freePage pgs
+  -- we keep fptrs around here to make sure they don't get GCed
+  mapM_ (endAccess . fst) (zip (map bsGrant segs) fptrs)
   case catMaybes errs of
     []      -> return ()
     (err:_) -> throwIO err
@@ -278,32 +289,35 @@ writeDisk disk bs sector = do
         , reqId       = myReq
         , sectorNum   = fromIntegral startSec
         , segments    = req1segs
-        , numSectors  = undefined
-        , secure      = undefined
+        , numSectors  = 0
+        , secure      = False
         }
     (rres, resreqid) <- requestify osegs (startSec + nsecs) (advanceReqId myReq)
     return (request : rres, resreqid)
   --
   segmentize Nothing [] = return ([], [])
-  segmentize (Just (page, len)) [] = do
-    [ref] <- grantAccess dom page 4096 False
+  segmentize (Just (fptr, len)) [] = do
+    [ref] <- withForeignPtr fptr $ \ page ->
+               grantAccess dom page 4096 False
     let endsec = fromIntegral ((len - 1)`div` 512)
-    return ([Segment ref 0 endsec], [page])
+    return ([Segment ref 0 endsec], [fptr])
   segmentize Nothing chunks = do
-    pg <- allocPage
-    segmentize (Just (pg, 0)) chunks
-  segmentize info@(Just (page, len)) chunks@(chunk:rest)
+    fptr <- mallocForeignPtrAlignedBytes 4096 4096
+    segmentize (Just (fptr, 0)) chunks
+  segmentize info@(Just (fptr, len)) chunks@(chunk:rest)
     | SBS.length chunk == 0 = segmentize info rest
     | len == 4096           = do
-       [ref] <- grantAccess dom page 4096 False
-       (rsegs, rpages) <- segmentize Nothing chunks
-       return (Segment ref 0 7 : rsegs, page : rpages)
+       [ref] <- withForeignPtr fptr $ \ page ->
+                  grantAccess dom page 4096 False
+       (rsegs, rfptrs) <- segmentize Nothing chunks
+       return (Segment ref 0 7 : rsegs, fptr : rfptrs)
     | otherwise             = do
        let (mypart, rchunk) = SBS.splitAt (4096 - len) chunk
-       len' <- unsafeUseAsCStringLen mypart $ \ (ptr, plen) -> do
-                 memcpy (page `plusPtr` len) ptr (fromIntegral plen)
-                 return (len + plen)
-       segmentize (Just (page, len')) (rchunk : rest)
+       len' <- unsafeUseAsCStringLen mypart $ \ (ptr, plen) ->
+                 withForeignPtr fptr $ \ page ->
+                   do memcpy (page `plusPtr` len) ptr (fromIntegral plen)
+                      return (len + plen)
+       segmentize (Just (fptr, len')) (rchunk : rest)
 
 -- |Create a write barrier on the disk; all writes prior to this request
 -- will be completed before any commands after this event.
@@ -317,8 +331,8 @@ diskWriteBarrier disk = do
             , reqId       = myid
             , sectorNum   = 0
             , segments    = []
-            , numSectors  = undefined
-            , secure      = undefined
+            , numSectors  = 0
+            , secure      = False
             }
   [mv] <- modifyMVar (requestTableMV disk) (\ x -> addReqTableEntry (x,[]) req)
   frbWriteRequests (diskRing disk) [req]
@@ -338,8 +352,8 @@ flushDiskCaches disk = do
             , reqId       = myid
             , sectorNum   = 0
             , segments    = []
-            , numSectors  = undefined
-            , secure      = undefined
+            , numSectors  = 0
+            , secure      = False
             }
   [mv] <- modifyMVar (requestTableMV disk) (\ x -> addReqTableEntry (x,[]) req)
   frbWriteRequests (diskRing disk) [req]
@@ -393,7 +407,7 @@ data BlockOperation = BlockOpRead
 #ifdef BLKIF_OP_DISCARD
                     | BlockOpDiscard
 #endif
- deriving (Eq)
+ deriving (Eq, Show)
 
 instance Storable BlockOperation where
   sizeOf _    = 1
@@ -433,12 +447,14 @@ data DiskRequest = DiskRequest {
   , numSectors  :: Word64
   , secure      :: Bool
   }
+ deriving (Show)
 
 data BlockSegment = Segment {
     bsGrant     :: GrantRef
   , bsFirst     :: Word8
   , bsLast      :: Word8
   }
+ deriving (Show)
 
 instance Storable BlockSegment where
   sizeOf _    = 8
