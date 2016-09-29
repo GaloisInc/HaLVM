@@ -93,12 +93,7 @@ listDisks xs = do
 openDisk :: XenStore -> String -> IO Disk
 openDisk xs name = do
   (feDir, beDir) <- findDevice xs name
-  secSize <- read     `fmap` xsRead xs (beDir ++ "/sector-size")
-  numSecs <- read     `fmap` xsRead xs (beDir ++ "/sectors")
-  readOnl <- readMode `fmap` xsRead xs (beDir ++ "/mode")
-  isRemov <- readRemv `fmap` xsRead xs (beDir ++ "/removable")
   dom     <- read     `fmap` xsRead xs (feDir ++ "/backend-id")
-  hndle   <- read     `fmap` xsRead xs (feDir ++ "/virtual-device")
   --
   ring  <- frbCreate diskRingType (toDomId (dom :: Word))
   req   <- newMVar 1
@@ -112,6 +107,12 @@ openDisk xs name = do
   canBarrier <- testFeature (beDir ++ "/feature-barrier")
   canFlush   <- testFeature (beDir ++ "/feature-flush-cache")
   canDiscard <- testFeature (beDir ++ "/feature-discard")
+  --
+  secSize <- read     `fmap` xsRead xs (beDir ++ "/sector-size")
+  numSecs <- read     `fmap` xsRead xs (beDir ++ "/sectors")
+  readOnl <- readMode `fmap` xsRead xs (beDir ++ "/mode")
+  isRemov <- readRemv `fmap` xsRead xs (beDir ++ "/removable")
+  hndle   <- read     `fmap` xsRead xs (feDir ++ "/virtual-device")
   --
   _ <- forkIO $ forever $ processResponses ring table
   return Disk {
