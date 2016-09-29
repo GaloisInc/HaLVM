@@ -1,6 +1,6 @@
 import Control.Concurrent
 import Control.Monad
-import Data.ByteString.Lazy(pack)
+import Data.ByteString.Lazy(ByteString, pack)
 import qualified Data.ByteString.Lazy as BS
 import Data.Word
 import Hypervisor.Console
@@ -35,15 +35,17 @@ main = do
                       show (diskSupportsDiscard d) ++ "\n")
     writeConsole con "\n"
   case lookup "hdb" diskinfos of
-    Just disk -> do
-      writeConsole con "Verifying read only disk hdb\n"
-      checkROSectors con disk 0 0 (diskSectors disk)
+    Just disk ->
+      do writeConsole con "Verifying read-only disk 'hdb'\n"
+         checkROSectors con disk 0 0 (diskSectors disk)
     Nothing ->
-      writeConsole con "Could not find RO disk hdb\n"
+      writeConsole con "Could not find read-only disk 'hdb'!\n"
   case lookup "hda" diskinfos of
     Just disk -> do
       writeConsole con "Verifying read/write disk hda\n"
       checkRWBlocks con disk
+    Nothing ->
+      writeConsole con "Could not find read/write disk 'hdb'!\n"
   writeConsole con "Done!\n"
 
 checkROSectors :: Console -> Disk -> Word -> Word8 -> Word -> IO ()
@@ -89,5 +91,19 @@ checkRWBlocks con disk = do
          writeDebugConsole ("Start of example: " ++ show (BS.take 16 example) ++ "\n")
          writeDebugConsole ("Start of block: " ++ show (BS.take 16 bstr) ++ "\n")
          writeDebugConsole ("lengths: " ++ show (BS.length example) ++ " / " ++ show (BS.length bstr) ++ "\n")
+         writeDebugConsole ("Difference info: " ++ show (differenceInfo example bstr) ++ "\n")
          fail "Verification failed!"
        readTest (x + 1) (cur + secsPerBlock) top
+
+differenceInfo :: ByteString -> ByteString -> (Int, String)
+differenceInfo wrote read = go 0 wrote read
+ where
+  go x w r =
+    case (BS.uncons w, BS.uncons r) of
+      (Nothing, Nothing) -> (x, "PERFECT")
+      (Just _,  Nothing) -> (x, "Read ended first.")
+      (Nothing, Just _)  -> (x, "Wrote ended first.")
+      (Just (wv, w'), Just (rv, r'))
+         | wv /= rv      -> (x, "Difference: " ++ show (BS.take 16 w) ++ " vs "
+                                ++ show (BS.take 16 r))
+         | otherwise     -> go (x + 1) w' r'
