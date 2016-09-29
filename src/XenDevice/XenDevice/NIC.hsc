@@ -43,8 +43,10 @@ import Data.Map.Strict(Map)
 import qualified Data.Map.Strict as Map
 import Data.Maybe
 import Data.Word
+import Foreign.ForeignPtr(ForeignPtr, withForeignPtr)
 import Foreign.Ptr
 import Foreign.Storable
+import GHC.ForeignPtr(mallocForeignPtrAlignedBytes)
 import Hypervisor.Debug
 import Hypervisor.DomainInfo
 import Hypervisor.ErrorCodes
@@ -191,19 +193,19 @@ sendPacket nic bstr = do
 
 -- Receive ---------------------------------------------------------------------
 
-type RxTable = Array Word16 (GrantRef, VPtr ())
+type RxTable = Array Word16 (GrantRef, ForeignPtr ())
 
 -- | Generate a new RX table, containing 256 pages and grant references to the
 -- given domain id.
 newRxTable :: DomId -> IO RxTable
 newRxTable domid =
   do entries <- replicateM 256 $
-       do page  <- allocPage
-          [ref] <- grantAccess domid page 4096 True
-          return (ref,page)
+       do fptr  <- mallocForeignPtrAlignedBytes 4096 4096
+          [ref] <- withForeignPtr fptr $ \ ptr ->
+                     grantAccess domid ptr 4096 True
+          return (ref,fptr)
 
      return (listArray (0,255) entries)
-
 
 -- | Loop forever, processing events from the receive ring.
 processRxResponses :: RxRing -> MVar RxHandler -> RxTable -> IO ()
@@ -218,7 +220,7 @@ processRxResponses rxRing handler table =
   -- packet next, as well as the chunks that make up a partial packet.
   go extraInfo bstrs =
     do (reqs,pkts,extraInfo',bstrs') <-
-           handleRxResponses table extraInfo bstrs =<< frbReadResponses rxRing
+         handleRxResponses table extraInfo bstrs =<< frbReadResponses rxRing
 
        -- handle all packets in a separate thread
        k <- readMVar handler
@@ -248,21 +250,22 @@ handleRxResponses table = go [] []
   go reqs pkts False chunks (RxResponse { .. } : rest)
 
     | rxrsStatus > 0 =
-      do let ptr = pg `plusPtr` fromIntegral rxrsOffset
+        withForeignPtr fp $ \ pg ->
+          do let ptr = pg `plusPtr` fromIntegral rxrsOffset
 
-         -- copy the relevant data out of the page
-         bstr <- if rxrsStatus > 0
-                    then SBS.packCStringLen (ptr,fromIntegral rxrsStatus)
-                    else return SBS.empty
+             -- copy the relevant data out of the page
+             bstr <- if rxrsStatus > 0
+                        then SBS.packCStringLen (ptr,fromIntegral rxrsStatus)
+                        else return SBS.empty
 
-         if testBit rxrsFlags (#const _NETRXF_more_data)
-            -- this was a partial packet, continue reading data
-            then go reqs' pkts extraInfo (bstr:chunks) rest
+             if testBit rxrsFlags (#const _NETRXF_more_data)
+                -- this was a partial packet, continue reading data
+                then go reqs' pkts extraInfo (bstr:chunks) rest
 
-            -- the packet is complete, start processing new ones
-            else
-              do let pkt = BS.fromChunks (reverse (bstr : chunks))
-                 go reqs' (pkt:pkts) extraInfo [] rest
+                -- the packet is complete, start processing new ones
+                else
+                  do let pkt = BS.fromChunks (reverse (bstr : chunks))
+                     go reqs' (pkt:pkts) extraInfo [] rest
 
     | otherwise =
       do writeDebugConsole $ "WARNING: Receive request error: "
@@ -272,7 +275,7 @@ handleRxResponses table = go [] []
 
     where
 
-    (grant,pg) = table ! rxrsId
+    (grant,fp) = table ! rxrsId
     req        = RxRequest rxrsId grant
     reqs'      = req : reqs
     extraInfo  = testBit rxrsFlags (#const _NETRXF_extra_info)
