@@ -152,6 +152,7 @@ pageSize = 4096
 -- * Routines for creating, destroying, and modifying pages.
 --
 
+{-# DEPRECATED allocPage "Avoid use of this, can impact GC functionality." #-}
 -- |Allocate a page outside the garbage-collected heap. These pages
 -- are almost always used with grants.
 allocPage :: IO (VPtr a)
@@ -182,6 +183,7 @@ getProt flags =  flag (bit 0) protRead
   flag b p | p flags   = b
            | otherwise = 0
 
+{-# DEPRECATED allocPageProt "Avoid use of this, can impact GC functionality." #-}
 -- | Allocate with a set of protection flags.
 allocPageProt :: AllocProt -> IO (VPtr a)
 allocPageProt flags = do
