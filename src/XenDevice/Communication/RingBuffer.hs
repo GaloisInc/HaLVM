@@ -38,8 +38,10 @@ import Data.IORef
 import Data.Sequence(Seq, (><), (<|), (|>), ViewL(..), viewl)
 import qualified Data.Sequence as Seq
 import Data.Word
+import Foreign.ForeignPtr
 import Foreign.Ptr
 import Foreign.Storable
+import GHC.ForeignPtr(mallocForeignPtrAlignedBytes)
 import Hypervisor.DomainInfo
 import Hypervisor.ErrorCodes
 import Hypervisor.Memory
@@ -63,7 +65,7 @@ data FrontEndRing reqt respt = FrontRing {
   , frbGetRef     :: {-# UNPACK #-} !GrantRef
   , frbGetPort    :: {-# UNPACK #-} !Port
   , frbRingSize   :: {-# UNPACK #-} !Word32
-  , frbBase       :: {-# UNPACK #-} !(Ptr Word8)
+  , frbBase       :: {-# UNPACK #-} !(ForeignPtr Word8)
   , frbLock       :: !(MVar ())
   , frbWriteReqs  :: !(IORef (Seq (reqt, MVar ())))
   , frbReadReqs   :: !(IORef (Seq (MVar [respt])))
@@ -83,8 +85,9 @@ frbCreate t dom = allocPort dom >>= frbCreateWithEC t dom
 frbCreateWithEC ::FrontEndRingType a b -> DomId -> Port -> IO (FrontEndRing a b)
 frbCreateWithEC t dom port = do
   unless (entrySize t <= maxEntrySize) $ throwIO EINVAL
-  page <- allocPage
-  [ref] <- grantAccess dom page 4096 True
+  page <- mallocForeignPtrAlignedBytes 4096 4096
+  [ref] <- withForeignPtr page $ \ ptr ->
+             grantAccess dom ptr 4096 True
   setRingRequestsProduced  page 0
   setRingResponsesProduced page 0
   setRingRequestEvents     page 1
@@ -187,19 +190,21 @@ advanceFrontRingState ring = do
   readResponses 0 rspCons = return ([], rspCons)
   readResponses n rspCons = do
     (rest, retval) <- readResponses (n - 1) (rspCons + 1)
-    let idx = rspCons `mod` frbRingSize ring
-        ptr = frbBase ring `plusPtrW` (64 + (idx * entrySize (frbType ring)))
-    first <- peekResponse (frbType ring) (castPtr ptr)
-    return (first : rest, retval)
+    withForeignPtr (frbBase ring) $ \ base ->
+      do let idx = rspCons `mod` frbRingSize ring
+             ptr = base `plusPtrW` (64 + (idx * entrySize (frbType ring)))
+         first <- peekResponse (frbType ring) (castPtr ptr)
+         return (first : rest, retval)
   --
   writeRequests _ x EmptyL = return (Seq.empty, x)
   writeRequests 0 x (f :< rest) = return (f <| rest, x)
-  writeRequests n prod ((first, firstMV) :< rest) = do
-    let idx = prod `mod` frbRingSize ring
-        ptr = frbBase ring `plusPtrW` (64 + (idx * entrySize (frbType ring)))
-    pokeRequest (frbType ring) (castPtr ptr) first
-    putMVar firstMV ()
-    writeRequests (n - 1) (prod + 1) (viewl rest)
+  writeRequests n prod ((first, firstMV) :< rest) =
+    withForeignPtr (frbBase ring) $ \ base ->
+      do let idx = prod `mod` frbRingSize ring
+             ptr = base `plusPtrW` (64 + (idx * entrySize (frbType ring)))
+         pokeRequest (frbType ring) (castPtr ptr) first
+         putMVar firstMV ()
+         writeRequests (n - 1) (prod + 1) (viewl rest)
   --
   plusPtrW p w = plusPtr p (fromIntegral w)
 
@@ -236,27 +241,31 @@ advanceFrontRingState ring = do
 maxEntrySize :: Word32
 maxEntrySize = 4096 - 64
 
-ringRequestsProduced :: Ptr a -> IO Word32
-ringRequestsProduced ptr = peekByteOff (castPtr ptr) 0
+ringRequestsProduced :: ForeignPtr a -> IO Word32
+ringRequestsProduced fptr =
+  withForeignPtr fptr $ \ ptr -> peekByteOff (castPtr ptr) 0
 
-setRingRequestsProduced :: Ptr a -> Word32 -> IO ()
-setRingRequestsProduced ptr val = pokeByteOff (castPtr ptr) 0 val
+setRingRequestsProduced :: ForeignPtr a -> Word32 -> IO ()
+setRingRequestsProduced fptr val =
+  withForeignPtr fptr $ \ ptr -> pokeByteOff (castPtr ptr) 0 val
 
-ringRequestEvents :: Ptr a -> IO Word32
-ringRequestEvents ptr = peekByteOff (castPtr ptr) 4
+ringRequestEvents :: ForeignPtr a -> IO Word32
+ringRequestEvents fptr =
+  withForeignPtr fptr $ \ ptr -> peekByteOff (castPtr ptr) 4
 
-setRingRequestEvents :: Ptr a -> Word32 -> IO ()
-setRingRequestEvents ptr val = pokeByteOff (castPtr ptr) 4 val
+setRingRequestEvents :: ForeignPtr a -> Word32 -> IO ()
+setRingRequestEvents fptr val =
+  withForeignPtr fptr $ \ ptr -> pokeByteOff (castPtr ptr) 4 val
 
-ringResponsesProduced :: Ptr a -> IO Word32
-ringResponsesProduced ptr = peekByteOff (castPtr ptr) 8
+ringResponsesProduced :: ForeignPtr a -> IO Word32
+ringResponsesProduced fptr =
+  withForeignPtr fptr $ \ ptr -> peekByteOff (castPtr ptr) 8
 
-setRingResponsesProduced :: Ptr a -> Word32 -> IO ()
-setRingResponsesProduced ptr val = pokeByteOff (castPtr ptr) 8 val
+setRingResponsesProduced :: ForeignPtr a -> Word32 -> IO ()
+setRingResponsesProduced fptr val =
+  withForeignPtr fptr $ \ ptr -> pokeByteOff (castPtr ptr) 8 val
 
---ringResponseEvents :: Ptr a -> IO Word32
---ringResponseEvents ptr = peekByteOff (castPtr ptr) 12
-
-setRingResponseEvents :: Ptr a -> Word32 -> IO ()
-setRingResponseEvents ptr val = pokeByteOff (castPtr ptr) 12 val
+setRingResponseEvents :: ForeignPtr a -> Word32 -> IO ()
+setRingResponseEvents fptr val =
+  withForeignPtr fptr $ \ ptr -> pokeByteOff (castPtr ptr) 12 val
 
