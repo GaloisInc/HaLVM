@@ -307,37 +307,37 @@ writeRequest stateMV tid req k =
      takeMVar respMV >>= k
 
 onXenbusEvent :: MVar XenbusState -> IO ()
-onXenbusEvent stateMV =
-  do state <- takeMVar stateMV
-     let port = xbPort state
-         ring = xbRing state
-     inputbstr <- readNewResponseData port ring (decodeStream state)
-     let (resps, inputbstr') = parseResponses inputbstr
-     tab <- foldM' (waitingRequests state) resps $ \ table resp ->
-       case resp of
-         -- Fire any watches associated with this event
-         RespBody _ RTEvent bstr ->
-           do let bsparts = BS.split 0 bstr
-                  parts   = map (map (chr . fromIntegral) . BS.unpack) bsparts
-                  (key:token:_) = parts
-              forM_ (waitingWatches state) $ \ (watchOn, _, action) ->
-                when (watchOn `isPrefixOf` key) $
-                  forkIO_ (action key token)
-              return table
-         -- Run any handlers associated with this id
-         RespBody rid _ _ ->
-           case Map.lookup rid table of
-             Nothing ->
-               do writeDebugConsole ("WARNING: Xenbus: Response with bad id: "
-                                      ++ (show rid) ++ "\n")
-                  return table
-             Just mvar ->
-               do putMVar mvar resp
-                  return (Map.delete rid table)
-     remn <- writeRequestData port ring (pendingWrites state)
-     putMVar stateMV $! state{ decodeStream = inputbstr'
-                             , pendingWrites = remn
-                             , waitingRequests = tab }
+onXenbusEvent stateMV = do
+  modifyMVar_ stateMV $ \ state ->
+    do let port = xbPort state
+           ring = xbRing state
+       inputbstr <- readNewResponseData port ring (decodeStream state)
+       let (resps, inputbstr') = parseResponses inputbstr
+       tab <- foldM' (waitingRequests state) resps $ \ table resp ->
+         case resp of
+           -- Fire any watches associated with this event
+           RespBody _ RTEvent bstr ->
+             do let bsparts = BS.split 0 bstr
+                    parts   = map (map (chr . fromIntegral) . BS.unpack) bsparts
+                    (key:token:_) = parts
+                forM_ (waitingWatches state) $ \ (watchOn, _, action) ->
+                  when (watchOn `isPrefixOf` key) $
+                    forkIO_ (action key token)
+                return table
+           -- Run any handlers associated with this id
+           RespBody rid _ _ ->
+             case Map.lookup rid table of
+               Nothing ->
+                 do writeDebugConsole ("WARNING: Xenbus: Response with bad id: "
+                                        ++ (show rid) ++ "\n")
+                    return table
+               Just mvar ->
+                 do void $ tryPutMVar mvar resp
+                    return (Map.delete rid table)
+       remn <- writeRequestData port ring (pendingWrites state)
+       return state{ decodeStream = inputbstr'
+                   , pendingWrites = remn
+                   , waitingRequests = tab }
  where
   readNewResponseData port ring acc =
     do newstuff <- readResponseData port ring
@@ -374,6 +374,7 @@ buildRequest rid tid xbr = runPut $ do
 #endif
 
 data ResponseBody = RespBody ReqId ResponseType ByteString
+ deriving (Show)
 
 parseResponse :: Get ResponseBody
 parseResponse =
