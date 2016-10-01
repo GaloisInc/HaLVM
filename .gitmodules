@@ -1,0 +1,13 @@
+[submodule "mini-os"]
+	path = mini-os
+	url = git://xenbits.xen.org/mini-os.git
+[submodule "solo5"]
+	path = solo5
+	url = https://github.com/Solo5/solo5.git
+[submodule "halvm-ghc"]
+	path = halvm-ghc
+	url = https://github.com/GaloisInc/halvm-ghc
+	branch = halvm3
+[submodule "musl"]
+	path = musl
+	url = https://github.com/GaloisInc/halvm-musl.git

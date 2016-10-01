@@ -1,0 +1,32 @@
+Stage1Only           := YES
+INTEGER_LIBRARY      := @INTEGER_LIBRARY@
+DYNAMIC_GHC_PROGRAMS := NO
+
+GhcLibWays = v p
+GhcRTSWays = thr v p debug thr_debug
+
+# These are copied from the "perf" option
+SRC_HC_OPTS     = -O -H64m
+SRC_CPP_OPTS    = -nostdinc
+SRC_HSC2HS_OPTS =
+GhcStage1HcOpts = -O -fasm
+GhcStage2HcOpts = -O2 -fasm
+GhcHcOpts       = -Rghc-timing
+GhcLibHcOpts    = -O2
+
+SplitObjs          = YES
+HADDOCK_DOCS       = NO
+BUILD_DOCBOOK_HTML = NO
+BUILD_DOCBOOK_PS   = NO
+BUILD_DOCBOOK_PDF  = NO
+
+SRC_CC_OPTS += @NO_UNIT_AT_A_TIME_OPT@
+SRC_CC_OPTS += @NO_STACK_PROT_OPT@
+SRC_CC_OPTS += @NO_FRAME_PTR_OPT@
+SRC_CC_OPTS += @NO_ASYNC_UNWIND_OPT@
+SRC_CC_OPTS += @NO_RED_ZONE_OPT@
+SRC_CC_OPTS += @NO_BUILTIN_OPT@
+
+NoFibWays =
+STRIP_CMD = :
+

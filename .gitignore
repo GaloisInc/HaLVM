@@ -1,0 +1,7 @@
+autoconf.mk
+misc/build.mk
+
+configure
+autom4te.cache
+config.log
+config.status

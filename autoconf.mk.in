@@ -1,0 +1,20 @@
+VERSION  := @PACKAGE_VERSION@
+INTLIB   := @INTEGER_LIBRARY@
+TOPDIR   := @abs_top_builddir@
+
+ALEX     := @ALEX@
+AR       := @AR@
+CC       := @CC@
+GHC      := @GHC@
+HADDOCK  := @HADDOCK@
+HAPPY    := @HAPPY@
+HSCOLOUR := @HSCOLOUR@
+LD       := @LD@
+LN       := @LN@
+NM       := @NM@
+MAKE     := @MAKE@
+OBJDUMP  := @OBJDUMP@
+RANLIB   := @RANLIB@
+READELF  := @READELF@
+
+ARCH     := $(shell uname -p)
