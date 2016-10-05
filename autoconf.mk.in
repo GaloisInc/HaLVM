@@ -16,5 +16,6 @@ MAKE     := @MAKE@
 OBJDUMP  := @OBJDUMP@
 RANLIB   := @RANLIB@
 READELF  := @READELF@
+SED      := @SED@
 
-ARCH     := $(shell uname -p)
+ARCH     := @ARCH@

@@ -104,6 +104,7 @@ AC_FORCE_EXIST(MAKE,make)
 AC_FORCE_EXIST(OBJDUMP,objdump)
 AC_FORCE_EXIST(RANLIB,ranlib)
 AC_FORCE_EXIST(READELF,readelf)
+AC_FORCE_EXIST(SED,sed)
 
 AC_CHECK_PROG_VER(ALEX, alex, --version, [Alex version \([0-9.]*\)],
                   [3.*], LOG_FAILURE("Couldn't find required version of Alex"))
@@ -181,6 +182,13 @@ AC_SUBST(INTEGER_LIBRARY, [$int_library])
 AC_CHECK_FILE(/etc/centos-release,
               AC_SUBST(PLATFORM,"centos67"),
               AC_SUBST(PLATFORM,"deb8"))
+
+architecture=`uname -p`
+if test "$architecture" == "x86_64"; then
+  AC_SUBST(ARCH,"x86_64")
+else
+  AC_SUBST(ARCH,"i386")
+fi
 
 dnl -------------------------------------------------------------------------
 dnl
