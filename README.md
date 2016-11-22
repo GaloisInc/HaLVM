@@ -29,59 +29,14 @@ purpose Xen domains with minimal resource requirements.
 2. Getting and Building the HaLVM
 ---------------------------------
 
-The HaLVM is available publicly [on GitHub](http://github.org/GaloisInc/HaLVM).
-
-We develop the HaLVM almost exclusively in Fedora Linux, running a slightly
-modified version of their versions of Xen. Our modified versions simply add
-the flag "verbose=y" to their build specification, on the lines that build
-and install the hypervisor (search for dist-xen and install-xen). We try to
-keep the latest version we're using available, in src/misc/xen.spec. In
-addition, I will try to keep recent binary and source RPMs available at:
-
-  http://uhsure.com/halvm-xen-rpms/
+For those who want to set up a development environment and maybe contribute to HaLVM, please see [HACKING.md](HACKING.md).
 
 In addition, you might want to check out Darrin Eden's build system,
 available on GitHub:
 
-  https://github.com/dje/halvm-test
+    https://github.com/dje/halvm-test
 
-It may provide some information that you'd find useful, or may automate portions
-of this process for you.
-
-If you plan to do development work on the HaLVM itself, please fork the HaLVM.
-This allows us to more easily tell who is working on the HaLVM, and GitHub's
-tools make merging your changes much more easy.
-
-You'll need these dependencies:
-
-> autoconf gcc automake libtool patch ncurses-devel xen-devel zlib-devel
-
-If GHC 7.8.4 is not present, a version of it will be downloaded for
-use during the build process.
-
-Once checked out, the HaLVM builds as follows:
-
-> git submodule update --init --recursive
-
-> autoconf
-
-> ./configure
-
-> make
-
-> make install
-
-> halvm-ghc-pkg recache
-
-The configure system will accept and honor the "--prefix" flag as per
-normal. We also strongly suggest using the "--enable-gmp" flag, in order
-to enable the (much faster) GMP library for large integer math.
-
-If you intend on using inter-domain communication (specified in
-`Communication.Rendezvous` and `Communication.IVC`), run the `mkrenddir` script
-(located wherever you installed the HaLVM, `/usr/local/bin` by default) as root. 
-This creates a top-level `/rendezvous` directory in the XenStore with
-appropriate permissions.
+It may provide some information that you'd find useful, or may automate portions of this process for you.
 
 
 3. Where To Look Next
