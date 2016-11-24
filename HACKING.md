@@ -10,7 +10,7 @@ Development Environment Setup
 
 Why we need another VM? Because we need to install a Xen hypervisor on the host system, which is probably not something you want to do with your own machine. Besides, we can standardize the steps if we can assume the host OS.
 
-Our Host OS of choice is **Fedora Server 22**. (Why "Server"? Because "Workstation" might have `xen-libs` pre-installed, which could cause trouble for us. And "Server" is also more lightweight than "WorkStation"). You can also try 21, 23, etc. or even other distros, good luck and if any, please tell us any problem you met, or make a PR documenting how to solve it.
+Our Host OS of choice is **Fedora Server 22**. You can download its image from [here](http://mirror.0x.sg/fedora/linux/releases/24/Server/x86_64/iso/Fedora-Server-dvd-x86_64-24-1.2.iso) or a closer mirror site (Why "Server"? Because "Workstation" might have `xen-libs` pre-installed, which could cause trouble for us. And "Server" is also more lightweight than "WorkStation"). You can also try 21, 23, etc. or even other distros, good luck and if any, please tell us any problem you met, or make a PR documenting how to solve it.
 
 Next, please refer to different subsections depending on your VM softwares, though the steps are not much different.
 
@@ -58,15 +58,15 @@ During installation, pretty much everything is standard you can just use the def
 2. If you have to choose packages to install, select "Minimal Installation" and confirm.
 3. Remember to check the "Make this user administrator" when creating the account
 
-Now, reboot the machine to finish installation.
+Now, reboot the machine to finish installation. (For VirtualBox user: You might have to manually remove the installer disk image in `Settings -> Storage`).
 
 After we restarted the Fedora, let's set up the `ssh` connection it from host machine. Why bother? first, we don't really need GUI and second, typing commands in a virtualized monitor is a pain.
 
 After booting up, you will probably need to launch the ssh daemon:
 
 ```
-service sshd start
-chckconfig sshd on
+$ sudo service sshd start
+$ sudo chkconfig sshd on
 ```
 
 ### VMWare or VirtualBox: Method 1
