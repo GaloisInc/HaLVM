@@ -10,7 +10,14 @@ Development Environment Setup
 
 Why we need another VM? Because we need to install a Xen hypervisor on the host system, which is probably not something you want to do with your own machine. Besides, we can standardize the steps if we can assume the host OS.
 
-Our Host OS of choice is **Fedora Server 22**. You can download its image from [here](http://mirror.0x.sg/fedora/linux/releases/24/Server/x86_64/iso/Fedora-Server-dvd-x86_64-24-1.2.iso) or a closer mirror site (Why "Server"? Because "Workstation" might have `xen-libs` pre-installed, which could cause trouble for us. And "Server" is also more lightweight than "WorkStation"). You can also try 21, 23, etc. or even other distros, good luck and if any, please tell us any problem you met, or make a PR documenting how to solve it.
+Our Host OS of choice is **Fedora Server 22/23**. (Why "Server"? Because "Workstation" might have `xen-libs` etc. pre-installed, which might cause trouble for us. And "Server" is also more lightweight than "WorkStation").
+
+You can download its image from any mirror site, for example:
+
+- For Server 22: https://download.fedoraproject.org/pub/fedora/linux/releases/22/Server/x86_64/iso/Fedora-Server-DVD-x86_64-22.iso
+- For Server 23: https://download.fedoraproject.org/pub/fedora/linux/releases/23/Server/x86_64/iso/Fedora-Server-DVD-x86_64-23.iso
+
+You can also try 21, 24, etc. or even other distros, good luck and if any, please tell us any problem you met, or make a PR documenting how to solve it.
 
 Next, please refer to different subsections depending on your VM softwares, though the steps are not much different.
 
@@ -91,6 +98,8 @@ $ ssh <user-name>@192.168.XXX.YYY
 
 Method 1 is good, except that the IP address might not be fixed, which means that you have to peek into the VM window everytime you rebooted the Fedora. A better approach, at least working in VirtualBox, is **port-forwarding** (NOTE: I believe the VMWare also has such feature, please add something here if you know about it).
 
+NOTE: NIC must be in NAT mode.
+
 Follow "Settings -> Network -> Adaptor 1 -> Advanced -> Port Forwarding", then in the config dialog, we will add a new rule, with "Name" as "ssh" or something similarly meaningful, "Host Port" as "3333" or something similarly nonsensical, and "Guest Port" as "22", the rest kept as default.
 
 Then, for *nix machines, you can add a ssh configuration by opening `~/.ssh/config`, and adding something like this:
@@ -102,7 +111,7 @@ Host halvm
      User halvm
 ```
 
-Then here you go: use `ssh-copy-id <host-name>` to set up the key authentication, then `ssh <host-name>`, where `<host-name>` is the one after `Host` in the `~/.ssh/config`.
+Then here you go: use `ssh-copy-id <host-name>` to set up the key authentication (if you want to manually do this instead of using `ssh-copy-id`, https://www.digitalocean.com/community/tutorials/how-to-configure-ssh-key-based-authentication-on-a-linux-server might be helpful to you). Then `ssh <host-name>`, where `<host-name>` is the one after `Host` in the `~/.ssh/config`.
 
 ## Step #3: Install Xen and other build dependencies
 
@@ -111,7 +120,7 @@ Next, let's get Xen and other necessary tools installed.
 First, let's tell our Fedora system about the HaLVM public repos. Be sure to replace `2X` in the commands below with the appropriate Fedora version number:
 
 ```
-$ sudo dnf install http://repos.halvm.org/2X/x86_64/halvm-yum-repo-2X-2.fc2X.noarch.rpm
+$ sudo dnf install http://repos.halvm.org/fedora-2X/x86_64/halvm-yum-repo-2X-3.fc2X.noarch.rpm
 ```
 
 Second, let's make cache. (I won't recommend you to `sudo dnf update` now, since it will generally update a lot of packages, and risk breaking stuff accidentally because the newest updates will change by time).
@@ -123,7 +132,9 @@ $ sudo dnf makecache
 Now let's install the dependencies.
 
 ```
-$ sudo dnf install gcc automake libtool patch ncurses-devel halvm-xen zlib-devel libgmp
+$ sudo dnf install gcc automake libtool patch ncurses-devel halvm-xen halvm-xen-devel zlib-devel git
+$ sudo dnf install libgmp # for Fedora 22
+$ sudo dnf install gmp-devel # for Fedora 23
 ```
 
 NOTE: Why a modified version of Xen? Debugging. The stock version of Xen that comes with Fedora has certain low-level debugging capabilities disabled, as they add some bulk and slowdown to the whole system. The `halvm-xen` version of Xen has been modified to enable those features, which allows for us to use (with some boot flags) a very reliable output mechanism for debugging. Our modified versions simply add the flag "verbose=y" to their build specification, on the lines that build and install the hypervisor (search for "dist-xen" and "install-xen"). We try to keep the latest version we're using available, in `src/misc/xen.spec`. In addition, I will try to keep recent binary and source RPMs available at `http://repos.halvm.org`.
@@ -261,12 +272,13 @@ appropriate permissions.
 ## Wrap-up
 
 **Acknowledgements**: This guide is based on Adam Wick, Tim Humphries, Michael Hueschen
-, Mark Wotton, Adam C. Foltzer, and Arthur Clune's previous efforts in writing something up. Since there might be some other details that might be useful to you, here are links to them.
+, Mark Wotton, Adam C. Foltzer, and Arthur Clune's previous efforts in writing something up. Since there are some other details that might be useful to you, here are links to them.
 
 - https://github.com/GaloisInc/HaLVM/wiki
 - https://github.com/GaloisInc/HaLVM/wiki/Building-a-Development-Virtual-Machine
 - https://github.com/GaloisInc/HaLVM/blob/master/README.md
 
+And also thanks to Arnaud Bailly for testing the instructions here and giving feedbacks.
 
 Be a contributor
 ----
