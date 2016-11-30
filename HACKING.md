@@ -229,7 +229,7 @@ NM_CONTROLLED=no
 Now restart the network service, and ping a friendly outside address to make sure you still have access to the wider Internet:
 
 ```
-$ sudo systemctl restart network.service
+$ sudo service network restart
 $ ping galois.com
 ```
 
@@ -241,6 +241,8 @@ If GHC 7.8.4 is not present, a version of it will be downloaded for
 use during the build process.
 
 Once checked out, the HaLVM builds as follows:
+
+> git clone https://github.com/GaloisInc/HaLVM
 
 > git submodule update --init --recursive
 
