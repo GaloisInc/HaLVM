@@ -10,14 +10,14 @@ Development Environment Setup
 
 Why we need another VM? Because we need to install a Xen hypervisor on the host system, which is probably not something you want to do with your own machine. Besides, we can standardize the steps if we can assume the host OS.
 
-Our Host OS of choice is **Fedora Server 22/23**. (Why "Server"? Because "Workstation" might have `xen-libs` etc. pre-installed, which might cause trouble for us. And "Server" is also more lightweight than "WorkStation").
+Our Host OS of choice is **Fedora Server 22/23/24**. (Why "Server"? Because "Workstation" might have `xen-libs` etc. pre-installed, which might cause trouble for us. And "Server" is also more lightweight than "WorkStation").
 
 You can download its image from any mirror site, for example:
 
 - For Server 22: https://download.fedoraproject.org/pub/fedora/linux/releases/22/Server/x86_64/iso/Fedora-Server-DVD-x86_64-22.iso
 - For Server 23: https://download.fedoraproject.org/pub/fedora/linux/releases/23/Server/x86_64/iso/Fedora-Server-DVD-x86_64-23.iso
 
-You can also try 21, 24, etc. or even other distros, good luck and if any, please tell us any problem you met, or make a PR documenting how to solve it.
+You can also try 21, 25 etc. or even other distros, good luck and if any, please tell us any problem you met, or make a PR documenting how to solve it.
 
 Next, please refer to different subsections depending on your VM softwares, though the steps are not much different.
 
@@ -121,12 +121,7 @@ First, let's tell our Fedora system about the HaLVM public repos. Be sure to rep
 
 ```
 $ sudo dnf install http://repos.halvm.org/fedora-2X/x86_64/halvm-yum-repo-2X-3.fc2X.noarch.rpm
-```
-
-Second, let's make cache. (I won't recommend you to `sudo dnf update` now, since it will generally update a lot of packages, and risk breaking stuff accidentally because the newest updates will change by time).
-
-```
-$ sudo dnf makecache
+$ sudo dnf update
 ```
 
 Now let's install the dependencies.
@@ -134,7 +129,7 @@ Now let's install the dependencies.
 ```
 $ sudo dnf install gcc automake libtool patch ncurses-devel halvm-xen halvm-xen-devel zlib-devel git
 $ sudo dnf install libgmp # for Fedora 22
-$ sudo dnf install gmp-devel # for Fedora 23
+$ sudo dnf install gmp-devel # for Fedora 23/24
 ```
 
 NOTE: Why a modified version of Xen? Debugging. The stock version of Xen that comes with Fedora has certain low-level debugging capabilities disabled, as they add some bulk and slowdown to the whole system. The `halvm-xen` version of Xen has been modified to enable those features, which allows for us to use (with some boot flags) a very reliable output mechanism for debugging. Our modified versions simply add the flag "verbose=y" to their build specification, on the lines that build and install the hypervisor (search for "dist-xen" and "install-xen"). We try to keep the latest version we're using available, in `src/misc/xen.spec`. In addition, I will try to keep recent binary and source RPMs available at `http://repos.halvm.org`.
