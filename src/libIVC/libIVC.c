@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <libIVC.h>
 #include <assert.h>
+#define XC_WANT_COMPAT_EVTCHN_API
+#define XC_WANT_COMPAT_GNTTAB_API
 #include <xenctrl.h>
 
 #ifdef HAVE_XENSTORE_H
