@@ -8,7 +8,7 @@ Development Environment Setup
 
 ## Step #1: Set up the Host Virtual Machine
 
-Why we need another VM? Because we need to install a Xen hypervisor on the host system, which is probably not something you want to do with your own machine. Besides, we can standardize the steps if we can assume the host OS.
+Why we need another VM? Because we need to install a Xen hypervisor on the host system, which is probably not something you want to do with your own machine. Besides, we can standardize the steps if we can assume the host OS. Also, it is easier to backup (You can **snapshot** at any check point as you like, and we recommend you to do so frequently before accidentally screwing things up).
 
 Our Host OS of choice is **Fedora Server 22/23/24**. (Why "Server"? Because "Workstation" might have `xen-libs` etc. pre-installed, which might cause trouble for us. And "Server" is also more lightweight than "WorkStation").
 
@@ -130,6 +130,7 @@ Now let's install the dependencies.
 $ sudo dnf install gcc automake libtool patch ncurses-devel halvm-xen halvm-xen-devel zlib-devel git
 $ sudo dnf install libgmp # for Fedora 22
 $ sudo dnf install gmp-devel # for Fedora 23/24
+$ sudo ln -s /usr/lib64/libtinfo.so.6 /usr/lib64/libtinfo.so.5 # for Fedora 24. It is a HACK
 ```
 
 NOTE: Why a modified version of Xen? Debugging. The stock version of Xen that comes with Fedora has certain low-level debugging capabilities disabled, as they add some bulk and slowdown to the whole system. The `halvm-xen` version of Xen has been modified to enable those features, which allows for us to use (with some boot flags) a very reliable output mechanism for debugging. Our modified versions simply add the flag "verbose=y" to their build specification, on the lines that build and install the hypervisor (search for "dist-xen" and "install-xen"). We try to keep the latest version we're using available, in `src/misc/xen.spec`. In addition, I will try to keep recent binary and source RPMs available at `http://repos.halvm.org`.
