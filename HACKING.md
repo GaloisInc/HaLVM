@@ -16,6 +16,7 @@ You can download its image from any mirror site, for example:
 
 - For Server 22: https://download.fedoraproject.org/pub/fedora/linux/releases/22/Server/x86_64/iso/Fedora-Server-DVD-x86_64-22.iso
 - For Server 23: https://download.fedoraproject.org/pub/fedora/linux/releases/23/Server/x86_64/iso/Fedora-Server-DVD-x86_64-23.iso
+- For Server 24: https://download.fedoraproject.org/pub/fedora/linux/releases/24/Server/x86_64/iso/Fedora-Server-dvd-x86_64-24-1.2.iso
 
 You can also try 21, 25 etc. or even other distros, good luck and if any, please tell us any problem you met, or make a PR documenting how to solve it.
 
@@ -257,9 +258,9 @@ Once checked out, the HaLVM builds as follows:
 
 > halvm-ghc-pkg recache
 
-The configure system will accept and honor the "--prefix" flag as per
-normal. We also strongly suggest using the "--enable-gmp" flag, in order
-to enable the (much faster) GMP library for large integer math.
+The configure system will accept and honor the "--prefix" flag as per normal.
+Using the "--enable-gmp" flag is optional, but is strongly recommended
+in order to enable the (much faster) GMP library for large integer math.
 
 If you intend on using inter-domain communication (specified in
 `Communication.Rendezvous` and `Communication.IVC`), run the `mkrenddir` script
@@ -270,6 +271,8 @@ appropriate permissions.
 ## Step #6: Test with some examples
 
 There are many examples under `HaLVM/examples`, you can choose one, for example, `Core/Hello`, enter the folder, and `make; make run`. Note that for examples that use IVC, you have to run `sudo src/mkrenddir/mkrenddir` (under `HaLVM`) to set up the XenStore.
+
+For `HighLevel/WebServer`, please see this guide: https://github.com/GaloisInc/HaLVM/wiki/HaLVM-Web-Server-Quick-Start for more information.
 
 ## Wrap-up
 
