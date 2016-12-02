@@ -267,6 +267,10 @@ If you intend on using inter-domain communication (specified in
 This creates a top-level `/rendezvous` directory in the XenStore with
 appropriate permissions.
 
+## Step #6: Test with some examples
+
+There are many examples under `HaLVM/examples`, you can choose one, for example, `Core/Hello`, enter the folder, and `make; make run`. Note that for examples that use IVC, you have to run `sudo src/mkrenddir/mkrenddir` (under `HaLVM`) to set up the XenStore.
+
 ## Wrap-up
 
 **Acknowledgements**: This guide is based on Adam Wick, Tim Humphries, Michael Hueschen
