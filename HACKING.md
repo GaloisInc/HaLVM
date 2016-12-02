@@ -249,7 +249,7 @@ Once checked out, the HaLVM builds as follows:
 
 > autoconf
 
-> ./configure
+> ./configure --enable-gmp
 
 > make
 
