@@ -127,7 +127,7 @@ $ sudo dnf update
 Now let's install the dependencies.
 
 ```
-$ sudo dnf install gcc automake libtool patch ncurses-devel halvm-xen halvm-xen-devel zlib-devel git
+$ sudo dnf install gcc automake libtool patch ncurses-devel halvm-xen halvm-xen-devel zlib-devel openssl-devel git
 $ sudo dnf install libgmp # for Fedora 22
 $ sudo dnf install gmp-devel # for Fedora 23/24
 $ sudo ln -s /usr/lib64/libtinfo.so.6 /usr/lib64/libtinfo.so.5 # for Fedora 24. It is a HACK
