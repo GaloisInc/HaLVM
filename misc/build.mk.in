@@ -1,3 +1,4 @@
+Stage1Only           := YES
 INTEGER_LIBRARY      := @INTEGER_LIBRARY@
 DYNAMIC_GHC_PROGRAMS := NO
 
@@ -13,7 +14,7 @@ GhcStage2HcOpts = -O2 -fasm
 GhcHcOpts       = -Rghc-timing
 GhcLibHcOpts    = -O2
 
-SplitObjs          = YES
+SplitObjs          = NO
 HADDOCK_DOCS       = NO
 BUILD_DOCBOOK_HTML = NO
 BUILD_DOCBOOK_PS   = NO
