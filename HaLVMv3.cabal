@@ -1,0 +1,5 @@
+name:	HaLVMv3
+cabal-version: >=1.10
+
+executable halvm
+    build-depends: cabal-install >= 1.24, alex >= 3.0, haddock >= 2.17, happy >= 1.19, hscolour >= 1.24
