@@ -92,12 +92,12 @@ $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk: $(TOPDIR)/halvm-ghc/mk/build.mk
 $(TOPDIR)/halvm-ghc/mk/config.mk: $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk \
                                   $(TOPDIR)/obj/include/bits/alltypes.h
 	(cd halvm-ghc && RELEASE=YES ./configure $(HALVM_GHC_CONFIGURE_FLAGS))
-	cp halvm-ghc/libraries/base/config.sub halvm-ghc/libraries/unix/config.sub
+	cp halvm-ghc/libraries/base/config.sub halvm-ghc/libraries/unix/config.sub # XXX: What is that
 
-$(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage2: $(TOPDIR)/halvm-ghc/mk/config.mk
+$(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1: $(TOPDIR)/halvm-ghc/mk/config.mk
 	$(MAKE) -C halvm-ghc ghclibdir=$(halvmlibdir)
 
-all:: $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage2
+all:: $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1
 
 clean::
 	$(RM) -f $(TOPDIR)/halvm-ghc/mk/config.mk
