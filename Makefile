@@ -104,3 +104,9 @@ clean::
 	$(RM) -f $(TOPDIR)/halvm-ghc/libraries/base.ghc.mk
 	$(MAKE) -C halvm-ghc clean
 
+######################### Install ################################
+
+install::
+	$(MAKE) -C halvm-ghc install ghclibdir=$(halvmlibdir) DESTDIR=$(DESTDIR)
+	$(INSTALL) -D $(TOPDIR)/scripts/halvm-ghc $(DESTDIR)$(bindir)/halvm-ghc
+
