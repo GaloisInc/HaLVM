@@ -4,7 +4,7 @@ import Data.Time
 import Hypervisor.Console
 import System.CPUTime
 import System.Environment
-import System.Locale
+import Data.Time.Format
 
 main :: IO ()
 main = do

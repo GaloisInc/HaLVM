@@ -2,7 +2,7 @@ import Control.Concurrent
 import Control.Monad
 import Hypervisor.Debug
 import System.CPUTime
-import System.Locale
+import Data.Time.Format 
 
 main :: IO ()
 main = showTime 32
