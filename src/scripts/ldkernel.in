@@ -31,6 +31,9 @@ exec_prefix="@exec_prefix@"
 libdir="@libdir@"
 halvm_dir="@libdir@/HaLVM-@PACKAGE_VERSION@"
 
+# reset the arguments as the file content of the path provided in the original argument
+set -- $(cat $(echo $@ | sed 's/^@//') | tr '\n' ' ' | sed 's/\"//g')
+
 ARGS=""
 LIBS=""
 LIBDIR=`echo $0 | sed 's/[^/]*$//g'`
@@ -53,6 +56,7 @@ while [ $# != 0 ] ; do
     -Wl,--hash-size*) BIT=`echo "$1"|cut -c 17-`;ARGS="$ARGS -u ${BIT}";shift;;
     -Wl,--version) ARGS="$ARGS --version"; shift;;
     -Wl,--build-id=none) TY=$(echo "$1" | cut -c 16-); ARGS="$ARGS --build-id=${TY}"; shift;;
+    -Wl,--gc-sections) shift;; # HACK (izgzhen): don't know a better way to handle this
     *) ARGS="$ARGS $1"; shift;;
   esac
 done

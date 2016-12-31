@@ -24,134 +24,6 @@ mrproper:: clean
 install::
 
 ###############################################################################
-# File Downloading
-###############################################################################
-
-$(GHC_FILE):
-	$(CURL) -LO $(GHC_LINK)
-
-$(CABAL_FILE):
-	$(CURL) -LO $(CABAL_LINK)
-
-mrproper::
-	$(RM) -f $(GHC_FILE)
-	$(RM) -f $(CABAL_FILE)
-
-###############################################################################
-# Platform GHC Preparation
-###############################################################################
-
-# We ship cabal, alex, happy, haddock, hscolour with the HaLVM environment,
-# since they depend on 'unix' and other libraries halvm-ghc can't build. 
-# (User might not have a preexisting Haskell ecosystem installed).
-# A cabal sandbox is used to minimise the effect on the user's machine.
-BUILDDIR := $(TOPDIR)/build
-BUILDBOX := $(BUILDDIR)/sandbox
-BUILDENV := PATH=$(TOPDIR)/platform_ghc/bin:$(BUILDBOX)/bin:$(PATH)
-
-$(BUILDDIR):
-	mkdir -p $@
-
-clean::
-	$(RM) -rf $(BUILDDIR)
-	$(RM) -rf $(TOPDIR)/platform_ghc
-
-mrproper::
-	$(RM) -rf $(BUILDDIR)
-
-# Prepare an ordinary version of GHC.
-# We don't ship this - we just need it to build halvm-ghc etc.
-PLATGHC := $(TOPDIR)/platform_ghc/bin/ghc
-
-$(PLATGHC): $(GHC_FILE) | $(BUILDDIR) 
-	$(TAR) jxf $(GHC_FILE) -C $(BUILDDIR)
-	(cd $(BUILDDIR)/ghc* && ./configure --prefix=$(TOPDIR)/platform_ghc)
-	$(MAKE) -C $(BUILDDIR)/ghc*/ install
-
-mrproper::
-	$(RM) -rf $(TOPDIR)/platform_ghc
-	$(RM) $(HOME)/.ghc/$(ARCH)-linux-7.8.4
-
-PLATCABAL := $(TOPDIR)/platform_ghc${halvmlibdir}/bin/cabal
-$(PLATCABAL): $(CABAL_FILE) $(PLATGHC) | $(BUILDDIR) 
-	$(TAR) zxf $(CABAL_FILE) -C $(BUILDDIR)
-	# XXX Why is this necessary?
-	$(RM) -rf ${HOME}/.ghc/${ARCH}-linux-7.8.4
-	$(BUILDENV) && cd $(BUILDDIR)/cabal-install-$(CABAL_VERSION) && \
-		PREFIX=${halvmlibdir} \
-		./bootstrap.sh --no-doc --sandbox $(BUILDBOX)
-	$(INSTALL) -D $(BUILDBOX)/bin/cabal $(PLATCABAL)
-
-mrproper::
-	$(RM) -rf $(TOPDIR)/platform_ghc
-
-# `cabal update` stores package lists in ~/.cabal by default, even with sandbox.
-# We override this with a config file to prevent unwanted build effects.
-$(BUILDDIR)/cabal.config: $(PLATCABAL)
-	echo "require-sandbox: True" >> $@
-	echo "remote-repo: hackage.haskell.org:http://hackage.haskell.org/packages/archive" >> $@
-	echo "remote-repo-cache: $(BUILDBOX)/packages" >> $@
-	$(BUILDENV) && cd $(BUILDBOX) && \
-		$(PLATCABAL) --config-file=$@ sandbox init --sandbox=$(BUILDBOX) && \
-		$(PLATCABAL) --config-file=$@ update
-
-# Force Cabal to use our config file
-CABAL := $(PLATCABAL) --config-file="$(BUILDDIR)/cabal.config"
-
-# Fetch sources for alex, happy, hscolour, haddock from Hackage.
-# This produces targets $(ALEX_SRC) $(HAPPY_SRC) etc
-define hackage-fetch
-$2_SRC := $$(BUILDDIR)/$1-$3
-$$($2_SRC): $$(PLATCABAL) | $$(BUILDDIR)
-	$$(BUILDENV) && cd $$(BUILDDIR) && \
-		$$(CABAL) fetch $1-$3 && \
-		$$(CABAL) unpack $1-$3
-endef
-$(eval $(call hackage-fetch,alex,ALEX,$(ALEX_VERSION)))
-$(eval $(call hackage-fetch,happy,HAPPY,$(HAPPY_VERSION)))
-$(eval $(call hackage-fetch,haddock,HADDOCK,$(HADDOCK_VERSION)))
-$(eval $(call hackage-fetch,hscolour,HSCOLOUR,$(HSCOLOUR_VERSION)))
-
-# Build regular versions of alex and happy in our sandbox, for building GHC.
-# We pass $(BUILDBOX)/bin via $(BUILDENV) while building GHC and libraries.
-define hackage-sandbox-build
-$1_BIN := $$(BUILDBOX)/bin/$2
-$$($1_BIN): $$(PLATCABAL) | $$($1_SRC)
-	$$(BUILDENV) && cd $$($1_SRC) && \
-		$$(CABAL) sandbox init --sandbox $$(BUILDBOX) && \
-                $$(CABAL) install --only-dep && \
-                $$(CABAL) configure && \
-                $$(CABAL) build && \
-                $$(CABAL) copy
-endef
-$(eval $(call hackage-sandbox-build,ALEX,alex))
-$(eval $(call hackage-sandbox-build,HAPPY,happy))
-$(eval $(call hackage-sandbox-build,HSCOLOUR,HsColour))
-$(eval $(call hackage-sandbox-build,HADDOCK,haddock))
-
-# For each of the tools we distribute with the HaLVM, build static versions
-# with the correct prefix burned in. This is only necessary because of
-# cabal #462 https://github.com/haskell/cabal/issues/462.
-# Without this, the built tools will only work on the builder's machine.
-# Targets $(PLATALEX) $(PLATHSCOLOUR) etc will be created.
-define hackage-static-build
-PLAT$1 = $$(TOPDIR)/platform_ghc$${halvmlibdir}/bin/$2
-$$(PLAT$1): $$(PLATCABAL) $$(BUILDDIR)/cabal.config $$($1_BIN)
-	$$(BUILDENV) && cd $$($1_SRC) && \
-		$$(CABAL) configure --prefix=$$(halvmlibdir) \
-			--disable-shared --disable-executable-dynamic && \
-		$$(CABAL) build && \
-		$$(CABAL) copy --destdir=$$(TOPDIR)/platform_ghc
-endef
-$(eval $(call hackage-static-build,ALEX,alex))
-$(eval $(call hackage-static-build,HAPPY,happy))
-$(eval $(call hackage-static-build,HADDOCK,haddock))
-$(eval $(call hackage-static-build,HSCOLOUR,HsColour))
-
-# Require static and ordinary builds for each tool.
-all:: $(PLATHAPPY) $(PLATHADDOCK) $(PLATHSCOLOUR) $(PLATALEX) 
-
-###############################################################################
 # Prepping / supporting the GHC build
 ################################################################################
 
@@ -160,16 +32,7 @@ $(TOPDIR)/halvm-ghc/libraries/array/array.cabal:
 	(cd halvm-ghc && ./sync-all --no-dph -r http://darcs.haskell.org get)
 	(cd halvm-ghc && ./sync-all checkout -t origin/ghc-7.8)
 
-# Replace GHC's base with halvm-base.
-# When NoIO.hs exists, we know this step has succeeded
-$(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs: \
-             $(TOPDIR)/halvm-ghc/libraries/array/array.cabal
-	$(RM) -rf $(TOPDIR)/halvm-ghc/libraries/base
-	$(GIT) clone $(GIT_LIB_URL)/halvm-base.git -b halvm halvm-ghc/libraries/base
-
-$(TOPDIR)/halvm-ghc/libraries/base/ghc.mk: \
-             $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs \
-			 $(TOPDIR)/halvm-ghc/mk/build.mk
+$(TOPDIR)/halvm-ghc/libraries/base/ghc.mk: $(TOPDIR)/halvm-ghc/mk/build.mk
 	(cd halvm-ghc && ./boot)
 
 # Link Xen headers into the HaLVM runtime include dir
@@ -197,14 +60,12 @@ $(TOPDIR)/halvm-ghc/libraries/XenDevice: \
 	fi
 
 # Replace libc headers with minlibc
-$(TOPDIR)/halvm-ghc/libraries/base/libc-include: \
-       $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs
+$(TOPDIR)/halvm-ghc/libraries/base/libc-include:
 	if [ ! -h $@ ]; then \
 	  $(LN) -sf $(TOPDIR)/halvm-ghc/rts/minlibc/include $@ ; \
 	fi
 
-GHC_PREPPED = $(TOPDIR)/halvm-ghc/libraries/base/GHC/Event/NoIO.hs \
-              $(TOPDIR)/halvm-ghc/rts/xen/include/xen              \
+GHC_PREPPED = $(TOPDIR)/halvm-ghc/rts/xen/include/xen              \
               $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk            \
               $(TOPDIR)/halvm-ghc/libraries/base/libc-include      \
               $(TOPDIR)/halvm-ghc/mk/build.mk                      \
@@ -365,13 +226,12 @@ HALVM_GHC_CONFIGURE_FLAGS += --with-nm=$(NM)
 HALVM_GHC_CONFIGURE_FLAGS += --with-ar=$(AR)
 HALVM_GHC_CONFIGURE_FLAGS += --with-objdump=$(OBJDUMP)
 HALVM_GHC_CONFIGURE_FLAGS += --with-ranlib=$(RANLIB)
-HALVM_GHC_CONFIGURE_FLAGS += --with-ghc=$(PLATGHC)
+HALVM_GHC_CONFIGURE_FLAGS += --with-ghc=$(GHC)
 HALVM_GHC_CONFIGURE_FLAGS += --prefix=$(prefix)
+HALVM_GHC_CONFIGURE_FLAGS += --disable-large-address-space
 
-$(TOPDIR)/halvm-ghc/mk/config.mk: $(GHC_PREPPED) $(PLATGHC) $(PLATALEX) \
-                                  $(PLATHAPPY) $(PLATHADDOCK) $(PLATHAPPY)
-	(cd halvm-ghc && \
-	    $(BUILDENV) && ./configure $(HALVM_GHC_CONFIGURE_FLAGS))
+$(TOPDIR)/halvm-ghc/mk/config.mk: $(GHC_PREPPED)
+	(cd halvm-ghc && ./configure $(HALVM_GHC_CONFIGURE_FLAGS))
 
 # The GHC build system picks up everything linked into halvm-ghc/libraries
 $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage1: $(TOPDIR)/halvm-ghc/mk/config.mk
@@ -419,12 +279,13 @@ $(TOPDIR)/src/misc/ghci_runtime.o: $(TOPDIR)/src/misc/ghci_runtime.c
 
 $(TOPDIR)/halvm-ghc/libminlibc.a:                                            \
          $(TOPDIR)/halvm-ghc/rts/dist/build/libHSrts.a                       \
-		 $(TOPDIR)/src/misc/ghci_runtime.o
+		 $(TOPDIR)/src/misc/ghci_runtime.o \
+		 $(GHCI_OBJS)
 	$(AR) cr $@ $(GHCI_OBJS)
 
 all:: $(TOPDIR)/halvm-ghc/libminlibc.a
 
-install::
+install:: $(TOPDIR)/halvm-ghc/libminlibc.a
 	$(INSTALL) -D $(TOPDIR)/halvm-ghc/libminlibc.a \
 	              $(DESTDIR)$(halvmlibdir)/base-$(BASE_VERSION)/libminlibc.a
 
@@ -446,22 +307,30 @@ install:: $(TOPDIR)/src/scripts/ldkernel
 install:: $(TOPDIR)/src/misc/kernel-$(ARCH).lds
 	$(INSTALL) -D $(TOPDIR)/src/misc/kernel-$(ARCH).lds $(DESTDIR)$(halvmlibdir)/kernel.lds
 
-install:: ${PLATGHC}
-	$(INSTALL) -D $(shell $(PLATGHC) --print-libdir)/bin/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs.bin
+install::
+	$(INSTALL) -D $(shell $(GHC) --print-libdir)/bin/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs.bin
 
 # Need to be sure we grab datadirs for alex and happy, /usr/share w.r.t. their prefix
-install:: $(PLATALEX) $(PLATCABAL) $(PLATHAPPY) $(PLATHADDOCK) $(PLATHSCOLOUR)
+install::
 	mkdir -p $(DESTDIR)${halvmlibdir}
-	cp -rf $(TOPDIR)/platform_ghc/${prefix}/* $(DESTDIR)${prefix}/
+	cp ${ALEX} $(DESTDIR)${halvmlibdir}/bin/alex
+	cp ${HSCOLOUR} $(DESTDIR)${halvmlibdir}/bin/HsColour
+	cp ${HADDOCK} $(DESTDIR)${halvmlibdir}/bin/haddock
+	cp ${CABAL} $(DESTDIR)${halvmlibdir}/bin/cabal
+	cp ${HAPPY} $(DESTDIR)${halvmlibdir}/bin/happy
+	cp ${HSC2HS} $(DESTDIR)${halvmlibdir}/bin/hsc2hs
+	cp -rf ${platformdir}/share $(DESTDIR)${halvmlibdir}
+	cp -rf ${platformdir}/lib $(DESTDIR)${halvmlibdir}
 
 # hsc2hs requires a bunch of libraries to be installed. This is a hack (FIXME)
 # to copy over the platform_ghc ones to our destination directory and hope
 # nothing gets broken. Long term, finding some way to build a statically-linked
 # hsc2hs would be better.
-install::
-	$(FIND) $(TOPDIR)/platform_ghc -name "*so" -name '*-ghc*' \
-	    -exec cp '{}' $(DESTDIR)$(halvmlibdir)/lib/ \;
-	$(INSTALL) -D $(TOPDIR)/src/scripts/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs
+# NOTE (izgzhen): Currently I don't know if it is necessary in GHC 8.0.1, needs testing
+# install::
+#	$(FIND) $(TOPDIR)/platform_ghc -name "*so" -name '*-ghc*' \
+#	    -exec cp '{}' $(DESTDIR)$(halvmlibdir)/lib/ \;
+#	$(INSTALL) -D $(TOPDIR)/src/scripts/hsc1hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs
 
 ###############################################################################
 # Packaging!
