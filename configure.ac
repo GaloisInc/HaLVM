@@ -6,7 +6,7 @@ dnl - terms and conditions.
 dnl Author: Adam Wick <awick@galois.com>
 dnl BANNEREND
 AC_PREREQ(2.60)
-AC_INIT(HALVM,2.2.1,awick@galois.com,halvm)
+AC_INIT(HALVM,2.3.0,awick@galois.com,halvm)
 
 dnl -------------------------------------------------------------------------
 dnl
@@ -129,15 +129,27 @@ AC_FORCE_EXIST(SED,sed)
 AC_FORCE_EXIST(TAR,tar)
 AC_FORCE_EXIST(TOUCH,touch)
 
-AC_CHECK_PROG_VER(ALEX, alex, --version, [version \([0-9.]*\)],
-                  [3.[1-9]*], AC_SUBST(ALEX, "no") NEED_CURL=yes)
-AC_CHECK_PROG_VER(HAPPY, happy, --version, [Version \([0-9.]*\)], [1.19.*],
-                  AC_SUBST(HAPPY,"no") NEED_CURL=yes)
+AC_CHECK_PROG_VER(ALEX, alex, --version, [Alex version \([0-9.]*\)],
+                  [3.*], LOG_FAILURE("Couldn't find required version of Alex"))
 AC_CHECK_PROG_VER(CABAL, cabal, --version, [cabal-install version \([0-9.]*\)],
-                  [1.[23456789][0123456789].*],
-                  AC_SUBST(CABAL,"no") NEED_CURL=yes)
-AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)], [7.8.*],
-                  AC_SUBST(GHC,no) NEED_CURL=yes)
+                  [1.2[456789].*],
+                                    LOG_FAILURE("Couldn't find required version of Cabal"))
+AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)],
+                 [8.0.*], LOG_FAILURE("Couldn't find required version of GHC"))
+AC_CHECK_PROG_VER(HADDOCK, haddock, --version, [Haddock version \([0-9.]*\)],
+                  [2.17.*],
+                                    LOG_FAILURE("Couldn't find required version of Haddock"))
+AC_CHECK_PROG_VER(HAPPY, happy, --version, [Happy Version \([0-9.]*\)],
+                  [1.19.*],
+                                    LOG_FAILURE("Couldn't find required version of Happy"))
+AC_CHECK_PROG_VER(HSCOLOUR, HsColour, --version, [HsColour \([0-9.]*\)],
+                  [1.24*],
+                  LOG_FAILURE("Couldn't find required version of HsColour"))
+AC_CHECK_PROG_VER(HSC2HS, hsc2hs, --version, [hsc2hs version \([0-9.]*\)],
+                  [0.68*],
+                  LOG_FAILURE("Couldn't find required version of hsc2hs"))
+
+AC_SUBST(PLATFORMDIR, `dirname $(dirname ${ALEX})`)
 
 AC_CHECK_HEADER(ncurses.h, HAVE_NCURSES=y,
   [AC_CHECK_HEADER(curses.h, HAVE_NCURSES=y,

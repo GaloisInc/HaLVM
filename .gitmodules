@@ -1,6 +1,7 @@
 [submodule "halvm-ghc"]
 	path = halvm-ghc
 	url = git://github.com/GaloisInc/halvm-ghc.git
+	branch = wip-halvm-ghc-8.0
 [submodule "src/openlibm"]
 	path = src/openlibm
 	url = git://github.com/acw/openlibm

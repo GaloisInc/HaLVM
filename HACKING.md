@@ -103,7 +103,7 @@ NOTE: NIC must be in NAT mode.
 
 Follow "Settings -> Network -> Adaptor 1 -> Advanced -> Port Forwarding", then in the config dialog, we will add a new rule, with "Name" as "ssh" or something similarly meaningful, "Host Port" as "3333" or something similarly nonsensical, and "Guest Port" as "22", the rest kept as default.
 
-Then, for *nix machines, you can add a ssh configuration by opening `~/.ssh/config`, and adding something like this:
+Then, for \*nix machines, you can add a ssh configuration by opening `~/.ssh/config`, and adding something like this:
 
 ```
 Host halvm
@@ -135,6 +135,8 @@ $ sudo ln -s /usr/lib64/libtinfo.so.6 /usr/lib64/libtinfo.so.5 # for Fedora 24. 
 ```
 
 NOTE: Why a modified version of Xen? Debugging. The stock version of Xen that comes with Fedora has certain low-level debugging capabilities disabled, as they add some bulk and slowdown to the whole system. The `halvm-xen` version of Xen has been modified to enable those features, which allows for us to use (with some boot flags) a very reliable output mechanism for debugging. Our modified versions simply add the flag "verbose=y" to their build specification, on the lines that build and install the hypervisor (search for "dist-xen" and "install-xen"). We try to keep the latest version we're using available, in `src/misc/xen.spec`. In addition, I will try to keep recent binary and source RPMs available at `http://repos.halvm.org`.
+
+You will also need to install the GHC-8 toolchains for bootstrapping. If not, `./configure` will complain about it. (FIXME: separate scripts for doing this automatically on Fedora?)
 
 Before we reboot -- yes, we're about to reboot again -- let's set up that boot flag I just mentioned. Open up `/etc/default/grub` with your favorite editor, with `sudo`, and add the following line:
 
@@ -238,11 +240,6 @@ $ ping galois.com
 If you've done all this, you've made it through a major hurdle in setting up these machines. Pat yourself on the back.
 
 ## Step #5: Build HaLVM!
-
-If GHC 7.8.4 is not present, a version of it will be downloaded for
-use during the build process.
-
-Once checked out, the HaLVM builds as follows:
 
 > git clone https://github.com/GaloisInc/HaLVM
 

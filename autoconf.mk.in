@@ -11,7 +11,6 @@ GIT_LIB_URL             := git://github.com/GaloisInc
 INTEGER_LIBRARY         := @INTEGER_LIBRARY@
 BUILD_DOCS              := @ENABLE_DOCS@
 ABI                     := @ABI@
-
 # Top of the build system, set by auto[re]conf.  This allows any other makefile
 # to include common.mk and get a consistent variable environment.
 TOPDIR      := @abs_top_builddir@
@@ -22,6 +21,7 @@ bindir      := @bindir@
 libdir      := @libdir@
 incdir      := @includedir@
 halvmlibdir := $(libdir)/HaLVM-$(HaLVM_VERSION)
+platformdir := @PLATFORMDIR@
 
 #
 # External programs of interest
@@ -57,6 +57,7 @@ RM                      := @RM@
 SED                     := @SED@
 TAR                     := @TAR@
 TOUCH                   := @TOUCH@
+HSC2HS                  := @HSC2HS@
 
 #
 # Interesting flags from configure
@@ -104,17 +105,3 @@ LDFLAGS               := -L$(XEN_LIBRARY_DIR)
 GHCFLAGS              := -O2 -H32m
 GHCFLAGS              += $(ARCH_GHC_FLAGS)
 
-GHC_VERSION           := 7.8.4
-GHC_FILE              := ghc-${GHC_VERSION}-@ARCHITECTURE@-unknown-linux-@PLATFORM@.tar.bz2
-GHC_LINK              := http://www.haskell.org/ghc/dist/${GHC_VERSION}/$(GHC_FILE)
-
-HACKAGE               := http://hackage.haskell.org/package
-
-CABAL_VERSION         := 1.22.3.0
-CABAL_FILE            := cabal-install-${CABAL_VERSION}.tar.gz
-CABAL_LINK            := ${HACKAGE}/cabal-install-${CABAL_VERSION}/${CABAL_FILE}
-
-ALEX_VERSION          := 3.1.4
-HAPPY_VERSION         := 1.19.5
-HADDOCK_VERSION       := 2.15.0.2
-HSCOLOUR_VERSION      := 1.22
