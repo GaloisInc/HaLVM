@@ -88,16 +88,6 @@ $(TOPDIR)/src/gmp: | $(GHC_PREPPED)
 	$(TAR) jxf $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/tarball/*.bz2
 	$(MV) gmp-* $(TOPDIR)/src/gmp
 
-$(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmp.h: $(TOPDIR)/src/gmp/.libs/libgmp.a
-	$(LN) -sf $(TOPDIR)/src/gmp/gmp.h $@
-
-$(TOPDIR)/halvm-ghc/libraries/integer-gmp/cbits/gmp.h: $(TOPDIR)/src/gmp/.libs/libgmp.a
-	$(LN) -sf $(TOPDIR)/src/gmp/gmp.h $@
-
-$(TOPDIR)/halvm-ghc/libraries/integer-gmp/.patched.config.sub: $(TOPDIR)/src/misc/hsgmp.patch
-	(cd halvm-ghc/libraries/integer-gmp && $(PATCH) -p1 < $(TOPDIR)/src/misc/hsgmp.patch)
-	$(TOUCH) $@
-
 $(TOPDIR)/src/gmp/Makefile: | $(TOPDIR)/src/gmp
 	(cd src/gmp && ABI="$(ABI)" CFLAGS="$(CFLAGS)" \
 	    ./configure --disable-shared --enable-static)
@@ -111,13 +101,7 @@ install:: $(TOPDIR)/src/gmp/.libs/libgmp.a
 	$(INSTALL) -D $(TOPDIR)/src/gmp/.libs/libgmp.a $(DESTDIR)$(halvmlibdir)/rts-1.0/libgmp.a
 
 clean::
-	$(RM) -f $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmp.h
-	$(RM) -f $(TOPDIR)/halvm-ghc/libraries/integer-gmp/cbits/gmp.h
 	(cd $(TOPDIR)/halvm-ghc/libraries/integer-gmp && git reset --hard)
-
-$(TOPDIR)/halvm-ghc/mk/config.mk: $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmp.h
-$(TOPDIR)/halvm-ghc/mk/config.mk: $(TOPDIR)/halvm-ghc/libraries/integer-gmp/cbits/gmp.h
-$(TOPDIR)/halvm-ghc/mk/config.mk: $(TOPDIR)/halvm-ghc/libraries/integer-gmp/.patched.config.sub
 endif
 
 clean::
@@ -230,6 +214,10 @@ HALVM_GHC_CONFIGURE_FLAGS += --with-ghc=$(GHC)
 HALVM_GHC_CONFIGURE_FLAGS += --prefix=$(prefix)
 HALVM_GHC_CONFIGURE_FLAGS += --disable-large-address-space
 
+ifeq ($(INTEGER_LIBRARY),integer-gmp)
+HALVM_GHC_CONFIGURE_FLAGS += --with-gmp-includes=$(TOPDIR)/src/gmp
+endif
+
 $(TOPDIR)/halvm-ghc/mk/config.mk: $(GHC_PREPPED)
 	(cd halvm-ghc && ./configure $(HALVM_GHC_CONFIGURE_FLAGS))
 
@@ -309,13 +297,13 @@ install:: $(TOPDIR)/src/misc/kernel-$(ARCH).lds
 
 install::
 	$(INSTALL) -D $(shell $(GHC) --print-libdir)/bin/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs.bin
+	$(INSTALL) -D $(shell $(GHC) --print-libdir)/bin/haddock $(DESTDIR)${halvmlibdir}/bin/haddock.bin
 
 # Need to be sure we grab datadirs for alex and happy, /usr/share w.r.t. their prefix
 install::
 	mkdir -p $(DESTDIR)${halvmlibdir}
 	cp ${ALEX} $(DESTDIR)${halvmlibdir}/bin/alex
 	cp ${HSCOLOUR} $(DESTDIR)${halvmlibdir}/bin/HsColour
-	cp ${HADDOCK} $(DESTDIR)${halvmlibdir}/bin/haddock
 	cp ${CABAL} $(DESTDIR)${halvmlibdir}/bin/cabal
 	cp ${HAPPY} $(DESTDIR)${halvmlibdir}/bin/happy
 	cp ${HSC2HS} $(DESTDIR)${halvmlibdir}/bin/hsc2hs

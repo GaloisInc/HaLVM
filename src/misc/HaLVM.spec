@@ -47,13 +47,13 @@ chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/alex
 chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/cabal
 chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/ghc
 chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/ghc-pkg
-chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/haddock
+chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/haddock.bin
 chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/happy
 chrpath -r %{_libdir}/HaLVM-%{version}/lib %{buildroot}%{_libdir}/HaLVM-%{version}/bin/hsc2hs.bin
 chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/HsColour
 rm -rf  %{buildroot}share
+mv %{buildroot}%{_docdir}/ghc* %{buildroot}%{_docdir}/ghc
 mv %{buildroot}%{_docdir}/ghc %{buildroot}%{_docdir}/HaLVM-ghc
-mv %{buildroot}%{_mandir}/man1/ghc.1 %{buildroot}%{_mandir}/man1/halvm-ghc.1
 mkdir -p %{buildroot}%{_datadir}/HaLVM-%{version}
 cp -r examples %{buildroot}%{_datadir}/HaLVM-%{version}/
 
@@ -73,30 +73,26 @@ cp -r examples %{buildroot}%{_datadir}/HaLVM-%{version}/
 %{_bindir}/*-unknown-HaLVM-ghc*
 %{_bindir}/*-unknown-HaLVM-hp2ps
 %{_includedir}/libIVC.h
-%{_docdir}/HaLVM-ghc/html/libraries/array-0.5.0.0/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/base-4.7.0.2/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/binary-0.7.1.0/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/bytestring-0.10.4.0/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/containers-0.5.5.1/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/deepseq-1.3.0.2/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/filepath-1.3.0.2/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/ghc-prim-0.3.1.0/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/haskell2010-1.1.2.0/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/hoopl-3.10.0.1/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/old-locale-1.0.0.6/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/old-time-1.1.0.2/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/pretty-1.1.1.1/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/template-haskell-2.9.0.0/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/time-1.4.2/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/transformers-0.3.0.0/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/xhtml-3000.2.1/LICENSE
-%{_mandir}/man1/halvm-ghc.1.gz
+%{_docdir}/HaLVM-ghc/html/libraries/array-0.5.1.1/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/base-4.9.0.0/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/binary-0.8.3.0/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/bytestring-0.10.8.1/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/containers-0.5.7.1/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/deepseq-1.4.2.0/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/filepath-1.4.1.0/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/ghc-boot-th-8.0.1.20170120/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/ghc-prim-0.5.0.0/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/hoopl-3.10.2.1/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/pretty-1.1.3.3/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/template-haskell-2.11.0.0/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/time-1.6.0.1/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/transformers-0.5.2.0/LICENSE
 %{_datadir}/HaLVM-%{version}/*
 
 %if %with_gmp
-%{_docdir}/HaLVM-ghc/html/libraries/integer-gmp-0.5.1.0/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/integer-gmp-1.0.0.1/LICENSE
 %else
-%{_docdir}/HaLVM-ghc/html/libraries/integer-simple-0.1.1.0/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/integer-simple-0.1.1.1/LICENSE
 %endif
 
 %changelog
