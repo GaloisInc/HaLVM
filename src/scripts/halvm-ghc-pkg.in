@@ -14,4 +14,4 @@ bindir=@bindir@
 GHCPKGBIN="${bindir}/@target_prefix@ghc-pkg"
 PACKFILEOPT="--package-conf ${libdir}/lib/ghc*/package.conf.d"
 
-${GHCPKGBIN} ${GLOBFILEOPT} ${1+"$@"}
+${GHCPKGBIN} ${1+"$@"}

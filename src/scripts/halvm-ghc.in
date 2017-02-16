@@ -13,8 +13,7 @@ bindir=@bindir@
 libdir=@libdir@/HaLVM-@PACKAGE_VERSION@
 
 GHCBIN="${bindir}/@target_prefix@ghc"
-#LIBDIROPT="-B${libdir}"
 LINKSCRIPTOPT="-pgml ${libdir}/ldkernel -optl -static -rtsopts"
-LIBDIROPT2="-L${libdir}"
+LIBDIROPT="-L${libdir}"
 
-exec $GHCBIN $LIBDIROPT $LIBDIROPT2 ${LINKSCRIPTOPT} ${1+"$@"}
+exec $GHCBIN $LIBDIROPT ${LINKSCRIPTOPT} ${1+"$@"}
