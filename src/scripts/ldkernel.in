@@ -16,7 +16,7 @@
 #echo "--------"
 
 # Collect object files and the name of the executable from the arguments
-# supplied by GHC. Ignore other arguments. 
+# supplied by GHC. Ignore other arguments.
 #objs=""
 #while [ $# != 0 ] ; do
 #  case "$1" in
@@ -32,7 +32,9 @@ libdir="@libdir@"
 halvm_dir="@libdir@/HaLVM-@PACKAGE_VERSION@"
 
 # reset the arguments as the file content of the path provided in the original argument
-set -- $(cat $(echo $@ | sed 's/^@//') | tr '\n' ' ' | sed 's/\"//g')
+if [[ ${1:0:1} == "@" ]]; then
+  set -- $(cat $(echo $@ | sed 's/^@//') | tr '\n' ' ' | sed 's/\"//g')
+fi
 
 ARGS=""
 LIBS=""
@@ -55,12 +57,13 @@ while [ $# != 0 ] ; do
     -Wl,--reduce-memory-overheads) ARGS="${ARGS} --reduce-memory-overheads";shift;;
     -Wl,--hash-size*) BIT=`echo "$1"|cut -c 17-`;ARGS="$ARGS -u ${BIT}";shift;;
     -Wl,--version) ARGS="$ARGS --version"; shift;;
+    -Wl,--no-as-needed) ARGS="$ARGS --no-as-needed"; shift;;
     -Wl,--build-id=none) TY=$(echo "$1" | cut -c 16-); ARGS="$ARGS --build-id=${TY}"; shift;;
     -Wl,--gc-sections) shift;; # HACK (izgzhen): don't know a better way to handle this
     *) ARGS="$ARGS $1"; shift;;
   esac
 done
 
-LDCMD="ld ${LINKER_SCRIPT} -nostdlib ${START_FILE} $ARGS $LIBS $LIBS ${GMP_FILE} ${LIBM_FILE}"
+LDCMD="ld ${LINKER_SCRIPT} -nostdlib ${START_FILE} $ARGS $LIBS ${GMP_FILE} ${LIBM_FILE}"
 #echo $LDCMD
 $LDCMD
