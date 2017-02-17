@@ -28,7 +28,7 @@ override_dh_update_autotools_config:
 	echo "skip autottolls_config; we like our config.sub, thanks."
 
 override_dh_shlibdeps:
-	dh_shlibdeps -l/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/lib
+	dh_shlibdeps --dpkg-shlibdeps-params="--ignore-missing-info -l$(shell pwd)/debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/lib"
 
 override_dh_strip:
 	dh_strip
@@ -36,11 +36,11 @@ override_dh_strip:
 	chrpath -d debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/cabal
 	chrpath -d debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/ghc
 	chrpath -d debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/ghc-pkg
-	chrpath -d debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/haddock
+	chrpath -d debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/haddock.bin
 	chrpath -d debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/happy
 	chrpath -d debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/HsColour
 	chrpath -r /usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/lib \
 	             debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/hsc2hs.bin
-	mv debian/$(SUBDIR)/usr/share/doc/ghc debian/$(SUBDIR)/usr/share/doc/HaLVM-ghc
+	mv debian/$(SUBDIR)/usr/share/doc/ghc* debian/$(SUBDIR)/usr/share/doc/HaLVM-ghc
 	mkdir -p debian/$(SUBDIR)/usr/share/HaLVM-$(VERSION)
 	cp -r examples debian/$(SUBDIR)/usr/share/HaLVM-$(VERSION)/

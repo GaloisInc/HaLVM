@@ -281,7 +281,7 @@ install:: $(TOPDIR)/src/scripts/halvm-cabal
 	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-cabal $(DESTDIR)$(bindir)/halvm-cabal
 
 install:: $(TOPDIR)/src/scripts/halvm-config
-	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-cabal $(DESTDIR)$(bindir)/halvm-config
+	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-config $(DESTDIR)$(bindir)/halvm-config
 
 install:: $(TOPDIR)/src/scripts/halvm-ghc
 	$(INSTALL) -D $(TOPDIR)/src/scripts/halvm-ghc $(DESTDIR)$(bindir)/halvm-ghc
@@ -306,19 +306,16 @@ install::
 	cp ${HSCOLOUR} $(DESTDIR)${halvmlibdir}/bin/HsColour
 	cp ${CABAL} $(DESTDIR)${halvmlibdir}/bin/cabal
 	cp ${HAPPY} $(DESTDIR)${halvmlibdir}/bin/happy
-	cp ${HSC2HS} $(DESTDIR)${halvmlibdir}/bin/hsc2hs
 	cp -rf ${platformdir}/share $(DESTDIR)${halvmlibdir}
 	cp -rf ${platformdir}/lib $(DESTDIR)${halvmlibdir}
-
+	$(FIND) $(shell $(GHC) --print-libdir) -name "*so" -name '*-ghc*' \
+	    -exec cp '{}' $(DESTDIR)$(halvmlibdir)/lib/ \;
+	$(INSTALL) -D $(TOPDIR)/src/scripts/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs
+# (for above)
 # hsc2hs requires a bunch of libraries to be installed. This is a hack (FIXME)
 # to copy over the platform_ghc ones to our destination directory and hope
 # nothing gets broken. Long term, finding some way to build a statically-linked
 # hsc2hs would be better.
-# NOTE (izgzhen): Currently I don't know if it is necessary in GHC 8.0.1, needs testing
-# install::
-#	$(FIND) $(TOPDIR)/platform_ghc -name "*so" -name '*-ghc*' \
-#	    -exec cp '{}' $(DESTDIR)$(halvmlibdir)/lib/ \;
-#	$(INSTALL) -D $(TOPDIR)/src/scripts/hsc1hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs
 
 ###############################################################################
 # Packaging!
