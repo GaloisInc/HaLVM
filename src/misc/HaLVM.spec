@@ -80,6 +80,7 @@ cp -r examples %{buildroot}%{_datadir}/HaLVM-%{version}/
 %{_docdir}/HaLVM-ghc/html/libraries/containers-0.5.7.1/LICENSE
 %{_docdir}/HaLVM-ghc/html/libraries/deepseq-1.4.2.0/LICENSE
 %{_docdir}/HaLVM-ghc/html/libraries/filepath-1.4.1.0/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/ghc-boot-th-8.0.1.*/LICENSE
 %{_docdir}/HaLVM-ghc/html/libraries/ghc-prim-0.5.0.0/LICENSE
 %{_docdir}/HaLVM-ghc/html/libraries/hoopl-3.10.2.1/LICENSE
 %{_docdir}/HaLVM-ghc/html/libraries/pretty-1.1.3.3/LICENSE
