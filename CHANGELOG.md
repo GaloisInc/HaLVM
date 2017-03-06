@@ -3,6 +3,10 @@ Change Log
 
 Please document any notables changes you made here.
 
+## v2.4.0
+
+Upgrade `halvm-ghc` to GHC 8.0.2
+
 ## v2.3.0
 
 In the 2.3.0 release, HaLVM will be upgraded to
