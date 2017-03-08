@@ -85,8 +85,10 @@ mrproper::
 ifeq ($(INTEGER_LIBRARY),integer-gmp)
 
 $(TOPDIR)/src/gmp: | $(GHC_PREPPED)
-	$(TAR) jxf $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/tarball/*.bz2
-	$(MV) gmp-* $(TOPDIR)/src/gmp
+	$(TAR) jxf $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmp-tarballs/*.bz2
+	$(INSTALL) -D $(TOPDIR)/halvm-ghc/libraries/integer-gmp/gmp/gmpsrc.patch $(TOPDIR)/gmp-*
+	(cd $(TOPDIR)/gmp-* && $(GIT) apply $(TOPDIR)/gmp-*/gmpsrc.patch)
+	$(MV) $(TOPDIR)/gmp-* $(TOPDIR)/src/gmp
 
 $(TOPDIR)/src/gmp/Makefile: | $(TOPDIR)/src/gmp
 	(cd src/gmp && ABI="$(ABI)" CFLAGS="$(CFLAGS)" \
