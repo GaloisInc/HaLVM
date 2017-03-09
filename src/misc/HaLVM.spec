@@ -73,26 +73,26 @@ cp -r examples %{buildroot}%{_datadir}/HaLVM-%{version}/
 %{_bindir}/*-unknown-HaLVM-ghc*
 %{_bindir}/*-unknown-HaLVM-hp2ps
 %{_includedir}/libIVC.h
-%{_docdir}/HaLVM-ghc/html/libraries/array-0.5.1.1/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/base-4.9.0.0/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/binary-0.8.3.0/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/bytestring-0.10.8.1/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/containers-0.5.7.1/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/deepseq-1.4.2.0/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/filepath-1.4.1.0/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/ghc-boot-th-8.0.1.*/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/ghc-prim-0.5.0.0/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/hoopl-3.10.2.1/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/pretty-1.1.3.3/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/template-haskell-2.11.0.0/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/time-1.6.0.1/LICENSE
-%{_docdir}/HaLVM-ghc/html/libraries/transformers-0.5.2.0/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/array-*/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/base-*/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/binary-*/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/bytestring-*/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/containers-*/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/deepseq-*/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/filepath-*/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/ghc-boot-th-*/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/ghc-prim-*/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/hoopl-*/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/pretty-*/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/template-haskell-*/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/time-*/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/transformers-*/LICENSE
 %{_datadir}/HaLVM-%{version}/*
 
 %if %with_gmp
-%{_docdir}/HaLVM-ghc/html/libraries/integer-gmp-1.0.0.1/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/integer-gmp-*/LICENSE
 %else
-%{_docdir}/HaLVM-ghc/html/libraries/integer-simple-0.1.1.1/LICENSE
+%{_docdir}/HaLVM-ghc/html/libraries/integer-simple-*/LICENSE
 %endif
 
 %changelog
