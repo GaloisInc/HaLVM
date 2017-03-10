@@ -41,7 +41,6 @@ LIBS=""
 LIBDIR=`echo $0 | sed 's/[^/]*$//g'`
 START_FILE="${halvm_dir}/rts-1.0/start.o"
 LIBM_FILE="${halvm_dir}/rts-1.0/libopenlibm.a"
-#GMP_FILE="@LIBGMP@"
 LINKER_SCRIPT="-T ${halvm_dir}/kernel.lds"
 while [ $# != 0 ] ; do
   case "$1" in
@@ -64,6 +63,6 @@ while [ $# != 0 ] ; do
   esac
 done
 
-LDCMD="ld ${LINKER_SCRIPT} -nostdlib ${START_FILE} $ARGS $LIBS ${GMP_FILE} ${LIBM_FILE}"
+LDCMD="ld ${LINKER_SCRIPT} -nostdlib ${START_FILE} $ARGS $LIBS -L${halvm_dir}/rts-1.0 ${LIBM_FILE}"
 #echo $LDCMD
 $LDCMD
