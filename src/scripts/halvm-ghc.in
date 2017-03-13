@@ -12,6 +12,10 @@ exec_prefix=@exec_prefix@
 bindir=@bindir@
 libdir=@libdir@/HaLVM-@PACKAGE_VERSION@
 
+if [[ "$1" == "--halvm-version" ]]
+  then echo "@PACKAGE_VERSION@"; exit;
+fi
+
 GHCBIN="${bindir}/@target_prefix@ghc"
 LINKSCRIPTOPT="-pgml ${libdir}/ldkernel -optl -static -rtsopts"
 LIBDIROPT="-L${libdir}"
