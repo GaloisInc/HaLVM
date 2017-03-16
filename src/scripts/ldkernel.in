@@ -1,3 +1,4 @@
+#!/bin/bash
 # hdkernel - a linker for HALVM
 # Usage: to be invoked from ghc using "ghc -pgml ldkernel"
 #
@@ -36,6 +37,12 @@ if [[ ${1:0:1} == "@" ]]; then
   set -- $(cat $(echo $@ | sed 's/^@//') | tr '\n' ' ' | sed 's/\"//g')
 fi
 
+# Uncomment below to debug linker options.
+warn_ignored () {
+    # echo "WARNING: ignoring linker option in $0: $1"
+    :
+}
+
 ARGS=""
 LIBS=""
 LIBDIR=`echo $0 | sed 's/[^/]*$//g'`
@@ -44,11 +51,11 @@ LIBM_FILE="${halvm_dir}/rts-1.0/libopenlibm.a"
 LINKER_SCRIPT="-T ${halvm_dir}/kernel.lds"
 while [ $# != 0 ] ; do
   case "$1" in
-    "-DDONT_WANT_WIN32_DLL_SUPPORT") dead=$1; shift;;
-    -u) dead=$1; shift; shift;;
-    -lm) dead=$1; shift;;
-    -ldl) dead=$1; shift;;
-    -lrt) dead=$1; shift;;
+    "-DDONT_WANT_WIN32_DLL_SUPPORT") warn_ignored "$1"; shift;;
+    -u) warn_ignored "$1 $2"; shift; shift;;
+    -lm) warn_ignored "$1"; shift;;
+    -ldl) warn_ignored "$1"; shift;;
+    -lrt) warn_ignored "$1"; shift;;
     -l*) LIBS="$LIBS $1"; shift;;
     -Wl,-r) ARGS="$ARGS -r"; LINKER_SCRIPT=""; START_FILE=""; shift;;
     -Wl,-x) ARGS="$ARGS -x"; LINKER_SCRIPT=""; START_FILE=""; shift;;
@@ -58,7 +65,13 @@ while [ $# != 0 ] ; do
     -Wl,--version) ARGS="$ARGS --version"; shift;;
     -Wl,--no-as-needed) ARGS="$ARGS --no-as-needed"; shift;;
     -Wl,--build-id=none) TY=$(echo "$1" | cut -c 16-); ARGS="$ARGS --build-id=${TY}"; shift;;
-    -Wl,--gc-sections) shift;; # HACK (izgzhen): don't know a better way to handle this
+    # HACK (izgzhen): don't know a better way to handle this
+    -Wl,--gc-sections) warn_ignored "$1"; shift;;
+    # This option confuses GNU ld. The gcc command supports '-no-pie'
+    # and '-pie', but 'ld' only supports '-pie'. It's possible that a
+    # better thing to here is see if '-pie' is an earlier option, and
+    # remove it if so.
+    -no-pie) warn_ignored "$1"; shift;;
     *) ARGS="$ARGS $1"; shift;;
   esac
 done
