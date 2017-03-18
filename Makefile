@@ -27,11 +27,6 @@ install::
 # Prepping / supporting the GHC build
 ################################################################################
 
-# array.cabal is the witness for the presence of all GHC's libraries
-$(TOPDIR)/halvm-ghc/libraries/array/array.cabal:
-	(cd halvm-ghc && ./sync-all --no-dph -r http://darcs.haskell.org get)
-	(cd halvm-ghc && ./sync-all checkout -t origin/ghc-7.8)
-
 $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk: $(TOPDIR)/halvm-ghc/mk/build.mk
 	(cd halvm-ghc && ./boot)
 
@@ -45,16 +40,14 @@ $(TOPDIR)/halvm-ghc/mk/build.mk: $(TOPDIR)/src/misc/build.mk
 
 # Link HALVMCore into GHC's library path, where it will be found and built
 # by the GHC build system.
-$(TOPDIR)/halvm-ghc/libraries/HALVMCore: \
-       $(TOPDIR)/halvm-ghc/libraries/array/array.cabal
+$(TOPDIR)/halvm-ghc/libraries/HALVMCore:
 	if [ ! -h $@ ]; then \
 	  $(LN) -sf $(TOPDIR)/src/HALVMCore $@ ; \
 	fi
 
 # Link XenDevice into GHC's library path, where it will be found and built
 # by the GHC build system.
-$(TOPDIR)/halvm-ghc/libraries/XenDevice: \
-       $(TOPDIR)/halvm-ghc/libraries/array/array.cabal
+$(TOPDIR)/halvm-ghc/libraries/XenDevice:
 	if [ ! -h $@ ]; then \
 	  $(LN) -sf $(TOPDIR)/src/XenDevice $@; \
 	fi
