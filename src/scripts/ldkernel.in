@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # hdkernel - a linker for HALVM
 # Usage: to be invoked from ghc using "ghc -pgml ldkernel"
 #
