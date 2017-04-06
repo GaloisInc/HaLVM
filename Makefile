@@ -292,7 +292,7 @@ install:: $(TOPDIR)/src/misc/kernel-$(ARCH).lds
 
 install::
 	$(INSTALL) -D $(shell $(GHC) --print-libdir)/bin/hsc2hs $(DESTDIR)${halvmlibdir}/bin/hsc2hs.bin
-	$(INSTALL) -D $(shell $(GHC) --print-libdir)/bin/haddock $(DESTDIR)${halvmlibdir}/bin/haddock.bin
+	$(INSTALL) -D $(shell $(GHC) --print-libdir)/bin/haddock $(DESTDIR)${halvmlibdir}/bin/haddock
 
 # Need to be sure we grab datadirs for alex and happy, /usr/share w.r.t. their prefix
 install::
