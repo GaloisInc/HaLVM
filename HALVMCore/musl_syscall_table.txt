@@ -1,0 +1,220 @@
+Subsystem markers:
+  NET      -- for implementation by network stacks
+  FILE     -- for implementation by file systems
+  BOTH     -- things that might affect both file and socket descriptors
+  ENOSYS   -- shared across all implementations, probably just ENOSYS
+  SHARED   -- shared across all implementations, will require some work
+  PLATFORM -- must be implemented by those porting the HaLVM to new platforms 
+
+
+DONE    SUBSYSTEM       CALL                     SUMMARY
+----    ---------       ----                     -------
+        FILE            getdents                 Get directory entries
+        BOTH            fcntl                    Mess with a file descriptor
+        FILE            openat                   A variant of open()
+        ENOSYS          msgctl                   \
+        ENOSYS          msgget                   | System V inter-process 
+        ENOSYS          msgrcv                   | messaging. Can skip?
+        ENOSYS          msgsnd                   /
+        SHARED          semctl                   \
+        SHARED          semget                   | System V semaphores. Probably
+        SHARED          semop                    | need this functionality anyways
+        SHARED          semtimedop               /
+        ENOSYS          shmat                    \
+        ENOSYS          shmctl                   | System V shared memory; can
+        ENOSYS          shmdt                    | probably skip?
+        ENOSYS          shmget                   /
+        SHARED          adjtimex                 Get very fine-grained time info
+        PLATFORM        arch_prctl               Sets arch-specific thr/pro state
+        ENOSYS          capset                   \ Thread capability sets, which
+        ENOSYS          capget                   / we probably won't honor?
+        ENOSYS          chroot
+                        clock_adjtime
+                        epoll_ctl
+                        fallocate
+                        fanotify_init
+                        fanotify_mark
+                        flock
+                        inotify_add_watch
+                        inotify_rm_watch
+                        ioperm
+                        iopl
+                        syslog
+                        init_module
+                        delete_module
+                        mount
+                        umount2
+                        personality
+                        pivot_root
+                        ppoll
+                        prctl
+                        prlimit64
+                        process_vm_writev
+                        process_vm_readv
+                        ptrace
+                        quotactl
+                        readahead
+                        reboot
+                        remap_file_pages
+                        sendfile
+                        setfsgid
+                        setfsuid
+                        setgroups
+                        sethostname
+                        setns
+                        settimeofday
+                        splice
+                        swapon
+                        swapoff
+                        sync_file_range
+                        syncfs
+                        sysinfo
+                        tee
+                        timerfd_create
+                        timerfd_settime
+                        timerfd_gettime
+                        unshare
+                        vhangup
+                        vmsplice
+                        wait4
+                        getxattr
+                        lgetxattr
+                        fgetxattr
+                        listxattr
+                        llistxattr
+                        flistxattr
+                        setxattr
+                        lsetxattr
+                        fsetxattr
+                        removexattr
+                        lremovexattr
+                        fremovexattr
+                        getpriority
+                        getresgid
+                        getresuid
+                        getrlimit
+                        getrusage
+                        ioctl
+                        setdomainname
+                        setpriority
+                        uname
+                        madvise
+                        mincore
+                        mlock
+                        mlockall
+                        mmap
+                        mprotect
+                        mremap
+                        msync
+                        munlock
+                        munlockall
+                        munmap
+                        close
+                        mq_notify
+                        mq_open
+                        mq_getsetattr
+                        mq_timedreceive
+                        mq_timedsend
+                        recvmmsg
+                        execve
+                        fork
+                        waitid
+                        sched_setaffinity
+                        sched_get_priority_max
+                        sched_get_priority_min
+                        sched_rr_get_interval
+                        sched_yield
+                        poll
+                        pselect6
+                        select
+                        getitimer
+                        kill
+                        tkill
+                        setitimer
+                        rt_sigaction
+                        sigaltstack
+                        rt_sigpending
+                        rt_sigqueueinfo
+                        rt_sigsuspend
+                        rt_sigtimedwait
+                        chmod
+                        fchmodat
+                        stat
+                        fstatat
+                        lstat
+                        mkdir
+                        mkdirat
+                        mknodat
+                        statfs
+                        fstatfs
+                        umask
+                        readv
+                        lseek
+                        writev
+                        rename
+                        futex
+                        clock_getres
+                        clock_nanosleep
+                        clock_settime
+                        nanosleep
+                        timer_create
+                        timer_getoverrun
+                        timer_gettime
+                        timer_settime
+                        access
+                        acct
+                        chdir
+                        chown
+                        dup
+                        faccessat
+                        fchownat
+                        fdatasync
+                        fsync
+                        ftruncate
+                        getcwd
+                        getgroups
+                        getpgid
+                        getsid
+                        lchown
+                        link
+                        linkat
+                        mknod
+                        pause
+                        pipe
+                        pread
+                        preadv
+                        pwrite
+                        pwritev
+                        read
+                        readlink
+                        readlinkat
+                        renameat
+                        rmdir
+                        setpgid
+                        setsid
+                        symlink
+                        symlinkat
+                        truncate
+                        unlink
+                        unlinkat
+                        write
+
+                        __sys_open
+                        __sys_open_cp
+
+                        accept
+                        accept4
+                        bind
+                        connect
+                        getpeername
+                        getsockname
+                        getsockopt
+                        listen
+                        recvfrom
+                        recvmsg
+                        sendmsg
+                        sendto
+                        setsockopt
+                        shutdown
+                        socket
+                        socketpair

@@ -1,0 +1,23 @@
+name:                HALVMCore
+version:             3.0.0
+synopsis:            The very base libraries for working with the HaLVM
+description:         The base library for dealing with the underlying
+                     capabilities of the HaLVM, including memory management and
+                     C runtime.
+homepage:            http://halvm.org
+license:             BSD3
+license-file:        LICENSE
+author:              Adam Wick
+maintainer:          awick@galois.com
+category:            System
+build-type:          Simple
+extra-source-files:  ChangeLog.md
+cabal-version:       >=1.10
+
+library
+  exposed-modules:     HaLVM.NetworkCalls
+  other-modules:       HaLVM.NetworkCalls.TH
+  -- other-extensions:    
+  build-depends:       base >=4.9 && <4.10
+  hs-source-dirs:      src
+  default-language:    Haskell2010
