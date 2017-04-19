@@ -1,13 +1,17 @@
 Subsystem markers:
   NET      -- for implementation by network stacks
   FILE     -- for implementation by file systems
+  FILE*    -- for implementation by file systems, but might be skippable
   BOTH     -- things that might affect both file and socket descriptors
   ENOSYS   -- shared across all implementations, probably just ENOSYS
   SHARED   -- shared across all implementations, will require some work
   PLATFORM -- must be implemented by those porting the HaLVM to new platforms 
+  CLOCK    -- things that mess with the system clock
+  TIMERS   -- things that set timers, because I'm not sure where that goes, yet
+  THREADS  -- things are probably going to go in our threading system
+  SIGNALS  -- things that deal with signals and signal handling
 
-
-DONE    SUBSYSTEM       CALL                     SUMMARY
+DONE    SUBSYSTEM       CALL                     NOTES
 ----    ---------       ----                     -------
         FILE            getdents                 Get directory entries
         BOTH            fcntl                    Mess with a file descriptor
@@ -24,197 +28,197 @@ DONE    SUBSYSTEM       CALL                     SUMMARY
         ENOSYS          shmctl                   | System V shared memory; can
         ENOSYS          shmdt                    | probably skip?
         ENOSYS          shmget                   /
-        SHARED          adjtimex                 Get very fine-grained time info
+        CLOCK           adjtimex                 Get very fine-grained time info
         PLATFORM        arch_prctl               Sets arch-specific thr/pro state
         ENOSYS          capset                   \ Thread capability sets, which
         ENOSYS          capget                   / we probably won't honor?
         ENOSYS          chroot
-                        clock_adjtime
-                        epoll_ctl
-                        fallocate
-                        fanotify_init
-                        fanotify_mark
-                        flock
-                        inotify_add_watch
-                        inotify_rm_watch
-                        ioperm
-                        iopl
-                        syslog
-                        init_module
-                        delete_module
-                        mount
-                        umount2
-                        personality
-                        pivot_root
-                        ppoll
-                        prctl
-                        prlimit64
-                        process_vm_writev
-                        process_vm_readv
-                        ptrace
-                        quotactl
-                        readahead
-                        reboot
-                        remap_file_pages
-                        sendfile
-                        setfsgid
-                        setfsuid
-                        setgroups
-                        sethostname
-                        setns
-                        settimeofday
-                        splice
-                        swapon
-                        swapoff
-                        sync_file_range
-                        syncfs
-                        sysinfo
-                        tee
-                        timerfd_create
-                        timerfd_settime
-                        timerfd_gettime
-                        unshare
-                        vhangup
-                        vmsplice
-                        wait4
-                        getxattr
-                        lgetxattr
-                        fgetxattr
-                        listxattr
-                        llistxattr
-                        flistxattr
-                        setxattr
-                        lsetxattr
-                        fsetxattr
-                        removexattr
-                        lremovexattr
-                        fremovexattr
-                        getpriority
-                        getresgid
-                        getresuid
-                        getrlimit
-                        getrusage
-                        ioctl
-                        setdomainname
-                        setpriority
-                        uname
-                        madvise
-                        mincore
-                        mlock
-                        mlockall
-                        mmap
-                        mprotect
-                        mremap
-                        msync
-                        munlock
-                        munlockall
-                        munmap
-                        close
-                        mq_notify
-                        mq_open
-                        mq_getsetattr
-                        mq_timedreceive
-                        mq_timedsend
-                        recvmmsg
-                        execve
-                        fork
-                        waitid
-                        sched_setaffinity
-                        sched_get_priority_max
-                        sched_get_priority_min
-                        sched_rr_get_interval
-                        sched_yield
-                        poll
-                        pselect6
-                        select
-                        getitimer
-                        kill
-                        tkill
-                        setitimer
-                        rt_sigaction
-                        sigaltstack
-                        rt_sigpending
-                        rt_sigqueueinfo
-                        rt_sigsuspend
-                        rt_sigtimedwait
-                        chmod
-                        fchmodat
-                        stat
-                        fstatat
-                        lstat
-                        mkdir
-                        mkdirat
-                        mknodat
-                        statfs
-                        fstatfs
-                        umask
-                        readv
-                        lseek
-                        writev
-                        rename
-                        futex
-                        clock_getres
-                        clock_nanosleep
-                        clock_settime
-                        nanosleep
-                        timer_create
-                        timer_getoverrun
-                        timer_gettime
-                        timer_settime
-                        access
-                        acct
-                        chdir
-                        chown
-                        dup
-                        faccessat
-                        fchownat
-                        fdatasync
-                        fsync
-                        ftruncate
-                        getcwd
-                        getgroups
-                        getpgid
-                        getsid
-                        lchown
-                        link
-                        linkat
-                        mknod
-                        pause
-                        pipe
-                        pread
-                        preadv
-                        pwrite
-                        pwritev
-                        read
-                        readlink
-                        readlinkat
-                        renameat
-                        rmdir
-                        setpgid
-                        setsid
-                        symlink
-                        symlinkat
-                        truncate
-                        unlink
-                        unlinkat
-                        write
+        CLOCK           clock_adjtime
+        BOTH            epoll_ctl
+        FILE*           fallocate                \
+        FILE*           fanotify_init            | It's not clear if/how these
+        FILE*           fanotify_mark            | should be re-exposed. If it's
+        FILE*           flock                    | easy, we should do it. Maybe
+        FILE*           inotify_add_watch        | re-use epoll?
+        FILE*           inotify_rm_watch         /
+        PLATFORM        ioperm                   Sets the IO perms on x86 ports
+        ENOSYS          iopl                     Sets ring levels
+        SHARED          syslog                   Only implement read and get size
+        ENOSYS          init_module
+        ENOSYS          delete_module
+        FILE            mount
+        FILE            umount2                  Umount() with some added flags
+        ENOSYS          personality
+        ENOSYS          pivot_root
+        BOTH            ppoll                    Folded into epoll?
+        ENOSYS          prctl
+        PLATFORM        prlimit64
+        ENOSYS          process_vm_writev
+        ENOSYS          process_vm_readv
+        ENOSYS          ptrace
+        FILE            quotactl
+        FILE            readahead
+        PLATFORM        reboot
+        ENOSYS          remap_file_pages
+        BOTH            sendfile                 Basically copy
+        ENOSYS          setfsgid
+        ENOSYS          setfsuid
+        ENOSYS          setgroups
+        SHARED          sethostname
+        ENOSYS          setns
+        CLOCK           settimeofday
+        BOTH            splice
+        ENOSYS          swapon
+        ENOSYS          swapoff
+        FILE            sync_file_range
+        FILE            syncfs
+        PLATFORM        sysinfo
+        ENOSYS          tee                      This only works on pipes
+        TIMERS          timerfd_create
+        TIMERS          timerfd_settime
+        TIMERS          timerfd_gettime
+        ENOSYS          unshare
+        ENOSYS          vhangup
+        ENOSYS          vmsplice                 This only works on pipes
+        ENOSYS          wait4
+        FILE            getxattr
+        FILE            lgetxattr
+        FILE            fgetxattr
+        FILE            listxattr
+        FILE            llistxattr
+        FILE            flistxattr
+        FILE            setxattr
+        FILE            lsetxattr
+        FILE            fsetxattr
+        FILE            removexattr
+        FILE            lremovexattr
+        FILE            fremovexattr
+        PLATFORM        getpriority
+        SHARED          getresgid                Just returns 0s
+        SHARED          getresuid                Just returns 0s
+        PLATFORM        getrlimit
+        PLATFORM        getrusage
+        SHARED          ioctl
+        SHARED          setdomainname
+        PLATFORM        setpriority              Will need to translate?
+        SHARED          uname
+        PLATFORM        madvise
+        PLATFORM        mincore
+        SHARED          mlock
+        SHARED          mlockall
+        PLATFORM        mmap
+        PLATFORM        mprotect
+        PLATFORM        mremap
+        SHARED          msync
+        SHARED          munlock
+        SHARED          munlockall
+        PLATFORM        munmap
+        FILE            close                   May need to check only files
+        THREAD          mq_notify
+        THREAD          mq_open
+        THREAD          mq_getsetattr
+        THREAD          mq_timedreceive
+        THREAD          mq_timedsend
+        NET             recvmmsg
+        ENOSYS          execve
+        ENOSYS          fork
+        ENOSYS          waitid
+        THREAD          sched_setaffinity
+        THREAD          sched_get_priority_max
+        THREAD          sched_get_priority_min
+        THREAD          sched_rr_get_interval
+        THREAD          sched_yield
+        BOTH            poll                     \
+        BOTH            pselect6                 | Share the same interface?
+        BOTH            select                   /
+        TIMERS          getitimer
+        ENOSYS          kill
+        THREAD          tkill
+        TIMERS          setitimer
+        SIGNALS         rt_sigaction
+        SIGNALS         sigaltstack
+        SIGNALS         rt_sigpending
+        SIGNALS         rt_sigqueueinfo
+        SIGNALS         rt_sigsuspend
+        SIGNALS         rt_sigtimedwait
+        FILE            chmod
+        FILE            fchmodat
+        FILE            stat
+        FILE            fstatat
+        FILE            lstat
+        FILE            mkdir
+        FILE            mkdirat
+        FILE            mknodat
+        FILE            statfs
+        FILE            fstatfs
+        FILE            umask
+        BOTH            readv                    Check really both?
+        FILE            lseek
+        BOTH            writev                   Check really both?
+        FILE            rename
+        THREAD          futex
+        CLOCKS          clock_getres
+        THREAD          clock_nanosleep
+        CLOCK           clock_settime
+        THREAD          nanosleep
+        TIMER           timer_create
+        TIMER           timer_getoverrun
+        TIMER           timer_gettime
+        TIMER           timer_settime
+        FILE            access
+        ENOSYS          acct
+        FILE            chdir
+        FILE            chown
+        BOTH            dup
+        FILE            faccessat
+        FILE            fchownat
+        FILE            fdatasync
+        FILE            fsync
+        FILE            ftruncate
+        FILE            getcwd
+        ENOSYS          getgroups
+        SHARED          getpgid                  Return 0s
+        SHARE           getsid                   Return 0s
+        FILE            lchown
+        FILE            link
+        FILE            linkat
+        ENOSYS          mknod
+        THREAD          pause
+        SHARED          pipe
+        FILE            pread
+        FILE            preadv
+        FILE            pwrite
+        FILE            pwritev
+        BOTH            read
+        FILE            readlink
+        FILE            readlinkat
+        FILE            renameat
+        FILE            rmdir
+        ENOSYS          setpgid
+        ENOSYS          setsid
+        FILE            symlink
+        FILE            symlinkat
+        FILE            truncate
+        FILE            unlink
+        FILE            unlinkat
+        BOTH            write
 
-                        __sys_open
-                        __sys_open_cp
+        SHARED          __sys_open
+        SHARED          __sys_open_cp
 
-                        accept
-                        accept4
-                        bind
-                        connect
-                        getpeername
-                        getsockname
-                        getsockopt
-                        listen
-                        recvfrom
-                        recvmsg
-                        sendmsg
-                        sendto
-                        setsockopt
-                        shutdown
-                        socket
-                        socketpair
+        NET             accept
+        NET             accept4
+        NET             bind
+        NET             connect
+        NET             getpeername
+        NET             getsockname
+        NET             getsockopt
+        NET             listen
+        NET             recvfrom
+        NET             recvmsg
+        NET             sendmsg
+        NET             sendto
+        NET             setsockopt
+        NET             shutdown
+        NET             socket
+        NET             socketpair
