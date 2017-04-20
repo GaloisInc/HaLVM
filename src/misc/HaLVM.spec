@@ -47,9 +47,9 @@ chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/alex
 chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/cabal
 chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/ghc
 chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/ghc-pkg
-chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/haddock.bin
 chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/happy
 chrpath -r %{_libdir}/HaLVM-%{version}/lib %{buildroot}%{_libdir}/HaLVM-%{version}/bin/hsc2hs.bin
+chrpath -r %{_libdir}/HaLVM-%{version}/lib %{buildroot}%{_libdir}/HaLVM-%{version}/bin/haddock
 chrpath -d %{buildroot}%{_libdir}/HaLVM-%{version}/bin/HsColour
 rm -rf  %{buildroot}share
 mv %{buildroot}%{_docdir}/ghc* %{buildroot}%{_docdir}/ghc

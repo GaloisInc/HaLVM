@@ -36,11 +36,12 @@ override_dh_strip:
 	chrpath -d debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/cabal
 	chrpath -d debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/ghc
 	chrpath -d debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/ghc-pkg
-	chrpath -d debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/haddock.bin
 	chrpath -d debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/happy
 	chrpath -d debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/HsColour
 	chrpath -r /usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/lib \
 	             debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/hsc2hs.bin
+	chrpath -r /usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/lib \
+	             debian/$(SUBDIR)/usr/lib/$(ARCH)-linux-gnu/HaLVM-$(VERSION)/bin/haddock
 	mv debian/$(SUBDIR)/usr/share/doc/ghc* debian/$(SUBDIR)/usr/share/doc/HaLVM-ghc
 	mkdir -p debian/$(SUBDIR)/usr/share/HaLVM-$(VERSION)
 	cp -r examples debian/$(SUBDIR)/usr/share/HaLVM-$(VERSION)/
