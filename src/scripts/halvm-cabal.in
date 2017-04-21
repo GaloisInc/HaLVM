@@ -4,32 +4,25 @@ exec_prefix=@exec_prefix@
 bindir=@bindir@
 libdir=@libdir@/HaLVM-@PACKAGE_VERSION@
 
+CONFIG=${HOME}/.cabal/halvm-config
 CABALBIN=${libdir}/bin/cabal
 HSC2HS=${libdir}/bin/hsc2hs
 ALEX=${libdir}/bin/alex
 HAPPY=${libdir}/bin/happy
 HADDOCK=${libdir}/bin/haddock
 
-CABALCMD=${1+"$@"}
+if [ ! -f ${HOME}/.cabal/halvm-config ]; then
+  mkdir -p ${HOME}/.cabal
+  ${CABALBIN} --config-file=${CONFIG} user-config init
+  sed -ie "s!-- compiler:!compiler:!" ${CONFIG}
+  sed -ie "s!-- split-objs: False!split-objs: True!" ${CONFIG}
+  sed -ie "s!-- ghc-location:!ghc-location: ${bindir}/halvm-ghc!" ${CONFIG}
+  sed -ie "s!-- ghc-pkg-location:!ghc-pkg-location: ${bindir}/halvm-ghc-pkg!" ${CONFIG}
+  sed -ie "s!-- alex-location:!alex-location: ${ALEX}!" ${CONFIG}
+  sed -ie "s!-- happy-location:!happy-location: ${HAPPY}!" ${CONFIG}
+  sed -ie "s!-- haddock-location:!haddock-location: ${HADDOCK}!" ${CONFIG}
+  sed -ie "s!-- hsc2hs-location:!hsc2hs-location: ${HSC2HS}!" ${CONFIG}
+fi
 
-BUILD_FLAGS="--with-compiler=${bindir}/halvm-ghc"
-BUILD_FLAGS="${BUILD_FLAGS} --with-hc-pkg=${bindir}/halvm-ghc-pkg"
-BUILD_FLAGS="${BUILD_FLAGS} --with-hsc2hs=${HSC2HS}"
-BUILD_FLAGS="${BUILD_FLAGS} --with-alex=${ALEX}"
-BUILD_FLAGS="${BUILD_FLAGS} --with-happy=${HAPPY}"
-BUILD_FLAGS="${BUILD_FLAGS} --with-haddock=${HADDOCK}"
+exec ${CABALBIN} --config-file=${CONFIG} ${1+"$@"}
 
-INSTALL_FLAGS="--ghc ${BUILD_FLAGS} -j1 --enable-split-objs"
-CONFIGURE_FLAGS="--ghc ${BUILD_FLAGS} --enable-split-objs"
-RESTRICT_FLAGS=
-INITIAL_FLAGS=
-FINAL_FLAGS=
-
-for opt in ${CABALCMD}; do
-  case "$opt" in
-    configure) INITIAL_FLAGS=${CONFIGURE_FLAGS}; FINAL_FLAGS=${RESTRICT_FLAGS};;
-    install)   INITIAL_FLAGS=${INSTALL_FLAGS}  ; FINAL_FLAGS=${RESTRICT_FLAGS};;
-  esac
-done
-
-exec ${CABALBIN} ${INITIAL_FLAGS} "$@" ${FINAL_FLAGS}
