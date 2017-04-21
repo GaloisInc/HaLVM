@@ -70,3 +70,8 @@ library
                        syscalls/unsupported/mknod.c
                        syscalls/unsupported/setpgid.c
                        syscalls/unsupported/setsid.c
+
+                       -- functions required so we can deal with posix file
+                       -- descriptors
+                       syscalls/fdmgmt/fdmgmt.c
+                       syscalls/fdmgmt/platform_tty_ioctl.c

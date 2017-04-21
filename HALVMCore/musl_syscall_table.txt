@@ -98,7 +98,7 @@ DONE    SUBSYSTEM       CALL                     NOTES
         SHARED          getresuid                Just returns 0s
         PLATFORM        getrlimit
         PLATFORM        getrusage
-        SHARED          ioctl
+ X      SHARED          ioctl
         SHARED          setdomainname
         PLATFORM        setpriority              Will need to translate?
         SHARED          uname
