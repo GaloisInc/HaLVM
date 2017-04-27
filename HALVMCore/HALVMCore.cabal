@@ -75,3 +75,8 @@ library
                        -- descriptors
                        syscalls/fdmgmt/fdmgmt.c
                        syscalls/fdmgmt/platform_tty_ioctl.c
+
+                       -- a bunch of miscellaneous upcalls
+                       syscalls/misc/uname.c
+                       syscalls/misc/getdomainname.c
+                       syscalls/misc/setdomainname.c

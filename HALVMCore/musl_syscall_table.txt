@@ -99,9 +99,9 @@ DONE    SUBSYSTEM       CALL                     NOTES
         PLATFORM        getrlimit
         PLATFORM        getrusage
  X      SHARED          ioctl
-        SHARED          setdomainname
+ X      SHARED          setdomainname
         PLATFORM        setpriority              Will need to translate?
-        SHARED          uname
+ X      SHARED          uname
         PLATFORM        madvise
         PLATFORM        mincore
         SHARED          mlock
