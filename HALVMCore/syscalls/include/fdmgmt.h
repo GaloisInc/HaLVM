@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <platform_reqs.h>
 #include <Rts.h>
+#include <stdarg.h>
 
 enum fd_type {
   closed,
@@ -33,7 +34,7 @@ struct file_dispatch {
   StgStablePtr fileSystem;
   StgStablePtr fdInfo;
 
-  int     (*ioctl)(StgStablePtr, StgStablePtr, unsigned long, ...);
+  int     (*ioctl)(StgStablePtr, StgStablePtr, unsigned long, va_list);
 };
 
 struct pipe_dispatch {

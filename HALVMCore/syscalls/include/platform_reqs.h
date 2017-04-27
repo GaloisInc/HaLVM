@@ -3,6 +3,7 @@
 
 #define __NEED_ssize_t
 #include <bits/alltypes.h>
+#include <stdarg.h>
 
 /*******************************************************************************
  * USER CONSOLE
@@ -25,6 +26,6 @@ ssize_t platform_tty_write(enum which_tty, const void *, size_t);
  *
  * If you do choose to implement this, please try hard to return something
  * interesting for TIOCGWINSZ, so that isatty() and friends work right */
-int     platform_tty_ioctl(enum which_tty, unsigned long, ...);
+int     platform_tty_ioctl(enum which_tty, unsigned long, va_list);
 
 #endif
