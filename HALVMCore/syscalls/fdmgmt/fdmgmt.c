@@ -54,7 +54,6 @@ static struct fd_entry *fdtable           = default_table;
 static unsigned int     fdtable_size      = 10;
 static int              fdtable_next_free = 3;
 
-
 int new_fd(enum fd_type new_fd_type, void *dispatch)
 {
   int retval;
@@ -101,6 +100,17 @@ int new_fd(enum fd_type new_fd_type, void *dispatch)
   }
 
   return retval;
+}
+
+int is_open_fd(int fd)
+{
+  if(fd < 0)
+    return 0;
+
+  if(fd >= fdtable_size)
+    return 0;
+
+  return fdtable[fd].type != closed;
 }
 
 enum fd_type get_fd_type(int fd)

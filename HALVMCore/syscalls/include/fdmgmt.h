@@ -35,9 +35,17 @@ struct file_dispatch {
   StgStablePtr fdInfo;
 
   int     (*ioctl)(StgStablePtr, StgStablePtr, unsigned long, va_list);
+  int     (*fcntl)(StgStablePtr, StgStablePtr, int,           va_list);
 };
 
+struct pipe_info {};
+enum pipe_direction { read_pipe, write_pipe };
+
 struct pipe_dispatch {
+  enum pipe_direction dir;
+  struct pipe_info *info;
+
+  int (*fcntl)(enum pipe_direction, struct pipe_info *, int, va_list);
 };
 
 // Generate new file descriptor of the given type, dispatch table, and context.
@@ -45,6 +53,7 @@ struct pipe_dispatch {
 //   > 0: The new file descriptor / scoket / whatever
 //   -1 : An error, with an appropriate value in errno
 int new_fd(enum fd_type type, void *dispatch);
+int is_open_fd(int fd);
 
 enum   fd_type          get_fd_type(int);
 struct tty_dispatch    *get_tty_dispatch(int);

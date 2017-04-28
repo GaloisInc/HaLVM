@@ -14,7 +14,7 @@ Subsystem markers:
 DONE    SUBSYSTEM       CALL                     NOTES
 ----    ---------       ----                     -------
         FILE            getdents                 Get directory entries
-        BOTH            fcntl                    Mess with a file descriptor
+ X      BOTH            fcntl                    Mess with a file descriptor
         FILE            openat                   A variant of open()
  X      ENOSYS          msgctl                   \
  X      ENOSYS          msgget                   | System V inter-process 
@@ -169,7 +169,7 @@ DONE    SUBSYSTEM       CALL                     NOTES
  X      ENOSYS          acct
         FILE            chdir
         FILE            chown
-        BOTH            dup
+ X      BOTH            dup
         FILE            faccessat
         FILE            fchownat
         FILE            fdatasync
