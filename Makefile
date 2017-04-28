@@ -59,7 +59,7 @@ $(TOPDIR)/musl/config.mak: $(MUSL_DEPENDS)
 	(cd musl && ./configure --disable-shared CC=$(CC))
 	$(SED) -i -e 's!^CROSS_COMPILE.*$$!!g' $@
 
-$(TOPDIR)/obj/include/bits/alltypes.h: $(TOPDIR)/musl/config.mak
+$(TOPDIR)/musl/obj/include/bits/alltypes.h: $(TOPDIR)/musl/config.mak
 	$(MAKE) -C musl
 
 clean::
