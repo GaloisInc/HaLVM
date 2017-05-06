@@ -8,3 +8,9 @@ config.status
 
 .stack-work
 
+examples/standard.mk
+scripts/halvm-ghc
+*.hi
+*.o
+*.swp
+

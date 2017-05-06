@@ -99,6 +99,7 @@ AC_FORCE_EXIST(GCC,gcc)
 AC_FORCE_EXIST(GHC,ghc)
 AC_FORCE_EXIST(LD,ld)
 AC_FORCE_EXIST(LN,ln)
+AC_FORCE_EXIST(INSTALL, install)
 AC_FORCE_EXIST(NM,nm)
 AC_FORCE_EXIST(MAKE,make)
 AC_FORCE_EXIST(OBJDUMP,objdump)
@@ -190,6 +191,10 @@ else
   AC_SUBST(ARCH,"i386")
 fi
 
+AC_SUBST(target,"${ARCH}-unknown-HaLVM")
+AC_SUBST(target_prefix,"${ARCH}-unknown-HaLVM-")
+
+
 dnl -------------------------------------------------------------------------
 dnl
 dnl Final message and file dump
@@ -210,6 +215,8 @@ else
   AC_CONFIG_FILES([
                    autoconf.mk
                    misc/build.mk
+                   examples/standard.mk
+                   scripts/halvm-ghc
                   ])
   AC_OUTPUT
 fi
