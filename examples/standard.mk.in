@@ -20,4 +20,4 @@ clean::
 	halvm-ghc $(THR_RT_OPT) $(PROFILE_OPT) --make -o $@ $^
 
 %: %.c
-	gcc -o $@ $^ -I$(IVC_INC) -lxenctrl -lcrypto -lxenstore $(IVC_LIB)/libIVC.a
+	gcc -o $@ $^ -I$(IVC_INC) $(IVC_LIB)/libIVC.a -lxenctrl -lcrypto -lxenstore
