@@ -76,6 +76,6 @@ while [ $# != 0 ] ; do
   esac
 done
 
-LDCMD="ld ${LINKER_SCRIPT} -nostdlib ${START_FILE} $ARGS $LIBS -L${halvm_dir}/rts-1.0 ${LIBM_FILE}"
+LDCMD="ld ${LINKER_SCRIPT} -nostdlib ${START_FILE} $ARGS $LIBS -L${halvm_dir}/rts-1.0 ${LIBM_FILE} -lminlibc"
 #echo $LDCMD
 $LDCMD
