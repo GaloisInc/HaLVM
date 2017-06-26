@@ -1,0 +1,32 @@
+-- vim: ft=haskell:
+signature HaLVM.Console(
+  Console,
+  init,
+  read,
+  write,
+  getWindowSize
+  )
+ where
+
+import Data.ByteString(ByteString)
+import Data.Word(Word)
+import Prelude hiding (init,read)
+
+-- |A console we can read and write to
+data Console
+
+-- |Do any initialization required, and then return 'Console's that represent
+-- stdin, stdout, and stderr. These may be the same console, or variants of
+-- the same console.
+init  :: IO (Console, Console, Console)
+
+-- |Read any data on the given console.
+read  :: Console -> Word -> IO ByteString
+
+-- |Write some data to the given console.
+write :: Console -> ByteString -> IO Word
+
+-- |Return the current window size, in rows and columns by character, and rows
+-- and columns by pixels.
+getWindowSize :: Console -> IO (Word, Word, Word, Word)
+

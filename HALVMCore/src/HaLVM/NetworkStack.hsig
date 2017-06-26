@@ -1,0 +1,91 @@
+-- vim: ft=haskell:
+signature HaLVM.NetworkStack (
+
+  -- * A data structure holding the internal information of a network stack.
+  NetworkStack,
+  initializeNetworkStack,
+
+  -- * Socket types
+  Socket,
+  SocketOption,
+  ListenerSocket,
+
+  -- * Address types
+  Addr,
+  Port,
+  serializeAddressTo,
+
+  -- * Standard Operations
+  accept,
+  connect,
+  getPeerName,
+  getSockName,
+  getSocketOptions,
+  setSocketOptions,
+  listen,
+  recv,
+  recvFrom,
+  send,
+  sendTo,
+  close
+  )
+ where
+
+import Data.ByteString.Lazy(ByteString)
+import Foreign.Ptr(Ptr)
+
+data NetworkStack
+data Socket
+data SocketOption
+data ListenerSocket
+data Addr
+data Port
+
+-- |Initialize the underlying network stack, given the information in the
+-- String provided.
+initializeNetworkStack :: String -> IO NetworkStack
+
+-- |Serialize the address into memory at the given point, using a maximum
+-- of the given number of bytes.
+serializeAddressTo :: Addr -> Ptr Addr -> Int -> IO ()
+
+-- |Accept a connection from the given listener socket, returning relevant
+-- information about the peer
+accept :: ListenerSocket -> IO (Socket, Addr, Port)
+
+-- |Connect to the given address and port, from the optional address and port.
+connect :: NetworkStack -> Addr -> Port -> Maybe Addr -> Maybe Port -> IO Socket
+
+-- |Get the address and port of the person on the other side of this connection.
+getPeerName :: Socket -> IO (Addr, Port)
+
+-- |Get the address and port we're using on our side of this connection.
+getSockName :: Socket -> IO (Addr, Port)
+
+-- |Get the socket options set for this socket
+getSocketOptions :: Socket -> IO [SocketOption]
+
+-- |Set a socket option for this socket
+setSocketOptions :: Socket -> SocketOption -> IO ()
+
+-- |Listen for connections on the given socket, keeping a queue of the given
+-- length.
+listen :: NetworkStack -> Int -> IO ListenerSocket
+
+-- |Receive data from the given socket, attempting to get the given amount.
+-- Returns the amount read, or 0 if the socket has closed.
+recv :: Socket -> Int -> IO ByteString
+
+-- |Exactly as recv(), but providing the sender's information, too. Much more
+-- useful on UDP sockets than TCP ones ...
+recvFrom :: Socket -> Int -> IO (ByteString, Addr, Port)
+
+-- |Send data on the socket, returning the amount sent
+send :: Socket -> ByteString -> IO Int
+
+-- |Send data to the given address and port, returning the amount sent
+sendTo :: Socket -> Addr -> Port -> IO Int
+
+-- |Close the given socket
+close :: Socket -> IO ()
+
