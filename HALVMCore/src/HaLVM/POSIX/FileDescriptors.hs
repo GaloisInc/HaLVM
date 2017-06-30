@@ -1,24 +1,19 @@
-module HaLVM.FileDescriptors(
-         newSocketFD
+module HaLVM.POSIX.FileDescriptors(
+         DescriptorEntry(..)
+       , newSocketFD
        , newListenerFD
+       , withFileDescriptorEntry
        )
  where
 
-import           Control.Concurrent.MVar(MVar, newMVar, newEmptyMVar, putMVar,
-                                         modifyMVar, withMVar)
-import           Control.Exception(SomeException, handle)
+import           Control.Concurrent.MVar(MVar, newMVar, modifyMVar, withMVar)
 import           Data.Array.IO(IOArray)
 import           Data.Array.MArray(newArray,getBounds,readArray,writeArray)
-import qualified Data.ByteString.Lazy as L
-import qualified Data.ByteString.Unsafe as S
 import           Data.Word(Word8)
-import           Foreign.C.Error
-import           Foreign.C.Types(CSize(..),CInt)
-import           Foreign.Marshal.Utils(copyBytes)
-import           Foreign.Ptr(Ptr,castPtr)
-import           Foreign.Storable(Storable(..))
+import           Foreign.C.Error(eBADF)
 import           HaLVM.Console      as Con
 import           HaLVM.NetworkStack as Net
+import           HaLVM.POSIX.Errno(errnoReturn)
 import           System.IO.Unsafe(unsafePerformIO)
 
 data DescriptorEntry = DescConsole  Console
@@ -78,41 +73,13 @@ copyArray x y arr1 arr2
         writeArray arr2 x v
         copyArray (x + 1) y arr1 arr2
 
-halvmRead :: Word -> Ptr Word8 -> CSize -> Ptr CInt -> IO CSize
-halvmRead fd buf amt perrno =
+withFileDescriptorEntry :: Num a => Word -> (DescriptorEntry -> IO a) -> IO a
+withFileDescriptorEntry fd handler =
   withMVar mDescriptorTable $ \ dt ->
     do ent <- readArray dt fd
        case ent of
          Nothing ->
-           do pokeErrno perrno eBADF
-              return (-1)
-         Just (DescConsole con) ->
-           runWithEINTR perrno $
-             do res <- Con.read con (fromIntegral amt)
-                S.unsafeUseAsCStringLen res $ \ (ptr, len) ->
-                  do copyBytes buf (castPtr ptr) len
-                     return (fromIntegral len)
-         Just (DescSocket sock) ->
-           runWithEINTR perrno $
-             do res <- Net.recv sock (fromIntegral amt)
-                S.unsafeUseAsCStringLen (L.toStrict res) $ \ (ptr, len) ->
-                  do copyBytes buf (castPtr ptr) len
-                     return (fromIntegral len)
-         Just (DescListener _) ->
-            do pokeErrno perrno eINVAL
-               return (-1)
-
-runWithEINTR :: Num b => Ptr CInt -> IO b -> IO b
-runWithEINTR perrno = handle nevermind
- where
-  nevermind :: Num a => SomeException -> IO a
-  nevermind _  = do pokeErrno perrno eINTR
-                    return (-1)
-
-pokeErrno :: Ptr CInt -> Errno -> IO ()
-pokeErrno ptr (Errno v) = poke ptr v
-
-foreign export ccall halvmRead ::
-  Word -> Ptr Word8 -> CSize -> Ptr CInt -> IO CSize
-
+           errnoReturn eBADF
+         Just desc ->
+           handler desc
 

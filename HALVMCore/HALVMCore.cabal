@@ -16,10 +16,15 @@ cabal-version:       >=2.0
 
 library
   default-language:    Haskell2010
+  other-extensions:    MultiWayIf
   signatures:
                        HaLVM.Console
                        HaLVM.NetworkStack
-  exposed-modules:     HaLVM.FileDescriptors
+  other-modules:
+                       HaLVM.POSIX.Errno
+                       HaLVM.POSIX.FileDescriptors
+                       HaLVM.POSIX.IOVec
+                       HaLVM.POSIX.Read
   -- other-extensions:
   build-depends:
                        array      >= 0.5.1.2  && < 0.7,
@@ -35,56 +40,56 @@ library
                        /Users/awick/halvm/halvm3/HaLVM/musl/arch/halvm
                        /Users/awick/halvm/halvm3/HaLVM/musl/arch/generic
   c-sources:
-                       -- implementations of Linux kernel functions we don't
-                       -- support in the HaLVM, and just return ENOSYS (or
-                       -- similar) with.
-                       syscalls/unsupported/msgctl.c
-                       syscalls/unsupported/msgget.c
-                       syscalls/unsupported/msgrcv.c
-                       syscalls/unsupported/msgsnd.c
-                       syscalls/unsupported/shmat.c
-                       syscalls/unsupported/shmctl.c
-                       syscalls/unsupported/shmdt.c
-                       syscalls/unsupported/shmget.c
-                       syscalls/unsupported/capset.c
-                       syscalls/unsupported/capget.c
-                       syscalls/unsupported/chroot.c
-                       syscalls/unsupported/iopl.c
-                       syscalls/unsupported/init_module.c
-                       syscalls/unsupported/delete_module.c
-                       syscalls/unsupported/personality.c
-                       syscalls/unsupported/pivot_root.c
-                       syscalls/unsupported/prctl.c
-                       syscalls/unsupported/process_vm_writev.c
-                       syscalls/unsupported/process_vm_readv.c
-                       syscalls/unsupported/ptrace.c
-                       syscalls/unsupported/remap_file_pages.c
-                       syscalls/unsupported/setfsgid.c
-                       syscalls/unsupported/setfsuid.c
-                       syscalls/unsupported/setgroups.c
-                       syscalls/unsupported/setns.c
-                       syscalls/unsupported/swapon.c
-                       syscalls/unsupported/swapoff.c
-                       syscalls/unsupported/unshare.c
-                       syscalls/unsupported/vhangup.c
-                       syscalls/unsupported/wait4.c
-                       syscalls/unsupported/execve.c
-                       syscalls/unsupported/fork.c
-                       syscalls/unsupported/waitid.c
-                       syscalls/unsupported/acct.c
-                       syscalls/unsupported/getgroups.c
-                       syscalls/unsupported/mknod.c
-                       syscalls/unsupported/setpgid.c
-                       syscalls/unsupported/setsid.c
-
-                       -- functions required so we can deal with posix file
-                       -- descriptors
-                       syscalls/fdmgmt/fdmgmt.c
-                       syscalls/fdmgmt/fcntl.c
-                       syscalls/fdmgmt/dup.c
-                       syscalls/fdmgmt/platform_tty_ioctl.c
-
-                       -- a bunch of miscellaneous upcalls
-                       syscalls/misc/uname.c
-                       syscalls/misc/getdomainname.c
-                       syscalls/misc/setdomainname.c
+--                        -- implementations of Linux kernel functions we don't
+--                        -- support in the HaLVM, and just return ENOSYS (or
+--                        -- similar) with.
+--                        syscalls/unsupported/msgctl.c
+--                        syscalls/unsupported/msgget.c
+--                        syscalls/unsupported/msgrcv.c
+--                        syscalls/unsupported/msgsnd.c
+--                        syscalls/unsupported/shmat.c
+--                        syscalls/unsupported/shmctl.c
+--                        syscalls/unsupported/shmdt.c
+--                        syscalls/unsupported/shmget.c
+--                        syscalls/unsupported/capset.c
+--                        syscalls/unsupported/capget.c
+--                        syscalls/unsupported/chroot.c
+--                        syscalls/unsupported/iopl.c
+--                        syscalls/unsupported/init_module.c
+--                        syscalls/unsupported/delete_module.c
+--                        syscalls/unsupported/personality.c
+--                        syscalls/unsupported/pivot_root.c
+--                        syscalls/unsupported/prctl.c
+--                        syscalls/unsupported/process_vm_writev.c
+--                        syscalls/unsupported/process_vm_readv.c
+--                        syscalls/unsupported/ptrace.c
+--                        syscalls/unsupported/remap_file_pages.c
+--                        syscalls/unsupported/setfsgid.c
+--                        syscalls/unsupported/setfsuid.c
+--                        syscalls/unsupported/setgroups.c
+--                        syscalls/unsupported/setns.c
+--                        syscalls/unsupported/swapon.c
+--                        syscalls/unsupported/swapoff.c
+--                        syscalls/unsupported/unshare.c
+--                        syscalls/unsupported/vhangup.c
+--                        syscalls/unsupported/wait4.c
+--                        syscalls/unsupported/execve.c
+--                        syscalls/unsupported/fork.c
+--                        syscalls/unsupported/waitid.c
+--                        syscalls/unsupported/acct.c
+--                        syscalls/unsupported/getgroups.c
+--                        syscalls/unsupported/mknod.c
+--                        syscalls/unsupported/setpgid.c
+--                        syscalls/unsupported/setsid.c
+-- 
+--                        -- functions required so we can deal with posix file
+--                        -- descriptors
+--                        syscalls/fdmgmt/fdmgmt.c
+--                        syscalls/fdmgmt/fcntl.c
+--                        syscalls/fdmgmt/dup.c
+--                        syscalls/fdmgmt/platform_tty_ioctl.c
+-- 
+--                        -- a bunch of miscellaneous upcalls
+--                        syscalls/misc/uname.c
+--                        syscalls/misc/getdomainname.c
+--                        syscalls/misc/setdomainname.c
