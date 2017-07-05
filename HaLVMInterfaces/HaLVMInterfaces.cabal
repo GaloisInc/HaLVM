@@ -1,0 +1,25 @@
+name:                HaLVMInterfaces
+version:             3.0.0
+synopsis:            The Backpack interfaces for working with the HaLVM
+description:         A set of retargetable interfaces for core operating
+	             system components.
+homepage:            http://halvm.org
+license:             BSD3
+license-file:        LICENSE
+author:              Adam Wick
+maintainer:          awick@galois.com
+category:            System
+build-type:          Simple
+extra-source-files:  ChangeLog.md
+cabal-version:       >=2.0
+
+library
+  default-language:    Haskell2010
+  signatures:
+                       HaLVM.Console
+                       HaLVM.NetworkStack
+  build-depends:
+                       base       >= 4.10     && < 4.12,
+                       bytestring >= 0.10.8.2 && < 0.12
+  hs-source-dirs:      src
+  ghc-options:         -Wall

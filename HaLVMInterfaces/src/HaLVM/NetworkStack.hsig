@@ -33,6 +33,7 @@ signature HaLVM.NetworkStack (
 
 import Data.ByteString.Lazy(ByteString)
 import Foreign.Ptr(Ptr)
+import Foreign.Storable(Storable)
 
 data NetworkStack
 data Socket
@@ -40,6 +41,9 @@ data SocketOption
 data ListenerSocket
 data Addr
 data Port
+
+instance Storable Addr
+instance Storable Port
 
 -- |Initialize the underlying network stack, given the information in the
 -- String provided.
