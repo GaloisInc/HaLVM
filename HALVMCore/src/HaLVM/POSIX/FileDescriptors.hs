@@ -1,5 +1,4 @@
-module HaLVM.POSIX.FileDescriptors(
-         DescriptorEntry(..)
+module HaLVM.POSIX.FileDescriptors( DescriptorEntry(..)
        , newSocketFD
        , newListenerFD
        , withFileDescriptorEntry
@@ -9,8 +8,8 @@ module HaLVM.POSIX.FileDescriptors(
 import           Control.Concurrent.MVar(MVar, newMVar, modifyMVar, withMVar)
 import           Data.Array.IO(IOArray)
 import           Data.Array.MArray(newArray,getBounds,readArray,writeArray)
-import           Data.Word(Word8)
-import           Foreign.C.Error(eBADF)
+import           Foreign.C.Error(eBADF,eINVAL)
+import           Foreign.C.Types(CInt(..))
 import           HaLVM.Console      as Con
 import           HaLVM.NetworkStack as Net
 import           HaLVM.POSIX.Errno(errnoReturn)
@@ -20,10 +19,6 @@ data DescriptorEntry = DescConsole  Console
                      | DescSocket   Socket
                      | DescListener ListenerSocket
 
-
-{-# NOINLINE mNetworkStack #-}
-mNetworkStack :: MVar NetworkStack
-mNetworkStack = unsafePerformIO $ newMVar =<< Net.initializeNetworkStack "FIXME"
 
 {-# NOINLINE mDescriptorTable #-}
 mDescriptorTable :: MVar (IOArray Word (Maybe DescriptorEntry))
@@ -82,4 +77,22 @@ withFileDescriptorEntry fd handler =
            errnoReturn eBADF
          Just desc ->
            handler desc
+
+-- -----------------------------------------------------------------------------
+
+syscall_dup :: CInt -> IO CInt
+syscall_dup fd
+  | fd < 0 = errnoReturn eINVAL
+  | otherwise =
+      do mydesc <- withMVar mDescriptorTable $ \ dt ->
+                     readArray dt (fromIntegral fd)
+         case mydesc of
+           Nothing ->
+             errnoReturn eBADF
+           Just desc ->
+             do fd' <- newDescriptor (const (return desc))
+                return (fromIntegral fd')
+
+foreign export ccall syscall_dup ::
+  CInt -> IO CInt
 
