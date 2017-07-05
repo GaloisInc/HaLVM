@@ -25,7 +25,7 @@ library
                        HaLVM.POSIX.FileDescriptors
                        HaLVM.POSIX.IOVec
                        HaLVM.POSIX.Read
-  -- other-extensions:
+                       HaLVM.POSIX.Unsupported
   build-depends:
                        array      >= 0.5.1.2  && < 0.7,
                        base       >= 4.10     && < 4.12,
@@ -35,53 +35,6 @@ library
   ghc-options:         -Wall
   cc-options:          -Wall -nostdinc
   include-dirs:        syscalls/include/
-                       /Users/awick/halvm/halvm3/HaLVM/musl/include
-                       /Users/awick/halvm/halvm3/HaLVM/musl/obj/include
-                       /Users/awick/halvm/halvm3/HaLVM/musl/arch/halvm
-                       /Users/awick/halvm/halvm3/HaLVM/musl/arch/generic
-  c-sources:
---                        -- implementations of Linux kernel functions we don't
---                        -- support in the HaLVM, and just return ENOSYS (or
---                        -- similar) with.
---                        syscalls/unsupported/msgctl.c
---                        syscalls/unsupported/msgget.c
---                        syscalls/unsupported/msgrcv.c
---                        syscalls/unsupported/msgsnd.c
---                        syscalls/unsupported/shmat.c
---                        syscalls/unsupported/shmctl.c
---                        syscalls/unsupported/shmdt.c
---                        syscalls/unsupported/shmget.c
---                        syscalls/unsupported/capset.c
---                        syscalls/unsupported/capget.c
---                        syscalls/unsupported/chroot.c
---                        syscalls/unsupported/iopl.c
---                        syscalls/unsupported/init_module.c
---                        syscalls/unsupported/delete_module.c
---                        syscalls/unsupported/personality.c
---                        syscalls/unsupported/pivot_root.c
---                        syscalls/unsupported/prctl.c
---                        syscalls/unsupported/process_vm_writev.c
---                        syscalls/unsupported/process_vm_readv.c
---                        syscalls/unsupported/ptrace.c
---                        syscalls/unsupported/remap_file_pages.c
---                        syscalls/unsupported/setfsgid.c
---                        syscalls/unsupported/setfsuid.c
---                        syscalls/unsupported/setgroups.c
---                        syscalls/unsupported/setns.c
---                        syscalls/unsupported/swapon.c
---                        syscalls/unsupported/swapoff.c
---                        syscalls/unsupported/unshare.c
---                        syscalls/unsupported/vhangup.c
---                        syscalls/unsupported/wait4.c
---                        syscalls/unsupported/execve.c
---                        syscalls/unsupported/fork.c
---                        syscalls/unsupported/waitid.c
---                        syscalls/unsupported/acct.c
---                        syscalls/unsupported/getgroups.c
---                        syscalls/unsupported/mknod.c
---                        syscalls/unsupported/setpgid.c
---                        syscalls/unsupported/setsid.c
--- 
 --                        -- functions required so we can deal with posix file
 --                        -- descriptors
 --                        syscalls/fdmgmt/fdmgmt.c
