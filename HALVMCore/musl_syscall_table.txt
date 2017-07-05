@@ -154,7 +154,7 @@ DONE    SUBSYSTEM       CALL                     NOTES
         FILE            umask
  X      BOTH            readv                    Check really both?
         FILE            lseek
-        BOTH            writev                   Check really both?
+ X      BOTH            writev                   Check really both?
         FILE            rename
         THREAD          futex
         CLOCKS          clock_getres
@@ -169,7 +169,7 @@ DONE    SUBSYSTEM       CALL                     NOTES
         ENOSYS          acct
         FILE            chdir
         FILE            chown
-        BOTH            dup
+ X      BOTH            dup
         FILE            faccessat
         FILE            fchownat
         FILE            fdatasync
@@ -189,7 +189,7 @@ DONE    SUBSYSTEM       CALL                     NOTES
         FILE            preadv
         FILE            pwrite
         FILE            pwritev
-X       BOTH            read
+ X      BOTH            read
         FILE            readlink
         FILE            readlinkat
         FILE            renameat
@@ -201,7 +201,7 @@ X       BOTH            read
         FILE            truncate
         FILE            unlink
         FILE            unlinkat
-        BOTH            write
+ X      BOTH            write
 
         SHARED          __sys_open
         SHARED          __sys_open_cp

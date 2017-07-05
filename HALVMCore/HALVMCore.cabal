@@ -19,10 +19,14 @@ library
   other-extensions:    MultiWayIf
   other-modules:
                        HaLVM.POSIX.Errno
+                       HaLVM.POSIX.Fcntl
                        HaLVM.POSIX.FileDescriptors
                        HaLVM.POSIX.IOVec
                        HaLVM.POSIX.Read
+                       HaLVM.POSIX.Sockets
                        HaLVM.POSIX.Unsupported
+                       HaLVM.POSIX.Write
+  c-sources:           syscalls/fcntl.c
   build-depends:
                        array            >= 0.5.1.2  && < 0.7,
                        base             >= 4.10     && < 4.12,
@@ -30,8 +34,14 @@ library
                        HaLVMInterfaces  == 3.0.0
   hs-source-dirs:      src
   ghc-options:         -Wall
-  cc-options:          -Wall -nostdinc
+  cc-options:          -Wall -nostdinc -D_GNU_SOURCE
   include-dirs:        syscalls/include/
+                       ../musl/include
+                       ../musl/obj/include
+                       ../musl/arch/halvm
+                       ../musl/arch/generic
+
+
 --                        -- functions required so we can deal with posix file
 --                        -- descriptors
 --                        syscalls/fdmgmt/fdmgmt.c
