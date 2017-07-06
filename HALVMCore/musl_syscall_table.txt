@@ -16,23 +16,23 @@ DONE    SUBSYSTEM       CALL                     NOTES
         FILE            getdents                 Get directory entries
         BOTH            fcntl                    Mess with a file descriptor
         FILE            openat                   A variant of open()
-        ENOSYS          msgctl                   \
-        ENOSYS          msgget                   | System V inter-process 
-        ENOSYS          msgrcv                   | messaging. Can skip?
-        ENOSYS          msgsnd                   /
+ X      ENOSYS          msgctl                   \
+ X      ENOSYS          msgget                   | System V inter-process 
+ X      ENOSYS          msgrcv                   | messaging. Can skip?
+ X      ENOSYS          msgsnd                   /
         SHARED          semctl                   \
         SHARED          semget                   | System V semaphores. Probably
         SHARED          semop                    | need this functionality anyways
         SHARED          semtimedop               /
-        ENOSYS          shmat                    \
-        ENOSYS          shmctl                   | System V shared memory; can
-        ENOSYS          shmdt                    | probably skip?
-        ENOSYS          shmget                   /
+ X      ENOSYS          shmat                    \
+ X      ENOSYS          shmctl                   | System V shared memory; can
+ X      ENOSYS          shmdt                    | probably skip?
+ X      ENOSYS          shmget                   /
         CLOCK           adjtimex                 Get very fine-grained time info
         PLATFORM        arch_prctl               Sets arch-specific thr/pro state
-        ENOSYS          capset                   \ Thread capability sets, which
-        ENOSYS          capget                   / we probably won't honor?
-        ENOSYS          chroot
+ X      ENOSYS          capset                   \ Thread capability sets, which
+ X      ENOSYS          capget                   / we probably won't honor?
+ X      ENOSYS          chroot
         CLOCK           clock_adjtime
         BOTH            epoll_ctl
         FILE*           fallocate                \
@@ -42,34 +42,34 @@ DONE    SUBSYSTEM       CALL                     NOTES
         FILE*           inotify_add_watch        | re-use epoll?
         FILE*           inotify_rm_watch         /
         PLATFORM        ioperm                   Sets the IO perms on x86 ports
-        ENOSYS          iopl                     Sets ring levels
+ X      ENOSYS          iopl                     Sets ring levels
         SHARED          syslog                   Only implement read and get size
-        ENOSYS          init_module
-        ENOSYS          delete_module
+ X      ENOSYS          init_module
+ X      ENOSYS          delete_module
         FILE            mount
         FILE            umount2                  Umount() with some added flags
-        ENOSYS          personality
-        ENOSYS          pivot_root
+ X      ENOSYS          personality
+ X      ENOSYS          pivot_root
         BOTH            ppoll                    Folded into epoll?
-        ENOSYS          prctl
+ X      ENOSYS          prctl
         PLATFORM        prlimit64
-        ENOSYS          process_vm_writev
-        ENOSYS          process_vm_readv
-        ENOSYS          ptrace
+ X      ENOSYS          process_vm_writev
+ X      ENOSYS          process_vm_readv
+ X      ENOSYS          ptrace
         FILE            quotactl
         FILE            readahead
         PLATFORM        reboot
-        ENOSYS          remap_file_pages
+ X      ENOSYS          remap_file_pages
         BOTH            sendfile                 Basically copy
-        ENOSYS          setfsgid
-        ENOSYS          setfsuid
-        ENOSYS          setgroups
+ X      ENOSYS          setfsgid
+ X      ENOSYS          setfsuid
+ X      ENOSYS          setgroups
         SHARED          sethostname
-        ENOSYS          setns
+ X      ENOSYS          setns
         CLOCK           settimeofday
         BOTH            splice
-        ENOSYS          swapon
-        ENOSYS          swapoff
+ X      ENOSYS          swapon
+ X      ENOSYS          swapoff
         FILE            sync_file_range
         FILE            syncfs
         PLATFORM        sysinfo
@@ -77,10 +77,10 @@ DONE    SUBSYSTEM       CALL                     NOTES
         TIMERS          timerfd_create
         TIMERS          timerfd_settime
         TIMERS          timerfd_gettime
-        ENOSYS          unshare
-        ENOSYS          vhangup
+ X      ENOSYS          unshare
+ X      ENOSYS          vhangup
         PIPE            vmsplice
-        ENOSYS          wait4
+ X      ENOSYS          wait4
         FILE            getxattr
         FILE            lgetxattr
         FILE            fgetxattr
@@ -120,9 +120,9 @@ DONE    SUBSYSTEM       CALL                     NOTES
         THREAD          mq_timedreceive
         THREAD          mq_timedsend
         NET             recvmmsg
-        ENOSYS          execve
+ X      ENOSYS          execve
         ENOSYS          fork
-        ENOSYS          waitid
+ X      ENOSYS          waitid
         THREAD          sched_setaffinity
         THREAD          sched_get_priority_max
         THREAD          sched_get_priority_min
@@ -166,7 +166,7 @@ DONE    SUBSYSTEM       CALL                     NOTES
         TIMER           timer_gettime
         TIMER           timer_settime
         FILE            access
-        ENOSYS          acct
+ X      ENOSYS          acct
         FILE            chdir
         FILE            chown
  X      BOTH            dup
@@ -176,13 +176,13 @@ DONE    SUBSYSTEM       CALL                     NOTES
         FILE            fsync
         FILE            ftruncate
         FILE            getcwd
-        ENOSYS          getgroups
+ X      ENOSYS          getgroups
         SHARED          getpgid                  Return 0s
         SHARE           getsid                   Return 0s
         FILE            lchown
         FILE            link
         FILE            linkat
-        ENOSYS          mknod
+ X      ENOSYS          mknod
         THREAD          pause
         PIPE            pipe
         FILE            pread
@@ -194,8 +194,8 @@ DONE    SUBSYSTEM       CALL                     NOTES
         FILE            readlinkat
         FILE            renameat
         FILE            rmdir
-        ENOSYS          setpgid
-        ENOSYS          setsid
+ X      ENOSYS          setpgid
+ X      ENOSYS          setsid
         FILE            symlink
         FILE            symlinkat
         FILE            truncate
