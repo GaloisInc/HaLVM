@@ -14,15 +14,17 @@ import           HaLVM.Console      as Con
 import           HaLVM.NetworkStack as Net
 import           HaLVM.POSIX.Errno(errnoReturn,runWithEINTR)
 import           HaLVM.POSIX.IOVec(IOVec(..))
-import           HaLVM.POSIX.FileDescriptors(DescriptorEntry(..),withFileDescriptorEntry)
+import           HaLVM.POSIX.FileDescriptors(DescriptorEntry(..),
+                                             DescriptorType(..),
+                                             withFileDescriptorEntry_)
 import           System.Posix.Types(CSsize(..))
 
 syscall_write :: CInt -> Ptr Word8 -> CSize -> IO CSsize
 syscall_write fd buf amt
   | fd < 0 = errnoReturn eINVAL
   | otherwise =
-      withFileDescriptorEntry (fromIntegral fd) $ \ ent ->
-        case ent of
+      withFileDescriptorEntry_ (fromIntegral fd) $ \ ent ->
+        case descType ent of
           DescConsole con ->
             runWithEINTR $
               do bstr <- S.packCStringLen (castPtr buf, fromIntegral amt)
