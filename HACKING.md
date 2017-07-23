@@ -10,13 +10,15 @@ Development Environment Setup
 
 Why we need another VM? Because we need to install a Xen hypervisor on the host system, which is probably not something you want to do with your own machine. Besides, we can standardize the steps if we can assume the host OS. Also, it is easier to backup (You can **snapshot** at any check point as you like, and we recommend you to do so frequently before accidentally screwing things up).
 
-Our Host OS of choice is **Fedora Server 22/23/24**. (Why "Server"? Because "Workstation" might have `xen-libs` etc. pre-installed, which might cause trouble for us. And "Server" is also more lightweight than "WorkStation").
+Our Host OS of choice is **Fedora Server 22 or newer**. (Why "Server"? Because "Workstation" might have `xen-libs` etc. pre-installed, which might cause trouble for us. And "Server" is also more lightweight than "WorkStation").
 
 You can download its image from any mirror site, for example:
 
 - For Server 22: https://download.fedoraproject.org/pub/fedora/linux/releases/22/Server/x86_64/iso/Fedora-Server-DVD-x86_64-22.iso
 - For Server 23: https://download.fedoraproject.org/pub/fedora/linux/releases/23/Server/x86_64/iso/Fedora-Server-DVD-x86_64-23.iso
 - For Server 24: https://download.fedoraproject.org/pub/fedora/linux/releases/24/Server/x86_64/iso/Fedora-Server-dvd-x86_64-24-1.2.iso
+- For Server 25: https://download.fedoraproject.org/pub/fedora/linux/releases/25/Server/x86_64/iso/Fedora-Server-dvd-x86_64-25-1.3.iso 
+- For Server 26: https://download.fedoraproject.org/pub/fedora/linux/releases/26/Server/x86_64/iso/Fedora-Server-dvd-x86_64-26-1.5.iso 
 
 You can also try 21, 25 etc. or even other distros, good luck and if any, please tell us any problem you met, or make a PR documenting how to solve it.
 
@@ -58,6 +60,9 @@ The process is similar to the VMWare's above. Just to note:
 1. Choose `Other 64-bit` rather than `Fedora`
 2. Give it enough resource (>=2GB memory, >=30GB storage)
 
+### Option 3: Parallels on macOS
+Installing Fedora on Parallels works very well also.  When you select the Fedora server ISO it will be auto-detected and even provides an express install option.
+
 ## Step #2: Install the Fedora and Connect it with `ssh`
 
 During installation, pretty much everything is standard you can just use the default option. There are some more tips though:
@@ -73,19 +78,30 @@ After we restarted the Fedora, let's set up the `ssh` connection it from host ma
 After booting up, you will probably need to launch the ssh daemon:
 
 ```
-$ sudo service sshd start
-$ sudo chkconfig sshd on
+$ sudo systemctl start sshd
+$ sudo systemctl enable sshd
+```
+
+Also check the firewall to make sure that the ssh service port is open:
+
+```
+$ sudo firewall-cmd --list-services
 ```
 
 ### VMWare or VirtualBox: Method 1
 
-At the console, run `ifconfig` and look for the IP address in the `inet` field of the result:
+At the console, run `ip a` and look for the IP address in the `inet` field of the result:
 
 ```
-$ sudo dnf install net-tools # only necessary if ifconfig is not installed
-$ ifconfig
-enp0s3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
-        inet 192.168.XXX.YYY  netmask 255.255.254.0  broadcast 192.168.41.255
+$ sudo dnf install iproute # only necessary if `ip` is not installed
+$ ip a
+...
+2: enp0s5: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel master xenbr0 state UP group default qlen 1000
+    link/ether 00:1c:42:55:08:05 brd ff:ff:ff:ff:ff:ff
+    inet 10.211.55.35/24 brd 10.211.55.255 scope global dynamic enp0s5
+       valid_lft 1792sec preferred_lft 1792sec
+    inet6 fe80::b9dc:4bf3:4c39:1922/64 scope link
+       valid_lft forever preferred_lft forever
 ...
 ```
 
@@ -128,15 +144,19 @@ $ sudo dnf update
 Now let's install the dependencies.
 
 ```
-$ sudo dnf install gcc automake libtool patch ncurses-devel halvm-xen halvm-xen-devel zlib-devel openssl-devel git
+$ sudo dnf install gcc gcc-c++ automake libtool patch ncurses-devel halvm-xen halvm-xen-devel zlib-devel openssl-devel git
 $ sudo dnf install libgmp # for Fedora 22
-$ sudo dnf install gmp-devel # for Fedora 23/24
-$ sudo ln -s /usr/lib64/libtinfo.so.6 /usr/lib64/libtinfo.so.5 # for Fedora 24. It is a HACK
+$ sudo dnf install gmp-devel # for Fedora 23 and newer
+$ sudo ln -s /usr/lib64/libtinfo.so.6 /usr/lib64/libtinfo.so.5 # for Fedora 24 and newer. It is a HACK
 ```
 
 NOTE: Why a modified version of Xen? Debugging. The stock version of Xen that comes with Fedora has certain low-level debugging capabilities disabled, as they add some bulk and slowdown to the whole system. The `halvm-xen` version of Xen has been modified to enable those features, which allows for us to use (with some boot flags) a very reliable output mechanism for debugging. Our modified versions simply add the flag "verbose=y" to their build specification, on the lines that build and install the hypervisor (search for "dist-xen" and "install-xen"). We try to keep the latest version we're using available, in `src/misc/xen.spec`. In addition, I will try to keep recent binary and source RPMs available at `http://repos.halvm.org`.
 
-You will also need to install the GHC-8 toolchains for bootstrapping. If not, `./configure` will complain about it. (FIXME: separate scripts for doing this automatically on Fedora?)
+You will also need to install the GHC-8 toolchains for bootstrapping. If not, `./configure` will complain about it.
+
+```
+$ sudo dnf install ghc cabal-install alex happy hscolour
+```
 
 Before we reboot -- yes, we're about to reboot again -- let's set up that boot flag I just mentioned. Open up `/etc/default/grub` with your favorite editor, with `sudo`, and add the following line:
 
@@ -190,7 +210,7 @@ Briefly, what we're going to do is create a new bridge called `xenbr0`, make sur
 So, to start, make sure the network service is on and will stay on through reboots:
 
 ```
-$ sudo chkconfig network on
+$ sudo systemctl enable network
 ```
 
 Now create the configuration file for the bridge:
@@ -213,8 +233,8 @@ NM_CONTROLLED=no
 Next, we want to add a network card to our bridge. First, we need to find the name of the interface:
 
 ```
-$ sudo dnf install net-tools # if `ifconfig` is not installed
-$ ifconfig
+$ sudo dnf install iproute # if `ip` is not installed
+$ ip a
 ```
 
 Look for the interface with the MAC address that matches your externally-visible network interface (you can see this in the advanced settings of the VM). In VMWare box, this might look like `eno16777728`; In VirtualBox, it might look like `enp0s3`. We will call it `enXXXX` in the following text. Edit the configuration file for that interface...
@@ -233,7 +253,7 @@ NM_CONTROLLED=no
 Now restart the network service, and ping a friendly outside address to make sure you still have access to the wider Internet:
 
 ```
-$ sudo service network restart
+$ sudo systemctl restart network
 $ ping galois.com
 ```
 
@@ -241,19 +261,15 @@ If you've done all this, you've made it through a major hurdle in setting up the
 
 ## Step #5: Build HaLVM!
 
-> git clone https://github.com/GaloisInc/HaLVM
-
-> git submodule update --init --recursive
-
-> autoconf
-
-> ./configure --enable-gmp
-
-> make
-
-> make install
-
-> halvm-ghc-pkg recache
+```
+$ git clone https://github.com/GaloisInc/HaLVM
+$ git submodule update --init --recursive
+$ autoconf
+$ ./configure --enable-gmp
+$ make
+$ sudo make install
+$ halvm-ghc-pkg recache
+```
 
 The configure system will accept and honor the "--prefix" flag as per normal.
 Using the "--enable-gmp" flag is optional, but is strongly recommended
