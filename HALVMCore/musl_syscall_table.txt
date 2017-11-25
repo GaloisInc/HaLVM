@@ -13,9 +13,9 @@ Subsystem markers:
 
 DONE    SUBSYSTEM       CALL                     NOTES
 ----    ---------       ----                     -------
-        FILE            getdents                 Get directory entries
-        BOTH            fcntl                    Mess with a file descriptor
-        FILE            openat                   A variant of open()
+ B      FILE            getdents                 Get directory entries
+ X      BOTH            fcntl                    Mess with a file descriptor
+ B      FILE            openat                   A variant of open()
  X      ENOSYS          msgctl                   \
  X      ENOSYS          msgget                   | System V inter-process 
  X      ENOSYS          msgrcv                   | messaging. Can skip?

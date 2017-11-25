@@ -28,6 +28,7 @@ library
                        HaLVM.POSIX.Unsupported
                        HaLVM.POSIX.Write
   c-sources:           syscalls/fcntl.c
+                       syscalls/openat.c
   build-depends:
                        array            >= 0.5.1.2  && < 0.7,
                        base             >= 4.10     && < 4.12,
