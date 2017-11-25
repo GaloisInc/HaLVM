@@ -93,39 +93,39 @@ dnl anything or we'll have to disable some portion of the system.
 dnl
 dnl -------------------------------------------------------------------------
 
-AC_FORCE_EXIST(ALEX,alex)
-AC_FORCE_EXIST(AR,ar)
-AC_FORCE_EXIST(GCC,gcc)
-AC_FORCE_EXIST(GHC,ghc)
-AC_FORCE_EXIST(LD,ld)
+# AC_FORCE_EXIST(ALEX,alex)
+# AC_FORCE_EXIST(AR,ar)
+# AC_FORCE_EXIST(GCC,gcc)
+# AC_FORCE_EXIST(GHC,ghc)
+# AC_FORCE_EXIST(LD,ld)
 AC_FORCE_EXIST(LN,ln)
-AC_FORCE_EXIST(NM,nm)
+# AC_FORCE_EXIST(NM,nm)
 AC_FORCE_EXIST(MAKE,make)
-AC_FORCE_EXIST(OBJDUMP,objdump)
-AC_FORCE_EXIST(RANLIB,ranlib)
-AC_FORCE_EXIST(READELF,readelf)
-AC_FORCE_EXIST(SED,sed)
+# AC_FORCE_EXIST(OBJDUMP,objdump)
+# AC_FORCE_EXIST(RANLIB,ranlib)
+# AC_FORCE_EXIST(READELF,readelf)
+# AC_FORCE_EXIST(SED,sed)
 
-AC_CHECK_PROG_VER(ALEX, alex, --version, [Alex version \([0-9.]*\)],
-                  [3.*], LOG_FAILURE("Couldn't find required version of Alex"))
+# AC_CHECK_PROG_VER(ALEX, alex, --version, [Alex version \([0-9.]*\)],
+#                   [3.*], LOG_FAILURE("Couldn't find required version of Alex"))
 AC_CHECK_PROG_VER(CABAL, cabal, --version, [cabal-install version \([0-9.]*\)],
-                  [1.2[456789].*],
+                  [2.[0123456789].*],
                   LOG_FAILURE("Couldn't find required version of Cabal"))
 AC_CHECK_PROG_VER(GHC, ghc, --version, [version \([0-9.]*\)],
-                 [8.0.*], LOG_FAILURE("Couldn't find required version of GHC"))
-AC_CHECK_PROG_VER(HADDOCK, haddock, --version, [Haddock version \([0-9.]*\)],
-                  [2.17.*],
-                  LOG_FAILURE("Couldn't find required version of Haddock"))
-AC_CHECK_PROG_VER(HAPPY, happy, --version, [Happy Version \([0-9.]*\)],
-                  [1.19.*],
-                  LOG_FAILURE("Couldn't find required version of Happy"))
-AC_CHECK_PROG_VER(HSCOLOUR, HsColour, --version, [HsColour \([0-9.]*\)],
-                  [1.24*],
-                  LOG_FAILURE("Couldn't find required version of HsColour"))
+                 [8.2.*], LOG_FAILURE("Couldn't find required version of GHC"))
+#AC_CHECK_PROG_VER(HADDOCK, haddock, --version, [Haddock version \([0-9.]*\)],
+#                  [2.17.*],
+#                  LOG_FAILURE("Couldn't find required version of Haddock"))
+#AC_CHECK_PROG_VER(HAPPY, happy, --version, [Happy Version \([0-9.]*\)],
+#                  [1.19.*],
+#                  LOG_FAILURE("Couldn't find required version of Happy"))
+#AC_CHECK_PROG_VER(HSCOLOUR, HsColour, --version, [HsColour \([0-9.]*\)],
+#                  [1.24*],
+#                  LOG_FAILURE("Couldn't find required version of HsColour"))
 
 AC_PROG_CC
-AC_PROG_CXX
-AC_PROG_CXXCPP
+#AC_PROG_CXX
+#AC_PROG_CXXCPP
 
 dnl -------------------------------------------------------------------------
 dnl
