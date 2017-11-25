@@ -1,13 +1,15 @@
 module HaLVM.POSIX.FileSystem()
  where
 
+import Foreign.C.Types
+import Foreign.Ptr
 import System.Posix.Types
 
-syscall_getdents {- BROKEN -} :: CUint -> Ptr CUInt -> CUint -> IO CInt
+syscall_getdents {- BROKEN -} :: CUInt -> Ptr CUInt -> CUInt -> IO CInt
 syscall_getdents = undefined
 
 foreign export ccall syscall_getdents ::
-  CUint -> Ptr CUInt -> CUint -> IO CInt
+  CUInt -> Ptr CUInt -> CUInt -> IO CInt
 
 -- -----------------------------------------------------------------------------
 
