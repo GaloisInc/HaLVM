@@ -70,6 +70,8 @@ clean::
 foo:
 	echo $(MUSL_DEPENDS)
 
+all:: $(TOPDIR)/musl/obj/include/bits/alltypes.h
+
 ################################################################################
 
 HALVM_GHC_CONFIGURE_FLAGS  = --target=$(ARCH)-unknown-HaLVM
@@ -97,7 +99,7 @@ $(TOPDIR)/halvm-ghc/mk/config.mk: $(TOPDIR)/halvm-ghc/libraries/base/ghc.mk \
 $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage2: $(TOPDIR)/halvm-ghc/mk/config.mk
 	$(MAKE) -C halvm-ghc ghclibdir=$(halvmlibdir)
 
-all:: $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage2
+# all:: $(TOPDIR)/halvm-ghc/inplace/bin/ghc-stage2
 
 clean::
 	$(RM) -f $(TOPDIR)/halvm-ghc/mk/config.mk
