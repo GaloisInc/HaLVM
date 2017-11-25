@@ -21,17 +21,19 @@ library
                        HaLVM.POSIX.Errno
                        HaLVM.POSIX.Fcntl
                        HaLVM.POSIX.FileDescriptors
+                       HaLVM.POSIX.FileSystem
                        HaLVM.POSIX.Hostname
                        HaLVM.POSIX.IOVec
                        HaLVM.POSIX.Read
+                       HaLVM.POSIX.Semaphores
                        HaLVM.POSIX.Sockets
                        HaLVM.POSIX.Unsupported
                        HaLVM.POSIX.Write
   c-sources:           syscalls/fcntl.c
                        syscalls/openat.c
   build-depends:
-                       array            >= 0.5.1.2  && < 0.7,
-                       base             >= 4.10     && < 4.12,
+                       array            >= 0.5.2.0  && < 0.7,
+                       base             >= 4.10.1.0 && < 4.12,
                        bytestring       >= 0.10.8.2 && < 0.12,
                        HaLVMInterfaces  == 3.0.0
   hs-source-dirs:      src
@@ -42,16 +44,3 @@ library
                        ../musl/obj/include
                        ../musl/arch/halvm
                        ../musl/arch/generic
-
-
---                        -- functions required so we can deal with posix file
---                        -- descriptors
---                        syscalls/fdmgmt/fdmgmt.c
---                        syscalls/fdmgmt/fcntl.c
---                        syscalls/fdmgmt/dup.c
---                        syscalls/fdmgmt/platform_tty_ioctl.c
--- 
---                        -- a bunch of miscellaneous upcalls
---                        syscalls/misc/uname.c
---                        syscalls/misc/getdomainname.c
---                        syscalls/misc/setdomainname.c

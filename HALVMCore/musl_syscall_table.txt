@@ -20,10 +20,10 @@ DONE    SUBSYSTEM       CALL                     NOTES
  X      ENOSYS          msgget                   | System V inter-process 
  X      ENOSYS          msgrcv                   | messaging. Can skip?
  X      ENOSYS          msgsnd                   /
-        SHARED          semctl                   \
-        SHARED          semget                   | System V semaphores. Probably
-        SHARED          semop                    | need this functionality anyways
-        SHARED          semtimedop               /
+ B      SHARED          semctl                   \
+ B      SHARED          semget                   | System V semaphores. Probably
+ B      SHARED          semop                    | need this functionality anyways
+ B      SHARED          semtimedop               /
  X      ENOSYS          shmat                    \
  X      ENOSYS          shmctl                   | System V shared memory; can
  X      ENOSYS          shmdt                    | probably skip?
