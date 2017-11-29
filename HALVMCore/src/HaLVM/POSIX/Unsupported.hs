@@ -16,6 +16,11 @@ syscall_adjtimex :: AdjTimeX
 foreign export ccall syscall_adjtimex :: AdjTimeX
 syscall_adjtimex _ = return 0 -- TIME_OK
 
+type ArchPrCtl = CInt -> CULong -> IO CInt
+syscall_arch_prctl :: ArchPrCtl
+foreign export ccall syscall_arch_prctl :: ArchPrCtl
+syscall_arch_prctl _ _ = errnoReturn eINVAL
+
 type CapGetType = CInt -> CInt -> IO CInt
 syscall_capget :: CapGetType
 foreign export ccall syscall_capget :: CapGetType
