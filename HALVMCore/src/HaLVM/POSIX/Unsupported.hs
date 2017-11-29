@@ -11,6 +11,11 @@ syscall_acct :: AcctType
 foreign export ccall syscall_acct :: AcctType
 syscall_acct _ = errnoReturn eNOSYS
 
+type AdjTimeX = Ptr CChar -> IO CInt
+syscall_adjtimex :: AdjTimeX
+foreign export ccall syscall_adjtimex :: AdjTimeX
+syscall_adjtimex _ = return 0 -- TIME_OK
+
 type CapGetType = CInt -> CInt -> IO CInt
 syscall_capget :: CapGetType
 foreign export ccall syscall_capget :: CapGetType

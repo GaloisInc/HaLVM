@@ -28,7 +28,7 @@ DONE    SUBSYSTEM       CALL                     NOTES
  X      ENOSYS          shmctl                   | System V shared memory; can
  X      ENOSYS          shmdt                    | probably skip?
  X      ENOSYS          shmget                   /
-        CLOCK           adjtimex                 Get very fine-grained time info
+ X      CLOCK/ENOSYS    adjtimex                 Get very fine-grained time info
         PLATFORM        arch_prctl               Sets arch-specific thr/pro state
  X      ENOSYS          capset                   \ Thread capability sets, which
  X      ENOSYS          capget                   / we probably won't honor?
