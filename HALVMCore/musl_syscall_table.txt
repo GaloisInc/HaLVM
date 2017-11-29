@@ -33,7 +33,7 @@ DONE    SUBSYSTEM       CALL                     NOTES
  X      ENOSYS          capset                   \ Thread capability sets, which
  X      ENOSYS          capget                   / we probably won't honor?
  X      ENOSYS          chroot
-        CLOCK           clock_adjtime
+ X      CLOCK/ENOSYS    clock_adjtime
         BOTH            epoll_ctl
         FILE*           fallocate                \
         FILE*           fanotify_init            | It's not clear if/how these

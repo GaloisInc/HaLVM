@@ -11,7 +11,7 @@ syscall_acct :: AcctType
 foreign export ccall syscall_acct :: AcctType
 syscall_acct _ = errnoReturn eNOSYS
 
-type AdjTimeX = Ptr CChar -> IO CInt
+type AdjTimeX = Ptr CChar -> IO CInt -- FIXME/BROKEN?
 syscall_adjtimex :: AdjTimeX
 foreign export ccall syscall_adjtimex :: AdjTimeX
 syscall_adjtimex _ = return 0 -- TIME_OK
@@ -35,6 +35,11 @@ type ChrootType = Ptr CChar -> IO CInt
 syscall_chroot :: ChrootType
 foreign export ccall syscall_chroot :: ChrootType
 syscall_chroot _ = errnoReturn ePERM
+
+type ClockAdjTime = CInt -> Ptr CChar -> IO CInt -- FIXME/BROKEN?
+syscall_clock_adjtime :: ClockAdjTime
+foreign export ccall syscall_clock_adjtime :: ClockAdjTime
+syscall_clock_adjtime _ _ = return 0 -- TIME_OK
 
 type DelModuleType = Ptr CChar -> CInt -> IO CInt
 syscall_delete_module :: DelModuleType
