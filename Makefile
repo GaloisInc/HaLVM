@@ -56,7 +56,7 @@ $(eval $(call musl_link,arch/generic/bits/resource.h,arch/halvm/bits/resource.h)
 $(eval $(call musl_link,arch/generic/bits/termios.h,arch/halvm/bits/termios.h))
 
 $(TOPDIR)/musl/config.mak: $(MUSL_DEPENDS)
-	(cd musl && ./configure --disable-shared CC=$(CC))
+	(cd musl && ./configure --disable-shared --target=halvm CC=$(CC))
 	$(SED) -i -e 's!^CROSS_COMPILE.*$$!!g' $@
 
 $(TOPDIR)/musl/obj/include/bits/alltypes.h: $(TOPDIR)/musl/config.mak
