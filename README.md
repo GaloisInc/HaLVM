@@ -37,7 +37,7 @@ Linux-specific.
 
 To deal with this, we do some madness. We define our own 'HaLVM' architecture
 for libc, in which instead of defining all the syscalls as assembly stubs, we
-define them as linker symbols composed of the string "syscall" concatenated
+define them as linker symbols composed of the string "halvm_syscall_" concatenated
 with the name of the syscall. This is ... somewhat bad form, but doesn't seem to
 break anything.
 
