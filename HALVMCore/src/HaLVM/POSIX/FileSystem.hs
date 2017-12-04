@@ -5,17 +5,17 @@ import Foreign.C.Types
 import Foreign.Ptr
 import System.Posix.Types
 
-syscall_getdents {- BROKEN -} :: CUInt -> Ptr CUInt -> CUInt -> IO CInt
-syscall_getdents = undefined
+halvm_syscall_getdents {- BROKEN -} :: CUInt -> Ptr CUInt -> CUInt -> IO CInt
+halvm_syscall_getdents = undefined
 
-foreign export ccall syscall_getdents ::
+foreign export ccall halvm_syscall_getdents ::
   CUInt -> Ptr CUInt -> CUInt -> IO CInt
 
 -- -----------------------------------------------------------------------------
 
-syscall_openat4 {- BROKEN -} :: CInt -> Ptr CChar -> CInt -> CMode -> IO CInt
-syscall_openat4 = undefined
+halvm_syscall_getdents64 {- BROKEN -} :: CUInt -> Ptr CUInt -> CUInt -> IO CInt
+halvm_syscall_getdents64 = undefined
 
-foreign export ccall syscall_openat4 ::
-  CInt -> Ptr CChar -> CInt -> CMode -> IO CInt
+foreign export ccall halvm_syscall_getdents64 ::
+  CUInt -> Ptr CUInt -> CUInt -> IO CInt
 

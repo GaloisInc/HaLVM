@@ -19,8 +19,8 @@ import           HaLVM.POSIX.FileDescriptors(DescriptorEntry(..),
                                              withFileDescriptorEntry_)
 import           System.Posix.Types(CSsize(..))
 
-syscall_read :: CInt -> Ptr Word8 -> CSize -> IO CSsize
-syscall_read fd buf amt
+halvm_syscall_read :: CInt -> Ptr Word8 -> CSize -> IO CSsize
+halvm_syscall_read fd buf amt
   | fd < 0 = errnoReturn eINVAL
   | otherwise =
       withFileDescriptorEntry_ (fromIntegral fd) $ \ ent ->
@@ -40,8 +40,8 @@ syscall_read fd buf amt
           DescListener _ ->
              errnoReturn eINVAL
 
-syscall_readv :: CInt -> Ptr IOVec -> CInt -> IO CSsize
-syscall_readv fd bufs numbufs =
+halvm_syscall_readv :: CInt -> Ptr IOVec -> CInt -> IO CSsize
+halvm_syscall_readv fd bufs numbufs =
   do vecs <- peekArray (fromIntegral numbufs) bufs
      go 0 vecs
  where
@@ -55,9 +55,9 @@ syscall_readv fd bufs numbufs =
           | otherwise ->
               go (total + amt) rest
 
-foreign export ccall syscall_read ::
+foreign export ccall halvm_syscall_read ::
   CInt -> Ptr Word8 -> CSize -> IO CSsize
 
-foreign export ccall syscall_readv ::
+foreign export ccall halvm_syscall_readv ::
   CInt -> Ptr IOVec -> CInt -> IO CSsize
 
