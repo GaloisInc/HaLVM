@@ -20,28 +20,16 @@ getDomainName = readMVar mDomainName
 setDomainName :: String -> IO ()
 setDomainName x = modifyMVar_ mDomainName (const (return x))
 
-syscall_getdomainname :: Ptr CChar -> CSize -> IO CInt
-syscall_getdomainname ptr maxsize =
-  withMVar mDomainName $ \ str ->
-    withCStringLen str $ \ (from, strlen) ->
-      do let copyAmt = min (fromIntegral maxsize) strlen
-         fillBytes ptr 0 (fromIntegral maxsize)
-         copyBytes ptr from copyAmt
-         return 0
-
-foreign export ccall syscall_getdomainname ::
-  Ptr CChar -> CSize -> IO CInt
-
-syscall_setdomainname :: Ptr CChar -> CSize -> IO CInt
-syscall_setdomainname ptr size =
+halvm_syscall_setdomainname :: Ptr CChar -> CSize -> IO CInt
+halvm_syscall_setdomainname ptr size =
   do setDomainName =<< peekCStringLen (ptr, fromIntegral size)
      return 0
 
-foreign export ccall syscall_setdomainname ::
+foreign export ccall halvm_syscall_setdomainname ::
   Ptr CChar -> CSize -> IO CInt
 
-syscall_uname :: Ptr CInt -> IO CInt
-syscall_uname ptr =
+halvm_syscall_uname :: Ptr CInt -> IO CInt
+halvm_syscall_uname ptr =
   do fillBytes ptr 0 (#size struct utsname)
      withCStringLen "HaLVM" $ \ (strptr, strlen) ->
        copyBytes ((#ptr struct utsname,sysname) ptr) strptr strlen
@@ -63,5 +51,5 @@ syscall_uname ptr =
      --
      return 0
 
-foreign export ccall syscall_uname ::
+foreign export ccall halvm_syscall_uname ::
   Ptr CInt -> IO CInt

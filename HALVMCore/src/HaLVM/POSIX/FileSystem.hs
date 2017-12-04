@@ -3,7 +3,6 @@ module HaLVM.POSIX.FileSystem()
 
 import Foreign.C.Types
 import Foreign.Ptr
-import System.Posix.Types
 
 halvm_syscall_getdents {- BROKEN -} :: CUInt -> Ptr CUInt -> CUInt -> IO CInt
 halvm_syscall_getdents = undefined

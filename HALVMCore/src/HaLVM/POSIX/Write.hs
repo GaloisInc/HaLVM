@@ -19,8 +19,8 @@ import           HaLVM.POSIX.FileDescriptors(DescriptorEntry(..),
                                              withFileDescriptorEntry_)
 import           System.Posix.Types(CSsize(..))
 
-syscall_write :: CInt -> Ptr Word8 -> CSize -> IO CSsize
-syscall_write fd buf amt
+halvm_syscall_write :: CInt -> Ptr Word8 -> CSize -> IO CSsize
+halvm_syscall_write fd buf amt
   | fd < 0 = errnoReturn eINVAL
   | otherwise =
       withFileDescriptorEntry_ (fromIntegral fd) $ \ ent ->
@@ -39,14 +39,14 @@ syscall_write fd buf amt
           DescListener _ ->
              errnoReturn eINVAL
 
-syscall_writev :: CInt -> Ptr IOVec -> CInt -> IO CSsize
-syscall_writev fd bufs numbufs =
+halvm_syscall_writev :: CInt -> Ptr IOVec -> CInt -> IO CSsize
+halvm_syscall_writev fd bufs numbufs =
   do vecs <- peekArray (fromIntegral numbufs) bufs
      go 0 vecs
  where
   go total [] = return (fromIntegral total)
   go total (x : rest) =
-    do amt <- syscall_write fd (iovBase x) (iovLen x)
+    do amt <- halvm_syscall_write fd (iovBase x) (iovLen x)
        if | amt < 0 ->
               return amt
           | amt < (fromIntegral (iovLen x)) ->
@@ -54,9 +54,9 @@ syscall_writev fd bufs numbufs =
           | otherwise ->
               go (total + amt) rest
 
-foreign export ccall syscall_write ::
+foreign export ccall halvm_syscall_write ::
   CInt -> Ptr Word8 -> CSize -> IO CSsize
 
-foreign export ccall syscall_writev ::
+foreign export ccall halvm_syscall_writev ::
   CInt -> Ptr IOVec -> CInt -> IO CSsize
 

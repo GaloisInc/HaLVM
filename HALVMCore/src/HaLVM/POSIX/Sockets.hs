@@ -2,8 +2,6 @@
 module HaLVM.POSIX.Sockets()
  where
 
-import           Control.Monad(when)
-import           Data.Bits((.&.))
 import           Data.Word(Word16,Word32)
 import           Foreign.C.Types(CInt(..))
 import           Foreign.Ptr(Ptr,castPtr)
@@ -30,18 +28,13 @@ instance Storable SockAddr where
 newtype SockLen = SockLen Word32
   deriving (Eq, Num, Storable)
 
-syscall_accept :: CInt -> Ptr SockAddr -> Ptr SockLen -> IO CInt
-syscall_accept fd paddr plen = undefined fd paddr plen
+halvm_syscall_accept :: CInt -> Ptr SockAddr -> Ptr SockLen -> IO CInt
+halvm_syscall_accept fd paddr plen =
+  halvm_syscall_accept4 fd paddr plen 0
 
-syscall_accept4 :: CInt -> Ptr SockAddr -> Ptr SockLen -> CInt -> IO CInt
-syscall_accept4 fd paddr plen flags =
-  do res <- syscall_accept fd paddr plen
-     when (res > 0) $
-       do when (flags .&. sockCLOEXEC /= 0) $
-            undefined
-          when (flags .&. sockNONBLOCK /= 0) $
-            undefined
-     return res
+halvm_syscall_accept4 {- BROKEN -} :: CInt -> Ptr SockAddr -> Ptr SockLen -> CInt -> IO CInt
+halvm_syscall_accept4 _fd _paddr _plen _flags =
+  undefined sockCLOEXEC sockNONBLOCK
 
 sockCLOEXEC :: CInt
 sockCLOEXEC = 0o2000000
@@ -49,9 +42,9 @@ sockCLOEXEC = 0o2000000
 sockNONBLOCK :: CInt
 sockNONBLOCK = 0o4000
 
-foreign export ccall syscall_accept ::
+foreign export ccall halvm_syscall_accept ::
   CInt -> Ptr SockAddr -> Ptr SockLen -> IO CInt
 
-foreign export ccall syscall_accept4 ::
+foreign export ccall halvm_syscall_accept4 ::
   CInt -> Ptr SockAddr -> Ptr SockLen -> CInt -> IO CInt
 

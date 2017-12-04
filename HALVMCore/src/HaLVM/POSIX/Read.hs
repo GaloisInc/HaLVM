@@ -47,7 +47,7 @@ halvm_syscall_readv fd bufs numbufs =
  where
   go total [] = return (fromIntegral total)
   go total (x : rest) =
-    do amt <- syscall_read fd (iovBase x) (iovLen x)
+    do amt <- halvm_syscall_read fd (iovBase x) (iovLen x)
        if | amt < 0 ->
               return amt
           | amt < (fromIntegral (iovLen x)) ->
