@@ -22,11 +22,7 @@ halvm_fcntl_dupfd :: CInt -> CInt -> CInt -> IO CInt
 halvm_fcntl_dupfd fd arg flags
   | fd < 0    = errnoReturn eINVAL
   | otherwise =
-      do res <- dup (>= (fromIntegral arg)) (fromIntegral fd)
-         withFileDescriptorEntry res $ \ ent ->
-           if flags /= 0
-              then return (ent{ descCloseOnExec = True }, fromIntegral res)
-              else return (ent,                           fromIntegral res)
+      dup (>= (fromIntegral arg)) (fromIntegral fd) Nothing flags
 
 foreign export ccall halvm_fcntl_dupfd ::
   CInt -> CInt -> CInt -> IO CInt

@@ -1,16 +1,17 @@
 module HaLVM.POSIX.FileDescriptors(
          DescriptorEntry(..)
        , DescriptorType(..)
+       , withFileDescriptorEntry, withFileDescriptorEntry_
        , dup
-       , withFileDescriptorEntry
-       , withFileDescriptorEntry_
        , removeDescriptor
        )
  where
 
 import           Control.Concurrent.MVar(MVar, newMVar, modifyMVar, withMVar)
+import           Control.Monad(when)
 import           Data.Array.IO(IOArray)
 import           Data.Array.MArray(newArray,getBounds,readArray,writeArray)
+import           Data.Bits(testBit)
 import           Foreign.C.Error(eBADF,eINVAL)
 import           Foreign.C.Types(CInt(..))
 import           HaLVM.Console      as Con
@@ -24,13 +25,24 @@ data DescriptorEntry = DescriptorEntry {
      , descType        :: DescriptorType
      }
 
-buildDescriptor :: DescriptorType -> DescriptorEntry
-buildDescriptor t = DescriptorEntry False 0 t
-
 data DescriptorType = DescConsole  Console
                     | DescSocket   Socket
                     | DescListener ListenerSocket
 
+
+buildDescriptor :: DescriptorType -> DescriptorEntry
+buildDescriptor t = DescriptorEntry False 0 t
+
+closeDescriptor :: DescriptorEntry -> IO ()
+closeDescriptor de =
+  case descType de of
+    DescConsole  _ -> return ()
+    DescSocket   s -> close s
+    DescListener s -> closeListener s
+
+-- -----------------------------------------------------------------------------
+
+type DescriptorTable = IOArray Word (Maybe DescriptorEntry)
 
 {-# NOINLINE mDescriptorTable #-}
 mDescriptorTable :: MVar (IOArray Word (Maybe DescriptorEntry))
@@ -42,23 +54,35 @@ mDescriptorTable = unsafePerformIO $
      writeArray arr 2 (Just (buildDescriptor (DescConsole stderr)))
      newMVar arr
 
-newDescriptor :: (Word -> Bool) -> (Word -> IO DescriptorEntry) -> IO Word
-newDescriptor validFd action =
-  modifyMVar mDescriptorTable $ \ dt ->
-    do (low, high) <- getBounds dt
-       melem <- runFind validFd low high dt
-       case melem of
-         Nothing ->
-           do let firstGoodValue = head (filter validFd [high+1..])
-              dt' <- newArray (low, firstGoodValue + 20) Nothing
-              copyArray low high dt dt'
-              newVal <- action firstGoodValue
-              writeArray dt' firstGoodValue (Just newVal)
-              return (dt', firstGoodValue)
-         Just i ->
-           do newVal <- action i
-              writeArray dt i (Just newVal)
-              return (dt, i)
+newFd :: (Word -> Bool) -> DescriptorTable -> IO (Word, DescriptorTable)
+newFd check dt =
+  do (low, high) <- getBounds dt
+     go low high
+ where
+   go :: Word -> Word -> IO (Word, DescriptorTable)
+   go idx high
+     | not (check idx) =
+         go (idx + 1) high
+     -- NOTE: Don't rearrange these cases. We want to do the check first,
+     -- to force idx high enough that it's definitely OK if we need to
+     -- resize the array.
+     | idx > high =
+         do (low, _) <- getBounds dt
+            dt' <- newArray (low, high + 30) Nothing
+            copyArray low high dt dt'
+            return (idx, dt')
+     | otherwise =
+         do ent <- readArray dt idx
+            case ent of
+              Nothing -> return (idx, dt)
+              Just _  -> go (idx + 1) high
+   --
+   copyArray x y arr1 arr2 =
+     when (x <= y) $
+       do v <- readArray arr1 x
+          writeArray arr2 x v
+          copyArray (x + 1) y arr1 arr2
+
 
 -- |Remove a descriptor. WARNING: This does not properly close the descriptor,
 -- or deallocate any data structures. It just removes it from our file
@@ -68,24 +92,12 @@ removeDescriptor fd =
   withMVar mDescriptorTable $ \ dt ->
     writeArray dt fd Nothing
 
-runFind :: (Word -> Bool) -> Word -> Word -> IOArray Word (Maybe a) -> IO (Maybe Word)
-runFind validFd x y arr
-  | x > y            = return Nothing
-  | not (validFd x)  = runFind validFd (x + 1) y arr
-  | otherwise        = do cur <- readArray arr x
-                          case cur of
-                            Nothing -> return (Just x)
-                            Just _  -> runFind validFd (x + 1) y arr
+-- -----------------------------------------------------------------------------
 
-copyArray :: Word -> Word -> IOArray Word a -> IOArray Word a -> IO ()
-copyArray x y arr1 arr2
-  | x > y     = return ()
-  | otherwise =
-     do v <- readArray arr1 x
-        writeArray arr2 x v
-        copyArray (x + 1) y arr1 arr2
-
-withFileDescriptorEntry :: Num a => Word -> (DescriptorEntry -> IO (DescriptorEntry, a)) -> IO a
+withFileDescriptorEntry :: Num a =>
+                           Word ->
+                           (DescriptorEntry -> IO (DescriptorEntry, a)) ->
+                           IO a
 withFileDescriptorEntry fd handler =
   withMVar mDescriptorTable $ \ dt ->
     do ent <- readArray dt fd
@@ -107,22 +119,52 @@ withFileDescriptorEntry_ fd handler =
 
 -- |Duplicate the file descriptor in the second argument, ensuring that the
 -- new file descriptor passes the check in the first argument.
-dup :: (Word -> Bool) -> Word -> IO Word
-dup fdOk fd =
-  do mdsc <- withMVar mDescriptorTable $ \ dt -> readArray dt (fromIntegral fd)
-     case mdsc of
-       Nothing ->
-         errnoReturn eBADF
-       Just desc ->
-         do fd' <- newDescriptor fdOk (const (return desc))
-            return (fromIntegral fd')
+dup :: (Word -> Bool) -> Word -> Maybe Word -> CInt -> IO CInt
+dup check oldfd mnewfd flags =
+  modifyMVar mDescriptorTable $ \ descTable ->
+    do origDesc <- readArray descTable oldfd
+       case origDesc of
+         Nothing ->
+           do res <- errnoReturn eBADF
+              return (descTable, res)
+         Just desc ->
+           do (newfd, descTable') <- getDupFileDesc mnewfd descTable
+              writeArray descTable' newfd (Just desc{
+                  descCloseOnExec = testBit flags 19 -- FIXME ?
+                })
+              return (descTable', fromIntegral newfd)
+ where
+  getDupFileDesc Nothing   table = newFd check table
+  getDupFileDesc (Just fd) table =
+    do curval <- readArray table fd
+       case curval of
+         Nothing -> return ()
+         Just v  -> closeDescriptor v >> writeArray table fd Nothing
+       return (fd, table)
 
+dup' :: Word -> Maybe Word -> CInt -> IO CInt
+dup' = dup (const True)
 
-syscall_dup :: CInt -> IO CInt
-syscall_dup fd
+type DupType = CInt -> IO CInt
+foreign export ccall halvm_syscall_dup :: DupType
+halvm_syscall_dup :: DupType
+halvm_syscall_dup fd
   | fd < 0    = errnoReturn eINVAL
-  | otherwise = fromIntegral `fmap` dup (const True) (fromIntegral fd)
+  | otherwise = dup' (fromIntegral fd) Nothing 0
 
-foreign export ccall syscall_dup ::
-  CInt -> IO CInt
+type Dup2Type = CInt -> CInt -> IO CInt
+foreign export ccall halvm_syscall_dup2 :: Dup2Type
+halvm_syscall_dup2 :: Dup2Type
+halvm_syscall_dup2 oldfd newfd
+  | oldfd < 0      = errnoReturn eINVAL
+  | oldfd == newfd = return newfd
+  | otherwise      = dup' (fromIntegral oldfd) (Just (fromIntegral newfd)) 0
+
+type Dup3Type = CInt -> CInt -> CInt -> IO CInt
+foreign export ccall halvm_syscall_dup3 :: Dup3Type
+halvm_syscall_dup3 :: Dup3Type
+halvm_syscall_dup3 oldfd newfd flags
+  | oldfd < 0      = errnoReturn eINVAL
+  | oldfd == newfd = errnoReturn eINVAL
+  | otherwise      = dup' (fromIntegral oldfd) (Just (fromIntegral newfd)) flags
 
