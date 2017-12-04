@@ -27,7 +27,8 @@ signature HaLVM.NetworkStack (
   recvFrom,
   send,
   sendTo,
-  close
+  close,
+  closeListener
   )
  where
 
@@ -93,3 +94,5 @@ sendTo :: Socket -> Addr -> Port -> IO Int
 -- |Close the given socket
 close :: Socket -> IO ()
 
+-- |Close the given listener socket
+closeListener :: ListenerSocket -> IO ()
