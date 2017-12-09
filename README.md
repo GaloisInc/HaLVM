@@ -54,10 +54,10 @@ HaLVM bug system.
 4. How To Contact Us
 --------------------
 
-If you have any questions or suggestions for the HaLVM, please feel free to
-join the [HaLVM mailing list](http://community.galois.com/mailman/listinfo/halvm-devel)
-and send them to us. Please note that in order to stop a great deal of spam,
-you must be a member of the mailing list in order to send messages to it.
+The HaLVM is a proud member of the [unikernel.org](http://unikernel.org)
+community. If you have any questions, suggestions, or comments about the HaLVM,
+we suggest participation in [devel.unikernel.org](https://devel.unikernel.org),
+a multi-unikernel developer's message board.
 
 If you have bugs you would like to file or patches you'd like to send, we'd
 strongly prefer you utilize GitHub's interfaces for both these functions. Please
