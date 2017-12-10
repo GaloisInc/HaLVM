@@ -2,7 +2,6 @@
 module HaLVM.POSIX.Read()
  where
 
-import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Unsafe as S
 import           Data.Word(Word8)
 import           Foreign.C.Error(eINVAL)
@@ -11,6 +10,7 @@ import           Foreign.Marshal.Utils(copyBytes)
 import           Foreign.Marshal.Array(peekArray)
 import           Foreign.Ptr(Ptr,castPtr)
 import           HaLVM.Console      as Con
+import           HaLVM.FileSystem   as FS
 import           HaLVM.NetworkStack as Net
 import           HaLVM.POSIX.Errno(errnoReturn,runWithEINTR)
 import           HaLVM.POSIX.IOVec(IOVec(..))
@@ -25,20 +25,17 @@ halvm_syscall_read fd buf amt
   | otherwise =
       withFileDescriptorEntry_ (fromIntegral fd) $ \ ent ->
         case descType ent of
-          DescConsole con ->
-            runWithEINTR $
-              do res <- Con.read con (fromIntegral amt)
-                 S.unsafeUseAsCStringLen res $ \ (ptr, len) ->
-                   do copyBytes buf (castPtr ptr) len
-                      return (fromIntegral len)
-          DescSocket sock ->
-            runWithEINTR $
-              do res <- Net.recv sock (fromIntegral amt)
-                 S.unsafeUseAsCStringLen (L.toStrict res) $ \ (ptr, len) ->
-                   do copyBytes buf (castPtr ptr) len
-                      return (fromIntegral len)
-          DescListener _ ->
-             errnoReturn eINVAL
+          DescConsole  con -> safeRead Con.read con
+          DescSocket   skt -> safeRead Net.recv skt
+          DescListener _   -> errnoReturn eINVAL
+          DescFile     fle -> safeRead FS.read fle
+ where
+  safeRead action value =
+    runWithEINTR $
+      do res <- action value (fromIntegral amt)
+         S.unsafeUseAsCStringLen res $ \ (ptr, len) ->
+            do copyBytes buf (castPtr ptr) len
+               return (fromIntegral len)
 
 halvm_syscall_readv :: CInt -> Ptr IOVec -> CInt -> IO CSsize
 halvm_syscall_readv fd bufs numbufs =

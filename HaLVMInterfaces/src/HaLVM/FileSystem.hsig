@@ -1,0 +1,50 @@
+-- vim: ft=haskell
+signature HaLVM.FileSystem(
+    FileSystem
+  , init
+  , open
+  , ModeBits(..)
+  , OpenFlags(..)
+  , File
+  , read
+  , write
+  )
+ where
+
+import Data.ByteString(ByteString)
+import Foreign.C.Error(Errno)
+import Prelude hiding (init,read)
+import System.IO(FilePath)
+
+-- |A file system we can read and store files on
+data FileSystem
+data File
+
+-- |Do any file system initialization required, and then return a 'FileSystem'
+-- that can manage all the relevant data. Implementations should assume that
+-- calls are externally locked at the file system level, but may need to provide
+-- internal locking against concurrent access to `File`s. Any setup information
+-- must come from `getArgs` or some similar mechanism.
+init :: IO FileSystem
+
+data ModeBits = UserRead   | UserWrite   | UserExec
+              | GroupRead  | GroupWrite  | GroupExec
+              | OthersRead | OthersWrite | OthersExec
+              | SetUID     | SetGID      | Sticky
+
+data OpenFlags = OpenAppend       | OpenAsync     | OpenCloseOnExec
+               | OpenDirect       | OpenDirectory | OpenDSync
+               | OpenExclude      | OpenLargeFile | OpenNoAccessTime
+               | OpenNoControlTTY | OpenNoFollow  | OpenNonBlock
+               | OpenSync         | OpenTruncate
+               | OpenCreate [ModeBits]
+               | OpenTempFile [ModeBits]
+
+-- |Open the given file
+open :: FileSystem -> FilePath -> [OpenFlags] -> IO (Either Errno File)
+
+-- |Read from a file
+read :: File -> Int -> IO ByteString
+
+-- |Write to a file
+write :: File -> ByteString -> IO Int

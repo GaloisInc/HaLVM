@@ -17,6 +17,7 @@ library
   default-language:    Haskell2010
   signatures:
                        HaLVM.Console
+                       HaLVM.FileSystem
                        HaLVM.NetworkStack
   build-depends:
                        base       >= 4.10     && < 4.12,

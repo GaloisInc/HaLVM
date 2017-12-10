@@ -3,7 +3,7 @@ signature HaLVM.NetworkStack (
 
   -- * A data structure holding the internal information of a network stack.
   NetworkStack,
-  initializeNetworkStack,
+  init,
 
   -- * Socket types
   Socket,
@@ -32,9 +32,10 @@ signature HaLVM.NetworkStack (
   )
  where
 
-import Data.ByteString.Lazy(ByteString)
+import Data.ByteString(ByteString)
 import Foreign.Ptr(Ptr)
 import Foreign.Storable(Storable)
+import Prelude hiding (init)
 
 data NetworkStack
 data Socket
@@ -46,9 +47,10 @@ data Port
 instance Storable Addr
 instance Storable Port
 
--- |Initialize the underlying network stack, given the information in the
--- String provided.
-initializeNetworkStack :: String -> IO NetworkStack
+-- |Initialize the underlying network stack. Network stacks should get any
+-- necessary setup information they need from `getArgs` or a similar
+-- environmental source.
+init :: IO NetworkStack
 
 -- |Serialize the address into memory at the given point, using a maximum
 -- of the given number of bytes.

@@ -1,6 +1,7 @@
 module HaLVM.POSIX.FileDescriptors(
          DescriptorEntry(..)
        , DescriptorType(..)
+       , addFd
        , withFileDescriptorEntry, withFileDescriptorEntry_
        , dup
        , removeDescriptor
@@ -15,6 +16,7 @@ import           Data.Bits(testBit)
 import           Foreign.C.Error(eBADF,eINVAL)
 import           Foreign.C.Types(CInt(..))
 import           HaLVM.Console      as Con
+import           HaLVM.FileSystem   as FS
 import           HaLVM.NetworkStack as Net
 import           HaLVM.POSIX.Errno(errnoReturn)
 import           System.IO.Unsafe(unsafePerformIO)
@@ -26,8 +28,9 @@ data DescriptorEntry = DescriptorEntry {
      }
 
 data DescriptorType = DescConsole  Console
-                    | DescSocket   Socket
+                    | DescFile     FS.File
                     | DescListener ListenerSocket
+                    | DescSocket   Socket
 
 
 buildDescriptor :: DescriptorType -> DescriptorEntry
@@ -83,6 +86,12 @@ newFd check dt =
           writeArray arr2 x v
           copyArray (x + 1) y arr1 arr2
 
+addFd :: DescriptorEntry -> IO Word
+addFd ent =
+  modifyMVar mDescriptorTable $ \ descTable ->
+    do (res, descTable') <- newFd (const True) descTable
+       writeArray descTable res (Just ent)
+       return (descTable', res)
 
 -- |Remove a descriptor. WARNING: This does not properly close the descriptor,
 -- or deallocate any data structures. It just removes it from our file
