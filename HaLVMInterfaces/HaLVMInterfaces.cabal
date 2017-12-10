@@ -21,6 +21,7 @@ library
                        HaLVM.NetworkStack
   build-depends:
                        base       >= 4.10     && < 4.12,
-                       bytestring >= 0.10.8.2 && < 0.12
+                       bytestring >= 0.10.8.2 && < 0.12,
+                       time       >= 1.0      && < 2.0
   hs-source-dirs:      src
   ghc-options:         -Wall

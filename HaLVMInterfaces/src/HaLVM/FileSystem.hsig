@@ -8,10 +8,14 @@ signature HaLVM.FileSystem(
   , File
   , read
   , write
+  , FileStats(..), stat, lstat, fstat
   )
  where
 
 import Data.ByteString(ByteString)
+import Data.Int(Int64)
+import Data.Word(Word64,Word)
+import Data.Time.Clock.POSIX(POSIXTime)
 import Foreign.C.Error(Errno)
 import Prelude hiding (init,read)
 import System.IO(FilePath)
@@ -48,3 +52,31 @@ read :: File -> Int -> IO ByteString
 
 -- |Write to a file
 write :: File -> ByteString -> IO Int
+
+data FileStats = FileStats {
+       fstatDevice           :: Int64
+     , fstatInode            :: Int64
+     , fstatMode             :: [ModeBits]
+     , fstatLinks            :: Word
+     , fstatUser             :: Word
+     , fstatGroup            :: Word
+     , fstatTargetDevice     :: Word
+     , fstatSize             :: Word64
+     , fstatBlocks           :: Word64
+     , fstatLastAccess       :: POSIXTime
+     , fstatLastModification :: POSIXTime
+     , fstatLastStatusChange :: POSIXTime
+     }
+
+-- |Get information about a file
+stat :: FileSystem -> FilePath -> IO (Either Errno FileStats)
+
+-- |Exactly like stat, except if the file is a symbolic link. In that case,
+-- returns information about the link, rather than information about the
+-- pointed-to file.
+lstat :: FileSystem -> FilePath -> IO (Either Errno FileStats)
+
+-- |Get information about an open file
+fstat :: File -> IO (Either Errno FileStats)
+
+

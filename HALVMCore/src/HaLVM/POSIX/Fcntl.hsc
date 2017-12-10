@@ -31,7 +31,7 @@ foreign export ccall halvm_fcntl_dupfd ::
 
 halvm_fcntl_getflags :: CInt -> IO CInt
 halvm_fcntl_getflags fd =
-  withFileDescriptorEntry_ (fromIntegral fd) $ \ ent ->
+  withFileDescriptorEntry_ fd $ \ ent ->
     if descCloseOnExec ent
        then return (#const FD_CLOEXEC)
        else return 0
@@ -53,7 +53,7 @@ foreign export ccall halvm_fcntl_setflags ::
 
 halvm_fcntl_getstatus :: CInt -> IO CInt
 halvm_fcntl_getstatus fd =
-  withFileDescriptorEntry_ (fromIntegral fd) $ \ ent ->
+  withFileDescriptorEntry_ fd $ \ ent ->
     return (descStatusFlags ent)
 
 foreign export ccall halvm_fcntl_getstatus ::

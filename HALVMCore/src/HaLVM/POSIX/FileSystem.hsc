@@ -5,18 +5,22 @@ module HaLVM.POSIX.FileSystem()
 #include <sys/stat.h>
 #include <fcntl.h>
 
-import Control.Concurrent.MVar(MVar,newMVar,withMVar)
-import Data.Bits((.&.))
-import Foreign.C.String(peekCAString)
-import Foreign.C.Types(CChar(..),CInt(..),CUInt(..))
-import Foreign.Ptr(Ptr)
-import HaLVM.POSIX.Errno(errnoReturn)
-import HaLVM.POSIX.FileDescriptors(DescriptorEntry(..),DescriptorType(..))
-import HaLVM.POSIX.FileDescriptors(addFd)
-import HaLVM.FileSystem(FileSystem,ModeBits(..),OpenFlags(..),init,open)
-import Prelude hiding (init)
-import System.IO.Unsafe(unsafePerformIO)
-import System.Posix.Types(CMode(..))
+import           Control.Concurrent.MVar(MVar,newMVar,withMVar)
+import           Data.Bits((.&.))
+import           Foreign.C.Error(Errno,eBADF)
+import           Foreign.C.String(peekCAString)
+import           Foreign.C.Types(CChar(..),CInt(..),CUInt(..))
+import           Foreign.Ptr(Ptr)
+import qualified HaLVM.FileSystem as FS
+import           HaLVM.POSIX.Errno(errnoReturn)
+import           HaLVM.POSIX.FileDescriptors(DescriptorEntry(..),
+                                             DescriptorType(..),
+                                             addFd, withFileDescriptorEntry_)
+import           HaLVM.FileSystem(FileSystem,ModeBits(..),OpenFlags(..),
+                                  init, open)
+import           Prelude hiding (init)
+import           System.IO.Unsafe(unsafePerformIO)
+import           System.Posix.Types(CMode(..))
 
 -- -----------------------------------------------------------------------------
 
@@ -80,6 +84,40 @@ halvm_syscall_open cstr flags mmode
 
 foreign export ccall halvm_syscall_open ::
   Ptr CChar -> CInt -> CMode -> IO CInt
+
+-- -----------------------------------------------------------------------------
+
+pokeFileStats :: Ptr FS.FileStats -> FS.FileStats -> IO ()
+pokeFileStats = undefined -- FIXME
+
+finishStat :: Ptr FS.FileStats -> Either Errno FS.FileStats -> IO CInt
+finishStat buf res =
+  case res of
+    Left err -> errnoReturn err
+    Right stats -> pokeFileStats buf stats >> return 0
+
+type StatType = Ptr CChar -> Ptr FS.FileStats -> IO CInt
+foreign export ccall halvm_syscall_stat :: StatType
+halvm_syscall_stat :: StatType
+halvm_syscall_stat path buf =
+  do str <- peekCAString path
+     res <- withMVar mFileSystem (\ fs -> FS.stat fs str)
+     finishStat buf res
+
+type FStatType = CInt -> Ptr FS.FileStats -> IO CInt
+foreign export ccall halvm_syscall_fstat :: FStatType
+halvm_syscall_fstat :: FStatType
+halvm_syscall_fstat fd buf = withFileDescriptorEntry_ fd $ \ ent ->
+  case descType ent of
+    DescFile file -> FS.fstat file >>= finishStat buf
+    _             -> errnoReturn eBADF
+
+foreign export ccall halvm_syscall_lstat :: StatType
+halvm_syscall_lstat :: StatType
+halvm_syscall_lstat path buf =
+  do str <- peekCAString path
+     res <- withMVar mFileSystem (\ fs -> FS.lstat fs str)
+     finishStat buf res
 
 -- -----------------------------------------------------------------------------
 

@@ -20,15 +20,13 @@ import           HaLVM.POSIX.FileDescriptors(DescriptorEntry(..),
 import           System.Posix.Types(CSsize(..))
 
 halvm_syscall_write :: CInt -> Ptr Word8 -> CSize -> IO CSsize
-halvm_syscall_write fd buf amt
-  | fd < 0 = errnoReturn eINVAL
-  | otherwise =
-      withFileDescriptorEntry_ (fromIntegral fd) $ \ ent ->
-        case descType ent of
-          DescConsole  con -> safeWrite Con.write con
-          DescFile     fle -> safeWrite FS.write  fle
-          DescSocket   sck -> safeWrite Net.send  sck
-          DescListener _   -> errnoReturn eINVAL
+halvm_syscall_write fd buf amt =
+  withFileDescriptorEntry_ fd $ \ ent ->
+    case descType ent of
+      DescConsole  con -> safeWrite Con.write con
+      DescFile     fle -> safeWrite FS.write  fle
+      DescSocket   sck -> safeWrite Net.send  sck
+      DescListener _   -> errnoReturn eINVAL
  where
   safeWrite action value =
     runWithEINTR $

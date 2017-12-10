@@ -18,7 +18,7 @@ import           Foreign.C.Types(CInt(..))
 import           HaLVM.Console      as Con
 import           HaLVM.FileSystem   as FS
 import           HaLVM.NetworkStack as Net
-import           HaLVM.POSIX.Errno(errnoReturn)
+import           HaLVM.POSIX.Errno(runWithEINTR,errnoReturn)
 import           System.IO.Unsafe(unsafePerformIO)
 
 data DescriptorEntry = DescriptorEntry {
@@ -118,11 +118,36 @@ withFileDescriptorEntry fd handler =
               writeArray dt fd (Just desc')
               return res
 
-withFileDescriptorEntry_ :: Num a => Word -> (DescriptorEntry -> IO a) -> IO a
-withFileDescriptorEntry_ fd handler =
-  withFileDescriptorEntry fd $ \ ent ->
-    do res <- handler ent
-       return (ent, res)
+withFileDescriptorEntry_ :: (Integral a, Num b) =>
+                            a -> (DescriptorEntry -> IO b) ->
+                            IO b
+withFileDescriptorEntry_ fd handler
+  | fd < 0    = errnoReturn eBADF
+  | otherwise =
+      do ent <- withMVar mDescriptorTable (\ dt ->
+                  readArray dt (fromIntegral fd))
+         case ent of
+           Nothing ->
+             errnoReturn eBADF
+           Just desc ->
+             handler desc
+
+-- -----------------------------------------------------------------------------
+
+type CloseType = CInt -> IO CInt
+foreign export ccall halvm_syscall_close :: CloseType
+halvm_syscall_close :: CloseType
+halvm_syscall_close fd 
+  | fd < 0    = errnoReturn eBADF
+  | otherwise =
+      runWithEINTR $
+        withMVar mDescriptorTable $ \ descTable ->
+          do ent <- readArray descTable (fromIntegral fd)
+             case ent of
+               Nothing -> errnoReturn eBADF
+               Just x  -> do closeDescriptor x
+                             writeArray descTable (fromIntegral fd) Nothing
+                             return 0
 
 -- -----------------------------------------------------------------------------
 
