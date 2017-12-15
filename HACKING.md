@@ -158,6 +158,12 @@ You will also need to install the GHC-8 toolchains for bootstrapping. If not, `.
 $ sudo dnf install ghc cabal-install alex happy hscolour
 ```
 
+If you are using Fedora 26, at least as of December 15th, 2017, there appear to be some broken dependencies in the default Haskell toolchain. As a result, you'll need to manually install a couple of core libraries:
+
+```
+$ sudo dnf install ghc-random-devel ghc-mtl-devel ghc-zlib-devel ghc-tar-devel ghc-ed25519-devel ghc-base64-bytestring-devel ghc-cryptohash-sha256-devel ghc-base16-bytestring-devel ghc-stm-devel ghc-text-devel ghc-network-devel
+```
+
 Before we reboot -- yes, we're about to reboot again -- let's set up that boot flag I just mentioned. Open up `/etc/default/grub` with your favorite editor, with `sudo`, and add the following line:
 
 ```
@@ -263,6 +269,7 @@ If you've done all this, you've made it through a major hurdle in setting up the
 
 ```
 $ git clone https://github.com/GaloisInc/HaLVM
+$ cd HaLVM
 $ git submodule update --init --recursive
 $ autoconf
 $ ./configure --enable-gmp
