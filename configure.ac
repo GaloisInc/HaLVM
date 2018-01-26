@@ -224,6 +224,18 @@ AC_ARG_ENABLE([gmp],
   [int_library=integer-simple])
 AC_SUBST(INTEGER_LIBRARY, [$int_library])
 
+dnl Enable halvm-ghc /dev/urandom emulation
+AC_ARG_ENABLE([urandom],
+  [AC_HELP_STRING([--enable-urandom],
+                  [Emulate filesystem access to /dev/urandom in the halvm-ghc RTS])],
+  [if test "$enableval" = "yes"; then
+     emulate_urandom=YES
+   else
+     emulate_urandom=NO
+   fi],
+  [emulate_urandom=NO])
+AC_SUBST(EMULATE_URANDOM, [$emulate_urandom])
+
 AC_CHECK_FILE(/etc/centos-release,
   [if `grep -q "release 7" /etc/centos-release`; then
      AC_SUBST(PLATFORM,"deb7")
