@@ -17,8 +17,8 @@ You can download its image from any mirror site, for example:
 - For Server 22: https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/22/Server/x86_64/iso/Fedora-Server-DVD-x86_64-22.iso
 - For Server 23: https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/23/Server/x86_64/iso/Fedora-Server-DVD-x86_64-23.iso
 - For Server 24: https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/24/Server/x86_64/iso/Fedora-Server-dvd-x86_64-24-1.2.iso
-- For Server 25: https://download.fedoraproject.org/pub/fedora/linux/releases/25/Server/x86_64/iso/Fedora-Server-dvd-x86_64-25-1.3.iso 
-- For Server 26: https://download.fedoraproject.org/pub/fedora/linux/releases/26/Server/x86_64/iso/Fedora-Server-dvd-x86_64-26-1.5.iso 
+- For Server 25: https://download.fedoraproject.org/pub/archive/fedora/linux/releases/25/Server/x86_64/iso/Fedora-Server-dvd-x86_64-25-1.3.iso
+- For Server 26: https://download.fedoraproject.org/pub/archive/fedora/linux/releases/26/Server/x86_64/iso/Fedora-Server-dvd-x86_64-26-1.5.iso
 
 You can also try 21, 25 etc. or even other distros, good luck and if any, please tell us any problem you met, or make a PR documenting how to solve it.
 
