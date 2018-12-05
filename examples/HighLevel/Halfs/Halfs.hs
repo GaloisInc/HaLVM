@@ -38,7 +38,7 @@ main = do
             bstring <- stToIO $ do
                 let wb = bdWriteBlock device
                 wb 512 "hello world"
-	        bstring <- bdReadBlock device $ 512
+                bstring <- bdReadBlock device $ 512
                 return bstring
             writeDebugConsole $ "String here: " ++ (BS.unpack bstring)
         Nothing -> writeDebugConsole "device error"
@@ -50,11 +50,11 @@ main = do
     mbBlockDevice <- newMemoryBlockDevice 1024 512 -- Initialize a block device as Memory
     case mbBlockDevice of
         Just device -> do
-	    let wb = bdWriteBlock device
-	    wb 512 "hello world"
-	    bstring <- bdReadBlock device $ 512
-	    writeDebugConsole $ "String here: " ++ (BS.unpack bstring)
-	Nothing -> writeDebugConsole "device error"
+            let wb = bdWriteBlock device
+            wb 512 "hello world"
+            bstring <- bdReadBlock device $ 512
+            writeDebugConsole $ "String here: " ++ (BS.unpack bstring)
+        Nothing -> writeDebugConsole "device error"
 -}
 
 -- A Simple FS Shell with Disk Backend
@@ -68,7 +68,7 @@ newDiskBlockDevice disk = return $! Just BlockDevice {
             bl <- readDisk disk (fromIntegral $ diskSectorSize disk) (fromIntegral sector)
             return $ bLtoBS bl
       , bdWriteBlock = \sector bs -> writeDisk disk (bStoBL bs) $ fromIntegral sector
-      , bdFlush      = return () -- `flushDiskCaches` is not actaully usable
+      , bdFlush      = return () -- `flushDiskCaches` is not actually usable
       , bdShutdown   = return () -- not found in XenDevice.Disk
       }
 
@@ -94,7 +94,7 @@ main = do
         case mdiskBD of
           Just diskBD -> do
             fsState <- mountFS diskBD
-            
+
             feedback <- runHalfs fsState $ do -- Create root and return
               mkdir "/" defaultPerm
               return "/"
